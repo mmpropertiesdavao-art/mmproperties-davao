@@ -1,28 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
-import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import { NextResponse } from "next/server";
 
-export async function GET(request: NextRequest) {
-  const code = request.nextUrl.searchParams.get("code");
-  const next = request.nextUrl.searchParams.get("next") || "/search";
-  const response = NextResponse.redirect(new URL(next, request.url));
-  if (!code) return response;
-  const supabase = createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
-    cookies: {
-      getAll: () => request.cookies.getAll(),
-      setAll: (items: { name: string; value: string; options: CookieOptions }[]) => items.forEach(({ name, value, options }) => response.cookies.set(name, value, options)),
-    },
+export async function GET() {
+  return NextResponse.json({
+    route: "callback reached",
+    timestamp: new Date().toISOString(),
   });
-  const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-
-console.log("OAuth exchange result:", {
-  user: data?.user?.email,
-  session: !!data?.session,
-  error,
-});
-
-if (error) {
-  console.error("OAuth exchange failed:", error);
-}
-
-return response;
 }
