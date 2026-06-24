@@ -1,4 +1,5 @@
 // src/app/property/[slug]/page.tsx
+export const dynamic = "force-dynamic";
 import { notFound } from "next/navigation";
 import { getPropertyBySlug } from "@/lib/data";
 import { db } from "@/lib/supabase/server";

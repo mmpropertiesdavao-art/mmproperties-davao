@@ -1,4 +1,5 @@
 // src/app/neighborhoods/[slug]/page.tsx
+export const dynamic = "force-dynamic";
 import { notFound } from "next/navigation";
 import { getNeighborhoodBySlug } from "@/lib/data";
 import { db } from "@/lib/supabase/server";
