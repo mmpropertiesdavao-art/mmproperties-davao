@@ -6,7 +6,7 @@ import { requireRole } from "@/lib/auth/requireRole";
 import { db } from "@/lib/supabase/server";
 
 const BUCKET = "property-images";
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+function getSupabase() { return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!); }
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const actor = await requireRole(["admin", "agent", "seller"]);

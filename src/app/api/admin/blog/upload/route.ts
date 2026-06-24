@@ -7,9 +7,10 @@ import { requireRole } from "@/lib/auth/requireRole";
 const BUCKET = "blog-media";
 const MAX_BYTES = 8 * 1024 * 1024;
 const TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/avif"]);
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 
 export async function POST(request: NextRequest) {
+  function getSupabase() { return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!); }
+  function getSupabase() { return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!); }
   const actor = await requireRole(["admin"]);
   if (!actor) return NextResponse.json({ error: "Not authorized" }, { status: 401 });
   const form = await request.formData();
