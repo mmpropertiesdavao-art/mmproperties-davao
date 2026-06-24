@@ -36,8 +36,8 @@ export default function LoginPage() {
       setLoading(false);
       return;
     }
-    router.replace(next || (profile.role === "buyer" ? "/search" : "/seller"));
-    router.refresh();
+    const destination = next || (profile.role === "buyer" ? "/search" : "/seller");
+window.location.href = destination;
   }
 
   async function googleSignIn() {
