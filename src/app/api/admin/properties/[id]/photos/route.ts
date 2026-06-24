@@ -82,7 +82,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
   const storagePaths = ownedPhotos.map((photo) => storagePathFromPublicUrl(photo.url)).filter((path): path is string => Boolean(path));
   let storageWarning: string | null = null;
   if (storagePaths.length > 0) {
-    const { error } = await supabase.storage.from(BUCKET).remove(storagePaths);
+  const { error } = await getSupabase().storage.from(BUCKET).remove(storagePaths);
     if (error) {
       storageWarning = "The listing records were removed, but some storage files may require cleanup.";
       console.error("Photo storage cleanup failed", error);

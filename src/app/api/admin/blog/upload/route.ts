@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { getAdminSupabase } from "@/lib/supabase/admin";
 import { requireRole } from "@/lib/auth/requireRole";
 
 const BUCKET = "blog-media";
@@ -9,7 +9,7 @@ const MAX_BYTES = 8 * 1024 * 1024;
 const TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/avif"]);
 
 export async function POST(request: NextRequest) {
-  const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+  const supabase = getAdminSupabase();
   const actor = await requireRole(["admin"]);
   if (!actor) return NextResponse.json({ error: "Not authorized" }, { status: 401 });
   const form = await request.formData();
