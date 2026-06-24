@@ -12,6 +12,17 @@ export async function GET(request: NextRequest) {
       setAll: (items: { name: string; value: string; options: CookieOptions }[]) => items.forEach(({ name, value, options }) => response.cookies.set(name, value, options)),
     },
   });
-  await supabase.auth.exchangeCodeForSession(code);
-  return response;
+  const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+
+console.log("OAuth exchange result:", {
+  user: data?.user?.email,
+  session: !!data?.session,
+  error,
+});
+
+if (error) {
+  console.error("OAuth exchange failed:", error);
+}
+
+return response;
 }
