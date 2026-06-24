@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/supabase/server";
 import { geocodeAddress } from "@/lib/geocode";
@@ -167,3 +169,4 @@ function parseManualPin(lat: unknown, lng: unknown): { lat: number; lng: number;
 
   return { lat: parsedLat, lng: parsedLng, confidence: "manual" };
 }
+

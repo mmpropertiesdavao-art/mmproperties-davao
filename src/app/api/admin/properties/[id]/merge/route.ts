@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import{NextRequest,NextResponse}from"next/server";import{requireRole}from"@/lib/auth/requireRole";import{db}from"@/lib/supabase/server";
 export async function POST(r:NextRequest,{params}:{params:Promise<{id:string}>}){if(!await requireRole(["admin"]))return NextResponse.json({error:"Only an administrator can merge listings."},{status:403});const{id:sourceId}=await params,b=await r.json(),targetId=String(b.targetId||"");if(!targetId||targetId===sourceId)return NextResponse.json({error:"Choose a different canonical listing."},{status:400});const target=await db.query({text:`SELECT id FROM properties WHERE id=$1::uuid`,values:[targetId]});if(!target.rows[0])return NextResponse.json({error:"Canonical listing not found."},{status:404});await db.query({text:`
 UPDATE property_images SET property_id=$2::uuid WHERE property_id=$1::uuid;

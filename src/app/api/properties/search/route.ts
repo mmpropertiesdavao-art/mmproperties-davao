@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 // src/app/api/properties/search/route.ts
 //
 // Powers the split-screen search page. Accepts either a geospatial mode
@@ -84,3 +86,4 @@ function numberOrUndefined(value: string | null): number | undefined {
   const n = Number(value);
   return Number.isNaN(n) ? undefined : n;
 }
+

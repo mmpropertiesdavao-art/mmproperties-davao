@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 // src/app/api/admin/properties/bulk/route.ts
 //
 // Backs the CSV bulk-import page. Accepts an array of row objects already
@@ -167,3 +169,4 @@ function parseManualPin(lat: unknown, lng: unknown): { lat: number; lng: number 
   if (parsedLat < 6.7 || parsedLat > 7.5 || parsedLng < 125.2 || parsedLng > 126) return null;
   return { lat: parsedLat, lng: parsedLng };
 }
+

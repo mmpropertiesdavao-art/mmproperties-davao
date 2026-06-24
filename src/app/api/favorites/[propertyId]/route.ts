@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { NextResponse } from "next/server";
 import { requireRole } from "@/lib/auth/requireRole";
 import { db } from "@/lib/supabase/server";

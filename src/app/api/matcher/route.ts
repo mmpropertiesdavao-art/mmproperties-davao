@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import {NextRequest,NextResponse} from "next/server";
 import {combinedFilterSearchQuery} from "@/lib/postgis/queries";
 import {db} from "@/lib/supabase/server";
@@ -43,3 +45,4 @@ function scoreProperty(p:MatchedProperty,input:MatcherInput,minBedrooms:number,w
  return{...p,matchScore:score,distanceKm:Number.isFinite(distanceKm)?Math.round(distanceKm*10)/10:0,outsidePreferredArea:Boolean(wanted.length&&!exact&&!nearbyTag&&distanceKm>5),matchReason:`${reasons.join(" · ")}.`};
 }
 function haversine(aLat:number,aLng:number,bLat:number,bLng:number){const r=6371,toRad=(n:number)=>n*Math.PI/180,dLat=toRad(bLat-aLat),dLng=toRad(bLng-aLng);const a=Math.sin(dLat/2)**2+Math.cos(toRad(aLat))*Math.cos(toRad(bLat))*Math.sin(dLng/2)**2;return 2*r*Math.asin(Math.sqrt(a))}
+

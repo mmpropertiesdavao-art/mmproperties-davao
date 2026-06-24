@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { db } from "@/lib/supabase/server";
@@ -98,3 +100,4 @@ function imageTypeFor(file: File): string | null {
   if (extension === "avif") return "image/avif";
   return null;
 }
+

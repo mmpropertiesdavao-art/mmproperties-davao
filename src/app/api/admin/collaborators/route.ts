@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/auth/requireRole";
 import { db } from "@/lib/supabase/server";
@@ -54,3 +56,4 @@ export async function PATCH(request: NextRequest) {
 
   return NextResponse.json({ success: true, status: action === "approve" ? "approved" : "rejected" });
 }
+

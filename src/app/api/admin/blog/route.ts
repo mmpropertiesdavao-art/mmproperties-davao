@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/auth/requireRole";
 import { db } from "@/lib/supabase/server";
@@ -60,3 +62,4 @@ function parseBody(body: any) {
   const position=body.featuredPosition===""||body.featuredPosition==null?null:Number(body.featuredPosition); if(position!==null&&![1,2,3].includes(position)) return {error:"Featured position must be 1, 2, or 3."} as const;
   return {title,blocks,content,category,slug:String(body.slug||""),coverImageUrl:String(body.coverImageUrl||"")||null,excerpt:String(body.excerpt||"").trim()||content.slice(0,180),seoTitle:String(body.seoTitle||"").trim()||title,metaDescription:String(body.metaDescription||"").trim()||content.slice(0,155),publishedAt,featuredPosition:position};
 }
+

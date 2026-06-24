@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import {NextRequest,NextResponse} from "next/server";
 import {db} from "@/lib/supabase/server";
 
@@ -23,3 +25,4 @@ export async function POST(request:NextRequest){
  }catch(error){console.error("Valuation failed",error);return NextResponse.json({error:"Could not calculate an estimate."},{status:500})}
 }
 const optional=(v:unknown)=>v===""||v==null?null:Number.isFinite(Number(v))?Number(v):null;const positive=(v:unknown)=>{const n=optional(v);return n&&n>0?n:null};const clamp=(n:number,min:number,max:number)=>Math.max(min,Math.min(max,n));function median(values:number[]){const a=[...values].sort((x,y)=>x-y),m=Math.floor(a.length/2);return a.length%2?a[m]:(a[m-1]+a[m])/2}const round=(n:number,step=10000)=>Math.round(n/step)*step;
+

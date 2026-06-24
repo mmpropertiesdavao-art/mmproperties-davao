@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 // src/app/api/inquiries/route.ts
 //
 // Creates a lead and routes it to the assigned agent (falling back to
@@ -43,3 +45,4 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ id: inquiry.id, status: "new" }, { status: 201 });
 }
+
