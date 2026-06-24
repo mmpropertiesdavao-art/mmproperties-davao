@@ -1,0 +1,11 @@
+import { redirect } from "next/navigation";
+import { requireRole } from "@/lib/auth/requireRole";
+import { db } from "@/lib/supabase/server";
+import { PropertyCard } from "@/components/property/PropertyCard";
+
+export default async function FavoritesPage() {
+  const actor = await requireRole(["buyer", "seller", "agent", "admin"]);
+  if (!actor) redirect("/login?next=/account/favorites");
+  const { rows } = await db.query({ text: `SELECT p.id,p.slug,p.title,p.price::float AS price,p.rent_price::float AS "rentPrice",p.listing_intent AS "listingIntent",p.availability,p.financing_available AS "financingAvailable",p.assume_balance_available AS "assumeBalanceAvailable",p.previous_price::float AS "previousPrice",p.bedrooms,p.bathrooms::float AS bathrooms,p.floor_area_sqm::float AS "floorAreaSqm",p.lot_area_sqm::float AS "lotAreaSqm",p.barangay,p.is_foreclosed AS "isForeclosed",pt.slug AS "propertyType",n.name AS "neighborhoodName",COALESCE(au.full_name,su.full_name) AS "agentName",a.agency_name AS "agencyName",EXTRACT(day FROM now()-p.created_at)::int AS "daysListed",(SELECT COUNT(*)::int FROM property_views v WHERE v.property_id=p.id) AS "viewCount",(SELECT COUNT(*)::int FROM favorites sf WHERE sf.property_id=p.id) AS "saveCount",(SELECT url FROM property_images pi WHERE pi.property_id=p.id ORDER BY pi.is_cover DESC,pi.sort_order LIMIT 1) AS "coverImageUrl" FROM favorites f JOIN properties p ON p.id=f.property_id JOIN property_types pt ON pt.id=p.property_type_id LEFT JOIN neighborhoods n ON n.id=p.neighborhood_id LEFT JOIN agents a ON a.id=p.agent_id LEFT JOIN users au ON au.id=a.user_id LEFT JOIN users su ON su.id=p.seller_id WHERE f.user_id=$1::uuid ORDER BY f.created_at DESC`, values: [actor.userId] });
+  return <main className="mx-auto max-w-6xl px-6 py-12"><h1 className="text-3xl font-semibold text-navy-900">Saved properties</h1><p className="mt-2 text-navy-500">Your shortlist of Davao listings.</p>{rows.length ? <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{rows.map((p:any)=><PropertyCard key={p.id} {...p}/>)}</div> : <p className="mt-8 rounded-xl border border-navy-100 bg-white p-8 text-center text-navy-500">You have not saved a property yet.</p>}</main>;
+}

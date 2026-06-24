@@ -1,0 +1,2 @@
+title,propertyTypeSlug,price,address,description,developerName,paymentTerms,monthlyAmortization,downpaymentPercent,bedrooms,bathrooms,floorAreaSqm,lotAreaSqm,parkingSpaces,primaryPlace,nearbyPlaces,barangay,isForeclosed,lat,lng,listingIntent,availability,rentPrice,financingAvailable,assumeBalanceAvailable,allowDuplicate
+Sample Davao Home,house-and-lot,5500000,"Barangay Mintal, Davao City",Sample description,,,25000,20,3,2,100,126,1,Mintal,"Davao Doctors Hospital;UP Mindanao",Mintal,FALSE,7.086500,125.505000,sale,available,,TRUE,FALSE,FALSE
