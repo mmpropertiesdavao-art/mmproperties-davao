@@ -10,10 +10,11 @@ const MAX_FILES = 12;
 const MAX_FILE_BYTES = 8 * 1024 * 1024;
 const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/avif"]);
 
-function getSupabase() { return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!); }
+function getSupabase() {
+  return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+}
 
 export async function POST(req: NextRequest) {
-  function getSupabase() { return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!); }
   const actor = await requireRole(["admin", "agent", "seller"]);
   if (!actor) return NextResponse.json({ error: "Not authorized" }, { status: 401 });
 
@@ -58,14 +59,14 @@ export async function POST(req: NextRequest) {
         const extension = extensionFor(normalizedType);
         const path = `${propertyId}/${stamp}-${index}-${crypto.randomUUID()}.${extension}`;
         const buffer = Buffer.from(await file.arrayBuffer());
-        const { error } = await supabase.storage.from(BUCKET).upload(path, buffer, {
+        const { error } = await getSupabase().storage.from(BUCKET).upload(path, buffer, {
           contentType: normalizedType,
           cacheControl: "31536000",
           upsert: false,
         });
         if (error) throw new Error(`${file.name}: ${error.message}`);
         uploadedPaths.push(path);
-        return { path, name: file.name, index, url: supabase.storage.from(BUCKET).getPublicUrl(path).data.publicUrl };
+        return { path, name: file.name, index, url: getSupabase().storage.from(BUCKET).getPublicUrl(path).data.publicUrl };
       }),
     );
 
@@ -82,7 +83,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true, uploaded: uploads.map((item) => item.url) });
   } catch (error) {
-    if (uploadedPaths.length > 0) await supabase.storage.from(BUCKET).remove(uploadedPaths);
+    if (uploadedPaths.length > 0) await getSupabase().storage.from(BUCKET).remove(uploadedPaths);
     console.error("Photo upload failed", error);
     return NextResponse.json({ error: error instanceof Error ? error.message : "Upload failed" }, { status: 500 });
   }
@@ -101,4 +102,3 @@ function imageTypeFor(file: File): string | null {
   if (extension === "avif") return "image/avif";
   return null;
 }
-
