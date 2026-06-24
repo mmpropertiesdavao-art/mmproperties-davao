@@ -15,15 +15,26 @@ export default function LoginPage() {
     setLoading(true);
     setError(null);
     const form = new FormData(event.currentTarget);
-    const { data: authData, error: authError } = await supabaseBrowser.auth.signInWithPassword({
-      email: String(form.get("email")),
-      password: String(form.get("password")),
-    });
+    const email = String(form.get("email")).trim();
+const password = String(form.get("password"));
+
+const { data: authData, error: authError } =
+  await supabaseBrowser.auth.signInWithPassword({
+    email,
+    password,
+  });
+
+if (!authData.session) {
+  setError("Login succeeded but no session was created. Check Supabase email confirmation or auth settings.");
+  setLoading(false);
+  return;
+}
     if (authError) {
       setError(authError.message);
       setLoading(false);
       return;
     }
+console.log("AUTH RESULT", authData);
     const { data: profile } = await supabaseBrowser.from("users").select("role").eq("id", authData.user.id).single();
     const next = new URLSearchParams(window.location.search).get("next");
     if (!profile) {
