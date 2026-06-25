@@ -1,27 +1,173 @@
-"use client";
+'use client'
 
-import Link from "next/link";
-import { useEffect, useState } from "react";
-import { supabaseBrowser } from "@/lib/supabase/client";
+import Link from 'next/link'
+import { useEffect, useMemo, useState } from 'react'
+import { supabaseBrowser } from '@/lib/supabase/client'
 
-export function AccountLink() {
-  const [signedIn, setSignedIn] = useState(false);
-  const [role, setRole] = useState<string | null>(null);
+type Role = 'buyer' | 'seller' | 'agent' | 'admin'
+
+type DebugMeResponse = {
+  authenticated: boolean
+  authUser?: {
+    id: string
+    email?: string
+  }
+  publicUser?: {
+    id: string
+    email?: string
+    role?: Role
+  } | null
+}
+
+function getDashboardHref(role?: Role | null) {
+  if (role === 'admin') return '/admin'
+  if (role === 'seller' || role === 'agent') return '/seller'
+  return '/search'
+}
+
+const adminLinks = [
+  {
+    label: 'Admin Dashboard',
+    href: '/admin',
+  },
+  {
+    label: 'Listings',
+    href: '/admin/listings',
+  },
+  {
+    label: 'Leads & Inquiries',
+    href: '/admin/inquiries',
+  },
+  {
+    label: 'Users & Access',
+    href: '/admin/users',
+  },
+  {
+    label: 'Seller Applications',
+    href: '/admin/collaborators',
+  },
+  {
+    label: 'Content & Analytics',
+    href: '/admin/content',
+  },
+]
+
+export default function AccountLink() {
+  const [loading, setLoading] = useState(true)
+  const [authenticated, setAuthenticated] = useState(false)
+  const [role, setRole] = useState<Role | null>(null)
+  const [open, setOpen] = useState(false)
+
+  const dashboardHref = useMemo(() => getDashboardHref(role), [role])
 
   useEffect(() => {
-    supabaseBrowser.auth.getUser().then(async ({ data }) => { setSignedIn(Boolean(data.user)); if (data.user) { const profile = await supabaseBrowser.from("users").select("role").eq("id", data.user.id).single(); setRole(profile.data?.role ?? "buyer"); } });
-    const { data } = supabaseBrowser.auth.onAuthStateChange(async (_event, session) => { setSignedIn(Boolean(session?.user)); if (session?.user) { const profile = await supabaseBrowser.from("users").select("role").eq("id", session.user.id).single(); setRole(profile.data?.role ?? "buyer"); } else setRole(null); });
-    return () => data.subscription.unsubscribe();
-  }, []);
+    let mounted = true
 
-  if (!signedIn) {
-    return <Link href="/login" className="rounded-md border border-gold-400 px-3 py-2 transition hover:bg-navy-800">Log in</Link>;
+    async function loadUser() {
+      const {
+        data: { session },
+      } = await supabaseBrowser.auth.getSession()
+
+      if (!mounted) return
+
+      if (!session) {
+        setAuthenticated(false)
+        setRole(null)
+        setLoading(false)
+        return
+      }
+
+      setAuthenticated(true)
+
+      try {
+        const response = await fetch('/api/debug/me', {
+          credentials: 'include',
+          cache: 'no-store',
+        })
+
+        const data = (await response.json()) as DebugMeResponse
+
+        if (!mounted) return
+
+        setRole(data.publicUser?.role || 'buyer')
+      } catch {
+        if (!mounted) return
+        setRole('buyer')
+      }
+
+      setLoading(false)
+    }
+
+    loadUser()
+
+    const {
+      data: { subscription },
+    } = supabaseBrowser.auth.onAuthStateChange(() => {
+      loadUser()
+    })
+
+    return () => {
+      mounted = false
+      subscription.unsubscribe()
+    }
+  }, [])
+
+  if (loading) {
+    return <span className="text-sm text-gray-500">Loading...</span>
+  }
+
+  if (!authenticated) {
+    return (
+      <Link
+        href="/login"
+        className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
+      >
+        Login
+      </Link>
+    )
+  }
+
+  if (role === 'admin') {
+    return (
+      <div
+        className="relative"
+        onMouseEnter={() => setOpen(true)}
+        onMouseLeave={() => setOpen(false)}
+      >
+        <button
+          type="button"
+          onClick={() => setOpen((value) => !value)}
+          className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
+        >
+          Dashboard
+        </button>
+
+        {open && (
+          <div className="absolute right-0 z-50 mt-2 w-64 overflow-hidden rounded-xl border bg-white shadow-lg">
+            {adminLinks.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                onClick={() => setOpen(false)}
+                className="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-50"
+              >
+                {link.label}
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
+    )
   }
 
   return (
-    <div className="flex items-center gap-3">
-      <Link href={role === "buyer" ? "/account/favorites" : "/seller"} className="transition hover:text-gold-400">{role === "buyer" ? "Saved" : "Dashboard"}</Link>
-      <button type="button" onClick={() => supabaseBrowser.auth.signOut()} className="text-slate-300 transition hover:text-white">Log out</button>
-    </div>
-  );
+    <Link
+      href={dashboardHref}
+      className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
+    >
+      Dashboard
+    </Link>
+  )
 }
+
+export { AccountLink }

@@ -13,7 +13,7 @@ type LeadRow = {
 }
 
 export default async function SellerLeadsPage() {
-  const actor = await requireRole(['seller', 'agent', 'admin'])
+  const actor = await requireRole(['seller', 'agent'])
 
   const { rows: leads } = await db.query<LeadRow>({
     text: `

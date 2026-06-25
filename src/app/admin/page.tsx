@@ -1,73 +1,112 @@
 import Link from 'next/link'
 import { requireRole } from '@/lib/auth/requireRole'
 
+const adminSections = [
+  {
+    title: 'Listings',
+    href: '/admin/listings',
+    description:
+      'Manage listings, photos, videos, locations, pins, approvals, and featured properties.',
+  },
+  {
+    title: 'Leads & Inquiries',
+    href: '/admin/inquiries',
+    description:
+      'View buyer inquiries across all listings and track property interest.',
+  },
+  {
+    title: 'Users & Access',
+    href: '/admin/users',
+    description:
+      'Freeze, thaw, deactivate, restore accounts, and manage platform access.',
+  },
+  {
+    title: 'Seller Applications',
+    href: '/admin/collaborators',
+    description:
+      'Review and approve seller or agent applications.',
+  },
+  {
+    title: 'Content & Analytics',
+    href: '/admin/content',
+    description:
+      'Manage developers, places, neighborhoods, guides, and analytics.',
+  },
+]
+
 export default async function AdminDashboardPage() {
-  await requireRole(['admin'])
+  const actor = await requireRole(['admin'])
 
   return (
     <main className="min-h-screen bg-gray-50 px-4 py-8">
       <div className="mx-auto max-w-6xl">
-        <div className="mb-8 rounded-2xl bg-white border shadow-sm p-6">
-          <h1 className="text-2xl font-bold text-gray-900">
+        <section className="mb-8 rounded-2xl border bg-white p-6 shadow-sm">
+          <p className="text-sm font-semibold uppercase tracking-wide text-gray-500">
+            Admin Control Center
+          </p>
+
+          <h1 className="mt-2 text-3xl font-bold text-gray-900">
             Admin Dashboard
           </h1>
 
           <p className="mt-2 text-sm text-gray-600">
-            Manage users, listings, applications, inquiries, and platform data.
+            Logged in as {actor.email}. Manage listings, users, inquiries, applications, and site data from one place.
           </p>
-        </div>
+        </section>
 
-        <div className="grid gap-4 md:grid-cols-3">
-          <Link
-            href="/admin/users"
-            className="rounded-xl bg-white border p-5 shadow-sm hover:border-gray-400 hover:shadow-md transition"
-          >
-            <h2 className="font-semibold text-gray-900">User Accounts</h2>
-            <p className="mt-2 text-sm text-gray-600">
-              Freeze, thaw, deactivate, or restore user accounts.
-            </p>
-          </Link>
+        <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {adminSections.map((section) => (
+            <Link
+              key={section.href}
+              href={section.href}
+              className="rounded-xl border bg-white p-5 shadow-sm transition hover:border-gray-400 hover:shadow-md"
+            >
+              <h2 className="text-lg font-semibold text-gray-900">
+                {section.title}
+              </h2>
 
-          <Link
-            href="/admin/inquiries"
-            className="rounded-xl bg-white border p-5 shadow-sm hover:border-gray-400 hover:shadow-md transition"
-          >
-            <h2 className="font-semibold text-gray-900">Inquiries</h2>
-            <p className="mt-2 text-sm text-gray-600">
-              View all buyer inquiries across all listings.
-            </p>
-          </Link>
+              <p className="mt-2 text-sm text-gray-600">
+                {section.description}
+              </p>
+            </Link>
+          ))}
+        </section>
 
-          <Link
-            href="/admin/collaborators"
-            className="rounded-xl bg-white border p-5 shadow-sm hover:border-gray-400 hover:shadow-md transition"
-          >
-            <h2 className="font-semibold text-gray-900">Collaborators</h2>
-            <p className="mt-2 text-sm text-gray-600">
-              Review seller and agent applications.
-            </p>
-          </Link>
+        <section className="mt-8 rounded-2xl border bg-white p-6 shadow-sm">
+          <h2 className="text-xl font-bold text-gray-900">
+            Quick Actions
+          </h2>
 
-          <Link
-            href="/admin/properties"
-            className="rounded-xl bg-white border p-5 shadow-sm hover:border-gray-400 hover:shadow-md transition"
-          >
-            <h2 className="font-semibold text-gray-900">Properties</h2>
-            <p className="mt-2 text-sm text-gray-600">
-              Manage property listings and approvals.
-            </p>
-          </Link>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <Link
+              href="/admin/properties"
+              className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
+            >
+              Manage Properties
+            </Link>
 
-          <Link
-            href="/admin/analytics"
-            className="rounded-xl bg-white border p-5 shadow-sm hover:border-gray-400 hover:shadow-md transition"
-          >
-            <h2 className="font-semibold text-gray-900">Analytics</h2>
-            <p className="mt-2 text-sm text-gray-600">
-              View platform activity and performance.
-            </p>
-          </Link>
-        </div>
+            <Link
+              href="/admin/collaborators"
+              className="rounded-lg border px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              Review Applications
+            </Link>
+
+            <Link
+              href="/admin/inquiries"
+              className="rounded-lg border px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              View Inquiries
+            </Link>
+
+            <Link
+              href="/admin/users"
+              className="rounded-lg border px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              Manage Users
+            </Link>
+          </div>
+        </section>
       </div>
     </main>
   )

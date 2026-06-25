@@ -24,7 +24,7 @@ function formatPrice(price: number | null) {
 }
 
 export default async function SellerDashboardPage() {
-  const actor = await requireRole(['seller', 'agent', 'admin'])
+  const actor = await requireRole(['seller', 'agent'])
 
   const { rows: properties } = await db.query<SellerProperty>({
     text: `
@@ -118,6 +118,7 @@ export default async function SellerDashboardPage() {
               <p className="text-gray-700 font-medium">
                 No listings yet.
               </p>
+
               <p className="mt-2 text-sm text-gray-500">
                 Start by submitting your first property listing.
               </p>
