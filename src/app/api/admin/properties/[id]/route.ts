@@ -87,42 +87,42 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   const developerId=await resolveDeveloper(body.developerName,actor);
 
   const values = [
-    title, body.description || null, propertyTypeSlug, body.developerName || null,
-    price, listingIntent, availability, optionalNumber(body.rentPrice),
-    Boolean(body.financingAvailable), Boolean(body.assumeBalanceAvailable),
-    optionalNumber(body.monthlyAmortization), optionalNumber(body.downpaymentPercent),
-    optionalNumber(body.bedrooms), optionalNumber(body.bathrooms), optionalNumber(body.floorAreaSqm),
-    optionalNumber(body.lotAreaSqm), body.neighborhoodSlug || null, body.barangay || null,
-    address, lng, lat, status, Boolean(body.isForeclosed), Boolean(body.isFeatured),
-    id, actor.role, actor.userId, optionalNumber(body.parkingSpaces), developerId,
-  ];
+  title, body.description || null, propertyTypeSlug,
+  price, listingIntent, availability, optionalNumber(body.rentPrice),
+  Boolean(body.financingAvailable), Boolean(body.assumeBalanceAvailable),
+  optionalNumber(body.monthlyAmortization), optionalNumber(body.downpaymentPercent),
+  optionalNumber(body.bedrooms), optionalNumber(body.bathrooms), optionalNumber(body.floorAreaSqm),
+  optionalNumber(body.lotAreaSqm), body.neighborhoodSlug || null, body.barangay || null,
+  address, lng, lat, status, Boolean(body.isForeclosed), Boolean(body.isFeatured),
+  id, actor.role, actor.userId, optionalNumber(body.parkingSpaces), developerId,
+];
 
   const { rows } = await db.query<{ id: string; slug: string }>({
     text: `
       UPDATE properties p SET
-        title = $1, description = $2,
-        property_type_id = (SELECT id FROM property_types WHERE slug = $3 LIMIT 1),
-        developer_id = $29::uuid,
-        previous_price = CASE WHEN $5 < p.price THEN p.price ELSE p.previous_price END,
-        price_reduced_at = CASE WHEN $5 < p.price THEN now() ELSE p.price_reduced_at END,
-        price = $5, listing_intent = $6, availability = $7, rent_price = $8,
-        financing_available = $9, assume_balance_available = $10,
-        monthly_amortization = $11, downpayment_percent = $12,
-        bedrooms = $13, bathrooms = $14, floor_area_sqm = $15, lot_area_sqm = $16, parking_spaces = $28,
-        neighborhood_id = (SELECT id FROM neighborhoods WHERE slug = $17 LIMIT 1),
-        barangay = $18, address = $19,
-        location = ST_MakePoint($20, $21)::geography,
-        status = CASE WHEN $7 = 'sold' THEN 'sold' WHEN $7 IN ('rented','inactive') THEN 'inactive' ELSE $22 END,
-        is_foreclosed = $23,
-        is_featured = CASE WHEN $26 = 'admin' THEN $24 ELSE p.is_featured END,
-        updated_at = now()
-      WHERE p.id = $25::uuid
-        AND (
-          $26 = 'admin'
-          OR ($26 = 'seller' AND p.seller_id = $27::uuid)
-          OR ($26 = 'agent' AND EXISTS (SELECT 1 FROM agents a WHERE a.id = p.agent_id AND a.user_id = $27::uuid))
-        )
-      RETURNING p.id, p.slug
+  title = $1, description = $2,
+  property_type_id = (SELECT id FROM property_types WHERE slug = $3 LIMIT 1),
+  developer_id = $28::uuid,
+  previous_price = CASE WHEN $4 < p.price THEN p.price ELSE p.previous_price END,
+  price_reduced_at = CASE WHEN $4 < p.price THEN now() ELSE p.price_reduced_at END,
+  price = $4, listing_intent = $5, availability = $6, rent_price = $7,
+  financing_available = $8, assume_balance_available = $9,
+  monthly_amortization = $10, downpayment_percent = $11,
+  bedrooms = $12, bathrooms = $13, floor_area_sqm = $14, lot_area_sqm = $15, parking_spaces = $27,
+  neighborhood_id = (SELECT id FROM neighborhoods WHERE slug = $16 LIMIT 1),
+  barangay = $17, address = $18,
+  location = ST_MakePoint($19, $20)::geography,
+  status = CASE WHEN $6 = 'sold' THEN 'sold' WHEN $6 IN ('rented','inactive') THEN 'inactive' ELSE $21 END,
+  is_foreclosed = $22,
+  is_featured = CASE WHEN $25 = 'admin' THEN $23 ELSE p.is_featured END,
+  updated_at = now()
+WHERE p.id = $24::uuid
+  AND (
+    $25 = 'admin'
+    OR ($25 = 'seller' AND p.seller_id = $26::uuid)
+    OR ($25 = 'agent' AND EXISTS (SELECT 1 FROM agents a WHERE a.id = p.agent_id AND a.user_id = $26::uuid))
+  )
+RETURNING p.id, p.slug
     `,
     values,
   });
