@@ -3,11 +3,12 @@ export const dynamic = "force-dynamic";
 // src/app/api/applications/route.ts
 //
 // Public application intake for sellers, agents, and collaborators.
-// Saves to Supabase/Postgres first, then optionally sends the same payload
-// to a GoHighLevel webhook if GHL_APPLICATION_WEBHOOK_URL is configured.
+// Saves to Supabase/Postgres first, then creates/updates contact in GHL
+// and adds tags that trigger GHL workflows.
 
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/supabase/server";
+import { upsertGhlContact } from "@/lib/ghl";
 
 type ApplicationType = "seller" | "agent" | "collaborator";
 
@@ -164,81 +165,58 @@ export async function POST(req: NextRequest) {
 
     const application = rows[0];
 
-    const ghlWebhookUrl = process.env.GHL_APPLICATION_WEBHOOK_URL;
+    try {
+      const tags = [
+        "MM Properties Application",
+        applicationType === "seller"
+          ? "Seller Applicant"
+          : applicationType === "agent"
+            ? "Agent Applicant"
+            : "Collaborator Applicant",
+      ];
 
-    if (ghlWebhookUrl) {
-      try {
-        const ghlResponse = await fetch(ghlWebhookUrl, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            source: "MM Properties Website",
-            event: "application_submitted",
-            applicationId: application.id,
-            applicationType,
-            requestedRole,
-            fullName,
-            email,
-            phone,
-            businessName,
-            prcLicenseNumber,
-            profession,
-            serviceArea,
-            propertyAddress,
-            isPropertyOwner,
-            propertyType,
-            message,
-            consentConfirmed,
-            createdAt: application.created_at,
-            tags: [
-              "MM Properties Application",
-              applicationType === "seller"
-                ? "Seller Applicant"
-                : applicationType === "agent"
-                  ? "Agent Applicant"
-                  : "Collaborator Applicant",
-            ],
-          }),
-        });
+      await upsertGhlContact({
+        name: fullName,
+        email,
+        phone,
+        tags,
+        customFields: {
+          application_type: applicationType,
+          application_status: "Pending",
+          requested_role: requestedRole,
+          property_address: propertyAddress,
+          property_type: propertyType,
+          business_name: businessName,
+          prc_license_number: prcLicenseNumber,
+          profession,
+          service_area: serviceArea,
+          mm_properties_application_id: application.id,
+        },
+      });
 
-        if (ghlResponse.ok) {
-          await db.query({
-            text: `
-              UPDATE collaborator_applications
-              SET ghl_sent_at = now(), ghl_error = NULL, updated_at = now()
-              WHERE id = $1::uuid
-            `,
-            values: [application.id],
-          });
-        } else {
-          const errorText = await ghlResponse.text().catch(() => "");
-          await db.query({
-            text: `
-              UPDATE collaborator_applications
-              SET ghl_error = $2, updated_at = now()
-              WHERE id = $1::uuid
-            `,
-            values: [
-              application.id,
-              `GHL webhook failed with status ${ghlResponse.status}: ${errorText.slice(0, 500)}`,
-            ],
-          });
-        }
-      } catch (error) {
-        await db.query({
-          text: `
-            UPDATE collaborator_applications
-            SET ghl_error = $2, updated_at = now()
-            WHERE id = $1::uuid
-          `,
-          values: [
-            application.id,
-            error instanceof Error ? error.message : "GHL webhook failed.",
-          ],
-        });
-      }
+      await db.query({
+        text: `
+          UPDATE collaborator_applications
+          SET ghl_sent_at = now(),
+              ghl_error = NULL,
+              updated_at = now()
+          WHERE id = $1::uuid
+        `,
+        values: [application.id],
+      });
+    } catch (error) {
+      await db.query({
+        text: `
+          UPDATE collaborator_applications
+          SET ghl_error = $2,
+              updated_at = now()
+          WHERE id = $1::uuid
+        `,
+        values: [
+          application.id,
+          error instanceof Error ? error.message : "GHL contact sync failed.",
+        ],
+      });
     }
 
     return NextResponse.json(

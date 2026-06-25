@@ -3,53 +3,15 @@ export const dynamic = "force-dynamic";
 // src/app/api/admin/collaborators/route.ts
 //
 // Admin review API for seller, agent, and collaborator applications.
-// Approval no longer depends on Supabase invite emails.
-// If the applicant already has an account, their role is upgraded.
-// If they do not have an account yet, the application is approved by email
-// and role assignment will happen when they sign up with the same email.
+// Approval does not rely on Supabase invite emails.
+// GHL contact tags trigger applicant communication workflows.
 
 import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/auth/requireRole";
 import { db } from "@/lib/supabase/server";
+import { upsertGhlContact } from "@/lib/ghl";
 
 type RequestedRole = "seller" | "agent";
-
-async function sendGhlApprovalWebhook(application: {
-  id: string;
-  email: string | null;
-  full_name: string | null;
-  phone: string | null;
-  requested_role: RequestedRole;
-  application_type: string | null;
-}) {
-  const webhookUrl =
-    process.env.GHL_APPLICATION_APPROVED_WEBHOOK_URL ||
-    process.env.GHL_APPLICATION_WEBHOOK_URL;
-
-  if (!webhookUrl) return;
-
-  await fetch(webhookUrl, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      source: "MM Properties Website",
-      event: "application_approved",
-      applicationId: application.id,
-      email: application.email,
-      fullName: application.full_name,
-      phone: application.phone,
-      requestedRole: application.requested_role,
-      applicationType: application.application_type || application.requested_role,
-      message:
-        "Application approved. Applicant should create/login using the same email address.",
-      tags: [
-        "MM Properties Application",
-        "Application Approved",
-        application.requested_role === "agent" ? "Approved Agent" : "Approved Seller",
-      ],
-    }),
-  });
-}
 
 export async function GET() {
   const actor = await requireRole(["admin"]);
@@ -176,6 +138,34 @@ export async function PATCH(req: NextRequest) {
       values: [applicationId],
     });
 
+    try {
+      await upsertGhlContact({
+        name: application.full_name,
+        email: application.email,
+        phone: application.phone,
+        tags: ["Application Rejected"],
+        customFields: {
+          application_status: "Rejected",
+          requested_role: application.requested_role,
+          application_type: application.application_type || application.requested_role,
+          mm_properties_application_id: application.id,
+        },
+      });
+    } catch (error) {
+      await db.query({
+        text: `
+          UPDATE collaborator_applications
+          SET ghl_error = $2,
+              updated_at = now()
+          WHERE id = $1::uuid
+        `,
+        values: [
+          applicationId,
+          error instanceof Error ? error.message : "GHL rejection sync failed.",
+        ],
+      });
+    }
+
     return NextResponse.json({ success: true, status: "rejected" });
   }
 
@@ -259,7 +249,21 @@ export async function PATCH(req: NextRequest) {
   });
 
   try {
-    await sendGhlApprovalWebhook(application);
+    await upsertGhlContact({
+      name: application.full_name,
+      email: application.email,
+      phone: application.phone,
+      tags: [
+        "Application Approved",
+        application.requested_role === "agent" ? "Approved Agent" : "Approved Seller",
+      ],
+      customFields: {
+        application_status: "Approved",
+        requested_role: application.requested_role,
+        application_type: application.application_type || application.requested_role,
+        mm_properties_application_id: application.id,
+      },
+    });
   } catch (error) {
     await db.query({
       text: `
@@ -270,7 +274,7 @@ export async function PATCH(req: NextRequest) {
       `,
       values: [
         applicationId,
-        error instanceof Error ? error.message : "GHL approval webhook failed.",
+        error instanceof Error ? error.message : "GHL approval sync failed.",
       ],
     });
   }
