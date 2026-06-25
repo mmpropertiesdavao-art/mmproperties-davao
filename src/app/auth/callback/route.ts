@@ -2,14 +2,12 @@ export const dynamic = "force-dynamic";
 
 // src/app/auth/callback/route.ts
 //
-// Handles Google OAuth callback.
-// After Supabase creates the session, this checks approved seller/agent applications.
-// If approved, it upgrades the user role and redirects to /seller.
-// Otherwise, buyer/visitor accounts go to /search.
+// Supabase OAuth callback.
+// Exchanges Google OAuth code for a server cookie session,
+// then syncs approved seller/agent applications and redirects correctly.
 
 import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { createServerClient } from "@supabase/ssr";
+import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { db } from "@/lib/supabase/server";
 
 type Role = "buyer" | "seller" | "agent" | "admin";
@@ -23,16 +21,20 @@ type ApprovedApplication = {
   phone: string | null;
 };
 
+function destinationFor(role: Role) {
+  return role === "seller" || role === "agent" || role === "admin"
+    ? "/seller"
+    : "/search";
+}
+
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get("code");
 
-  const cookieStore = await cookies();
-
-  const cookiesToSet: {
+  let cookiesToSet: {
     name: string;
     value: string;
-    options: Record<string, unknown>;
+    options: CookieOptions;
   }[] = [];
 
   const supabase = createServerClient(
@@ -40,44 +42,52 @@ export async function GET(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        getAll: () => cookieStore.getAll(),
-        setAll: (
-          items: {
-            name: string;
-            value: string;
-            options: Record<string, unknown>;
-          }[]
-        ) => {
-          items.forEach(({ name, value, options }) => {
-            cookiesToSet.push({ name, value, options });
-          });
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(items: { name: string; value: string; options: CookieOptions }[]) {
+          cookiesToSet = items;
         },
       },
     }
   );
 
-  if (code) {
-    await supabase.auth.exchangeCodeForSession(code);
+  if (!code) {
+    return NextResponse.redirect(new URL("/login", requestUrl.origin));
   }
 
-  const { data } = await supabase.auth.getUser();
-  const user = data.user;
+  const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
 
-  let destination = "/search";
+  if (exchangeError) {
+    const response = NextResponse.redirect(
+      new URL(`/login?error=${encodeURIComponent(exchangeError.message)}`, requestUrl.origin)
+    );
 
-  if (user?.email) {
-    const email = user.email.trim().toLowerCase();
+    cookiesToSet.forEach(({ name, value, options }) => {
+      response.cookies.set(name, value, options);
+    });
+
+    return response;
+  }
+
+  const { data: userData } = await supabase.auth.getUser();
+  const authUser = userData.user;
+
+  let finalRole: Role = "buyer";
+
+  if (authUser?.email) {
+    const email = authUser.email.trim().toLowerCase();
 
     const metadataFullName =
-      typeof user.user_metadata?.full_name === "string"
-        ? user.user_metadata.full_name.trim()
-        : typeof user.user_metadata?.name === "string"
-          ? user.user_metadata.name.trim()
+      typeof authUser.user_metadata?.full_name === "string"
+        ? authUser.user_metadata.full_name.trim()
+        : typeof authUser.user_metadata?.name === "string"
+          ? authUser.user_metadata.name.trim()
           : null;
 
     const metadataPhone =
-      typeof user.user_metadata?.phone === "string"
-        ? user.user_metadata.phone.trim()
+      typeof authUser.user_metadata?.phone === "string"
+        ? authUser.user_metadata.phone.trim()
         : null;
 
     const { rows: existingUsers } = await db.query<{
@@ -91,7 +101,7 @@ export async function GET(request: NextRequest) {
         WHERE id = $1::uuid
         LIMIT 1
       `,
-      values: [user.id],
+      values: [authUser.id],
     });
 
     const existingUser = existingUsers[0];
@@ -119,7 +129,7 @@ export async function GET(request: NextRequest) {
 
     const application = applications[0];
 
-    const finalRole: Role =
+    finalRole =
       existingUser?.role === "admin"
         ? "admin"
         : application?.requested_role || existingUser?.role || "buyer";
@@ -156,7 +166,7 @@ export async function GET(request: NextRequest) {
           updated_at = now()
       `,
       values: [
-        user.id,
+        authUser.id,
         email,
         existingUser?.full_name || metadataFullName || application?.full_name || null,
         existingUser?.phone || metadataPhone || application?.phone || null,
@@ -171,9 +181,14 @@ export async function GET(request: NextRequest) {
           SET user_id = $2::uuid,
               updated_at = now()
           WHERE id = $1::uuid
+             OR (
+              lower(email) = lower($3)
+              AND status = 'approved'
+              AND user_id IS NULL
+             )
         `,
-        values: [application.id, user.id],
-      });
+        values: [application.id, authUser.id, email],
+      }).catch(() => null);
 
       if (application.requested_role === "agent") {
         await db.query({
@@ -199,17 +214,15 @@ export async function GET(request: NextRequest) {
                 SELECT 1 FROM agents a WHERE a.user_id = $1::uuid
               )
           `,
-          values: [user.id, application.id],
-        });
+          values: [authUser.id, application.id],
+        }).catch(() => null);
       }
     }
-
-    destination = ["seller", "agent", "admin"].includes(String(finalRole))
-  ? "/seller"
-  : "/search";
   }
 
-  const response = NextResponse.redirect(new URL(destination, requestUrl.origin));
+  const response = NextResponse.redirect(
+    new URL(destinationFor(finalRole), requestUrl.origin)
+  );
 
   cookiesToSet.forEach(({ name, value, options }) => {
     response.cookies.set(name, value, options);
