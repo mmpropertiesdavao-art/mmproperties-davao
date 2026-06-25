@@ -4,6 +4,13 @@ import { requireAuth } from '@/lib/auth/requireRole'
 export default async function AccountSecurityPage() {
   const actor = await requireAuth()
 
+  const dashboardHref =
+    actor.role === 'admin'
+      ? '/admin'
+      : actor.role === 'seller' || actor.role === 'agent'
+        ? '/seller'
+        : '/search'
+
   return (
     <main className="min-h-screen bg-gray-50 px-4 py-8">
       <div className="mx-auto max-w-3xl">
@@ -22,8 +29,8 @@ export default async function AccountSecurityPage() {
             </h2>
 
             <p className="mt-2 text-sm text-gray-600">
-              If you logged in using Google, your password is managed by your Google account.
-              To change it, open your Google Account security settings.
+              Since the site uses Google login, your password is managed by your Google account.
+              To change your password, open your Google Account security settings.
             </p>
 
             <a
@@ -38,7 +45,7 @@ export default async function AccountSecurityPage() {
 
           <div className="mt-6">
             <Link
-              href={actor.role === 'admin' ? '/admin' : actor.role === 'seller' || actor.role === 'agent' ? '/seller' : '/search'}
+              href={dashboardHref}
               className="text-sm font-medium text-gray-700 underline"
             >
               Back to dashboard
