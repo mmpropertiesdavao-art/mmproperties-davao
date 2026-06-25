@@ -1,10 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 
-export async function POST(request: NextRequest) {
-  const { email, password } = await request.json();
+type CookieToSet = {
+  name: string;
+  value: string;
+  options: CookieOptions;
+};
 
-  let response = NextResponse.json({ ok: true });
+export async function POST(request: NextRequest) {
+  const body = await request.json().catch(() => ({}));
+  const email = String(body.email || "").trim();
+  const password = String(body.password || "");
+
+  if (!email || !password) {
+    return NextResponse.json({ error: "Email and password are required." }, { status: 400 });
+  }
+
+  const cookiesToSet: CookieToSet[] = [];
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -14,44 +26,43 @@ export async function POST(request: NextRequest) {
         getAll() {
           return request.cookies.getAll();
         },
-        setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            response.cookies.set(name, value, options);
-          });
+        setAll(items: CookieToSet[]) {
+          cookiesToSet.push(...items);
         },
       },
     }
   );
 
-  const { data, error } = await supabase.auth.signInWithPassword({
+  const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
     email,
     password,
   });
 
-  if (error || !data.user) {
-    return NextResponse.json(
-      { error: error?.message || "Login failed" },
+  if (authError || !authData.user) {
+    const response = NextResponse.json(
+      { error: authError?.message || "Login failed." },
       { status: 401 }
     );
+    cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
+    return response;
   }
 
-  const { data: profile } = await supabase
+  const { data: profile, error: profileError } = await supabase
     .from("users")
     .select("role")
-    .eq("id", data.user.id)
+    .eq("id", authData.user.id)
     .single();
 
-  if (!profile) {
-    return NextResponse.json(
+  if (profileError || !profile) {
+    const response = NextResponse.json(
       { error: "User profile not found." },
       { status: 403 }
     );
+    cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
+    return response;
   }
 
-  response = NextResponse.json({
-    ok: true,
-    role: profile.role,
-  });
-
+  const response = NextResponse.json({ ok: true, role: profile.role });
+  cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
   return response;
 }
