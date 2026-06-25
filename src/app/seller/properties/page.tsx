@@ -7,8 +7,8 @@ type SellerProperty = {
   slug: string
   title: string
   price: number | null
-  availability: string | null
   status: string | null
+  availability: string | null
   barangay: string | null
   created_at: string
 }
@@ -23,7 +23,7 @@ function formatPrice(price: number | null) {
   }).format(price)
 }
 
-export default async function SellerDashboardPage() {
+export default async function SellerPropertiesPage() {
   const actor = await requireRole(['seller', 'agent', 'admin'])
 
   const { rows: properties } = await db.query<SellerProperty>({
@@ -33,14 +33,13 @@ export default async function SellerDashboardPage() {
         slug,
         title,
         price::float AS price,
-        availability,
         status,
+        availability,
         barangay,
         created_at
       FROM properties
       WHERE seller_id = $1::uuid
       ORDER BY created_at DESC
-      LIMIT 20
     `,
     values: [actor.userId],
   })
@@ -48,78 +47,28 @@ export default async function SellerDashboardPage() {
   return (
     <main className="min-h-screen bg-gray-50 px-4 py-8">
       <div className="mx-auto max-w-6xl">
-        <div className="mb-8 rounded-2xl bg-white border shadow-sm p-6">
-          <h1 className="text-2xl font-bold text-gray-900">
-            Seller Dashboard
-          </h1>
-
-          <p className="mt-2 text-sm text-gray-600">
-            Logged in as {actor.email}
-          </p>
-
-          <p className="mt-1 text-sm text-gray-600">
-            Role: {actor.role}
-          </p>
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-3">
-          <Link
-            href="/seller/properties"
-            className="rounded-xl bg-white border p-5 shadow-sm hover:border-gray-400 hover:shadow-md transition"
-          >
-            <h2 className="font-semibold text-gray-900">My Listings</h2>
-            <p className="mt-2 text-sm text-gray-600">
-              View and manage your submitted property listings.
+        <div className="mb-6 flex items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">My Listings</h1>
+            <p className="mt-1 text-sm text-gray-600">
+              Manage properties connected to your seller account.
             </p>
-          </Link>
+          </div>
 
           <Link
             href="/seller/properties/new"
-            className="rounded-xl bg-white border p-5 shadow-sm hover:border-gray-400 hover:shadow-md transition"
+            className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
           >
-            <h2 className="font-semibold text-gray-900">Add Property</h2>
-            <p className="mt-2 text-sm text-gray-600">
-              Submit a new property listing for review.
-            </p>
-          </Link>
-
-          <Link
-            href="/seller/leads"
-            className="rounded-xl bg-white border p-5 shadow-sm hover:border-gray-400 hover:shadow-md transition"
-          >
-            <h2 className="font-semibold text-gray-900">Leads</h2>
-            <p className="mt-2 text-sm text-gray-600">
-              View inquiries from interested buyers.
-            </p>
+            Add Property
           </Link>
         </div>
 
-        <section className="mt-8 rounded-2xl bg-white border shadow-sm p-6">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <h2 className="text-xl font-bold text-gray-900">
-                Recent Listings
-              </h2>
-              <p className="mt-1 text-sm text-gray-600">
-                Properties connected to your seller account.
-              </p>
-            </div>
-
-            <Link
-              href="/seller/properties/new"
-              className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
-            >
-              Add Property
-            </Link>
-          </div>
-
+        <div className="rounded-2xl border bg-white shadow-sm">
           {properties.length === 0 ? (
-            <div className="mt-6 rounded-xl border border-dashed p-8 text-center">
-              <p className="text-gray-700 font-medium">
-                No listings yet.
-              </p>
+            <div className="p-10 text-center">
+              <p className="font-medium text-gray-800">No listings yet.</p>
               <p className="mt-2 text-sm text-gray-500">
-                Start by submitting your first property listing.
+                Add your first property so it can be reviewed.
               </p>
 
               <Link
@@ -130,7 +79,7 @@ export default async function SellerDashboardPage() {
               </Link>
             </div>
           ) : (
-            <div className="mt-6 overflow-hidden rounded-xl border">
+            <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
                 <thead className="bg-gray-50 text-gray-600">
                   <tr>
@@ -182,7 +131,14 @@ export default async function SellerDashboardPage() {
               </table>
             </div>
           )}
-        </section>
+        </div>
+
+        <Link
+          href="/seller"
+          className="mt-6 inline-flex text-sm font-medium text-gray-700 underline"
+        >
+          Back to dashboard
+        </Link>
       </div>
     </main>
   )
