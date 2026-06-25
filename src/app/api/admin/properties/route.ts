@@ -82,22 +82,21 @@ export async function POST(req: NextRequest) {
       )
       SELECT
         $1, $2, $3, pt.id,
-        $28::uuid,
-        CASE WHEN $20 = 'agent' THEN (SELECT id FROM agents WHERE user_id = $19 LIMIT 1) ELSE NULL END,
-        CASE WHEN $20 = 'seller' THEN $19::uuid ELSE NULL END,
-        $5, $6, $7, $8, $9, $10, $11, $27,
-        (SELECT id FROM neighborhoods WHERE slug = $12 LIMIT 1),
-        $13, $14,
-        ST_MakePoint($15, $16)::geography,
-        $17, $18, $22, $23, $24, $25, $26
-      FROM property_types pt WHERE pt.slug = $21
+        $27::uuid,
+CASE WHEN $19 = 'agent' THEN (SELECT id FROM agents WHERE user_id = $18 LIMIT 1) ELSE NULL END,
+CASE WHEN $19 = 'seller' THEN $18::uuid ELSE NULL END,
+$4, $5, $6, $7, $8, $9, $10, $26,
+(SELECT id FROM neighborhoods WHERE slug = $11 LIMIT 1),
+$12, $13,
+ST_MakePoint($14, $15)::geography,
+$16, $17, $21, $22, $23, $24, $25
+FROM property_types pt WHERE pt.slug = $20
       RETURNING id, slug
     `,
     values: [
       title,
       slug,
       description ?? null,
-      developerName ?? null,
       price,
       monthlyAmortization ?? null,
       downpaymentPercent ?? null,
