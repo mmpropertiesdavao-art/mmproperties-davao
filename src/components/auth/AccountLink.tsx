@@ -14,10 +14,22 @@ type DebugMeResponse = {
     email?: string
   }
   publicUser?: {
-    id: string
+    id?: string
     email?: string
-    role?: Role
+    role?: string | null
   } | null
+  authError?: string | null
+  publicUserError?: string | null
+}
+
+function normalizeRole(value: unknown): Role {
+  const role = String(value || '').trim().toLowerCase()
+
+  if (role === 'admin') return 'admin'
+  if (role === 'seller') return 'seller'
+  if (role === 'agent') return 'agent'
+
+  return 'buyer'
 }
 
 function getDashboardHref(role?: Role | null) {
@@ -33,61 +45,27 @@ function getDashboardLabel(role?: Role | null) {
 }
 
 const adminDashboardLinks = [
-  {
-    label: 'Dashboard',
-    href: '/admin',
-  },
-  {
-    label: 'Analytics',
-    href: '/admin/analytics',
-  },
-  {
-    label: 'Listings',
-    href: '/admin/listings',
-  },
-  {
-    label: 'Manage Listings',
-    href: '/admin/properties',
-  },
-  {
-    label: 'New Listing',
-    href: '/admin/properties/new',
-  },
-  {
-    label: 'Applications',
-    href: '/admin/collaborators',
-  },
-  {
-    label: 'Inquiries / Leads',
-    href: '/admin/inquiries',
-  },
-  {
-    label: 'Users & Access',
-    href: '/admin/users',
-  },
-  {
-    label: 'Content',
-    href: '/admin/content',
-  },
+  { label: 'Dashboard', href: '/admin' },
+  { label: 'Analytics', href: '/admin/analytics' },
+  { label: 'Listings', href: '/admin/listings' },
+  { label: 'Manage Listings', href: '/admin/properties' },
+  { label: 'New Listing', href: '/admin/properties/new' },
+  { label: 'Applications', href: '/admin/collaborators' },
+  { label: 'Inquiries / Leads', href: '/admin/inquiries' },
+  { label: 'Users & Access', href: '/admin/users' },
+  { label: 'Content', href: '/admin/content' },
 ]
 
 const sellerDashboardLinks = [
-  {
-    label: 'Seller Dashboard',
-    href: '/seller',
-  },
-  {
-    label: 'My Listings',
-    href: '/seller/properties',
-  },
-  {
-    label: 'Add Property',
-    href: '/seller/properties/new',
-  },
-  {
-    label: 'Leads',
-    href: '/seller/leads',
-  },
+  { label: 'Seller Dashboard', href: '/seller' },
+  { label: 'My Listings', href: '/seller/properties' },
+  { label: 'Add Property', href: '/seller/properties/new' },
+  { label: 'Leads', href: '/seller/leads' },
+]
+
+const buyerDashboardLinks = [
+  { label: 'Search Properties', href: '/search' },
+  { label: 'Saved Properties', href: '/account/favorites' },
 ]
 
 export default function AccountLink() {
@@ -108,18 +86,29 @@ export default function AccountLink() {
       ? adminDashboardLinks
       : role === 'seller' || role === 'agent'
         ? sellerDashboardLinks
-        : [
-            {
-              label: 'Search Properties',
-              href: '/search',
-            },
-            {
-              label: 'Saved Properties',
-              href: '/account/favorites',
-            },
-          ]
+        : buyerDashboardLinks
 
   async function loadUser() {
+    setLoading(true)
+
+    try {
+      const response = await fetch('/api/debug/me', {
+        credentials: 'include',
+        cache: 'no-store',
+      })
+
+      const data = (await response.json()) as DebugMeResponse
+
+      if (data.authenticated) {
+        setAuthenticated(true)
+        setRole(normalizeRole(data.publicUser?.role))
+        setLoading(false)
+        return
+      }
+    } catch {
+      // Continue to browser-session fallback below.
+    }
+
     const {
       data: { session },
     } = await supabaseBrowser.auth.getSession()
@@ -132,24 +121,7 @@ export default function AccountLink() {
     }
 
     setAuthenticated(true)
-
-    try {
-      const response = await fetch('/api/debug/me', {
-        credentials: 'include',
-        cache: 'no-store',
-      })
-
-      const data = (await response.json()) as DebugMeResponse
-
-      if (data.authenticated) {
-        setRole(data.publicUser?.role || 'buyer')
-      } else {
-        setRole('buyer')
-      }
-    } catch {
-      setRole('buyer')
-    }
-
+    setRole('buyer')
     setLoading(false)
   }
 
@@ -244,10 +216,8 @@ export default function AccountLink() {
         </div>
 
         {dashboardOpen && (
-          <div className="absolute right-0 top-full z-50 w-72 rounded-xl border bg-white shadow-xl">
-            <div className="h-2" />
-
-            <div className="overflow-hidden rounded-xl">
+          <div className="absolute right-0 top-full z-50 w-72 pt-2">
+            <div className="overflow-hidden rounded-xl border bg-white shadow-xl">
               <Link
                 href={dashboardHref}
                 onClick={() => setDashboardOpen(false)}
@@ -291,10 +261,8 @@ export default function AccountLink() {
         </button>
 
         {accountOpen && (
-          <div className="absolute right-0 top-full z-50 w-64 rounded-xl border bg-white shadow-xl">
-            <div className="h-2" />
-
-            <div className="overflow-hidden rounded-xl">
+          <div className="absolute right-0 top-full z-50 w-64 pt-2">
+            <div className="overflow-hidden rounded-xl border bg-white shadow-xl">
               <Link
                 href="/account/security"
                 onClick={() => setAccountOpen(false)}
