@@ -49,14 +49,17 @@ export default function LoginPage() {
   }
 
   async function googleSignIn() {
-    const next = new URLSearchParams(window.location.search).get("next") || "/search";
-    await supabaseBrowser.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
+  await supabaseBrowser.auth.signInWithOAuth({
+    provider: "google",
+    options: {
+      redirectTo: `${window.location.origin}/auth/callback`,
+      queryParams: {
+        access_type: "offline",
+        prompt: "consent",
       },
-    });
-  }
+    },
+  });
+}
 
   return (
     <div className="mx-auto max-w-md px-6 py-16">
