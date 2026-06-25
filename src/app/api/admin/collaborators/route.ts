@@ -3,41 +3,52 @@ export const dynamic = "force-dynamic";
 // src/app/api/admin/collaborators/route.ts
 //
 // Admin review API for seller, agent, and collaborator applications.
-// Supports old account-based applications and new public form-based
-// applications where user_id starts as null.
+// Approval no longer depends on Supabase invite emails.
+// If the applicant already has an account, their role is upgraded.
+// If they do not have an account yet, the application is approved by email
+// and role assignment will happen when they sign up with the same email.
 
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
 import { requireRole } from "@/lib/auth/requireRole";
 import { db } from "@/lib/supabase/server";
 
 type RequestedRole = "seller" | "agent";
 
-function getSupabaseAdmin() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+async function sendGhlApprovalWebhook(application: {
+  id: string;
+  email: string | null;
+  full_name: string | null;
+  phone: string | null;
+  requested_role: RequestedRole;
+  application_type: string | null;
+}) {
+  const webhookUrl =
+    process.env.GHL_APPLICATION_APPROVED_WEBHOOK_URL ||
+    process.env.GHL_APPLICATION_WEBHOOK_URL;
 
-  if (!url || !serviceRoleKey) {
-    throw new Error("Missing Supabase admin environment variables.");
-  }
+  if (!webhookUrl) return;
 
-  return createClient(url, serviceRoleKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
+  await fetch(webhookUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      source: "MM Properties Website",
+      event: "application_approved",
+      applicationId: application.id,
+      email: application.email,
+      fullName: application.full_name,
+      phone: application.phone,
+      requestedRole: application.requested_role,
+      applicationType: application.application_type || application.requested_role,
+      message:
+        "Application approved. Applicant should create/login using the same email address.",
+      tags: [
+        "MM Properties Application",
+        "Application Approved",
+        application.requested_role === "agent" ? "Approved Agent" : "Approved Seller",
+      ],
+    }),
   });
-}
-
-function siteUrl(req: NextRequest) {
-  const fromEnv = process.env.NEXT_PUBLIC_SITE_URL || process.env.VERCEL_URL;
-
-  if (fromEnv) {
-    if (fromEnv.startsWith("http")) return fromEnv;
-    return `https://${fromEnv}`;
-  }
-
-  return req.nextUrl.origin;
 }
 
 export async function GET() {
@@ -170,107 +181,45 @@ export async function PATCH(req: NextRequest) {
 
   let userId = application.user_id;
 
-  if (!userId) {
-    const email = application.email?.trim().toLowerCase();
-    const fullName = application.full_name?.trim() || null;
-    const phone = application.phone?.trim() || null;
-
-    if (!email) {
-      return NextResponse.json(
-        { error: "This application has no email address, so an account invite cannot be created." },
-        { status: 400 }
-      );
-    }
-
+  if (!userId && application.email) {
     const { rows: existingUsers } = await db.query<{ id: string }>({
-      text: `SELECT id FROM users WHERE lower(email) = lower($1) LIMIT 1`,
-      values: [email],
+      text: `
+        SELECT id
+        FROM users
+        WHERE lower(email) = lower($1)
+        LIMIT 1
+      `,
+      values: [application.email],
     });
 
     if (existingUsers[0]) {
       userId = existingUsers[0].id;
-    } else {
-      const supabaseAdmin = getSupabaseAdmin();
-
-      const redirectTo = `${siteUrl(req)}/login`;
-
-      const inviteResult = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
-        redirectTo,
-        data: {
-          full_name: fullName,
-          phone,
-          approved_role: application.requested_role,
-          source: "MM Properties application approval",
-        },
-      });
-
-      if (inviteResult.error || !inviteResult.data.user) {
-        return NextResponse.json(
-          {
-            error:
-              inviteResult.error?.message ||
-              "Could not create Supabase invite for this applicant.",
-          },
-          { status: 500 }
-        );
-      }
-
-      userId = inviteResult.data.user.id;
 
       await db.query({
         text: `
-          INSERT INTO users (
-            id,
-            email,
-            full_name,
-            phone,
-            role,
-            created_at,
-            updated_at
-          )
-          VALUES (
-            $1::uuid,
-            $2,
-            $3,
-            $4,
-            $5,
-            now(),
-            now()
-          )
-          ON CONFLICT (id)
-          DO UPDATE SET
-            email = EXCLUDED.email,
-            full_name = COALESCE(users.full_name, EXCLUDED.full_name),
-            phone = COALESCE(users.phone, EXCLUDED.phone),
-            role = EXCLUDED.role,
-            updated_at = now()
+          UPDATE collaborator_applications
+          SET user_id = $2::uuid,
+              updated_at = now()
+          WHERE id = $1::uuid
         `,
-        values: [userId, email, fullName, phone, application.requested_role],
+        values: [applicationId, userId],
       });
     }
+  }
 
+  if (userId) {
     await db.query({
       text: `
-        UPDATE collaborator_applications
-        SET user_id = $2::uuid,
+        UPDATE users
+        SET role = $1,
             updated_at = now()
-        WHERE id = $1::uuid
+        WHERE id = $2::uuid
       `,
-      values: [applicationId, userId],
+      values: [application.requested_role, userId],
     });
   }
 
-  await db.query({
-    text: `
-      UPDATE users
-      SET role = $1,
-          updated_at = now()
-      WHERE id = $2::uuid
-    `,
-    values: [application.requested_role, userId],
-  });
-
-  if (application.requested_role === "agent") {
+  if (application.requested_role === "agent" && userId) {
     await db.query({
       text: `
         INSERT INTO agents (
@@ -282,20 +231,19 @@ export async function PATCH(req: NextRequest) {
           updated_at
         )
         SELECT
-          ca.user_id,
+          $1::uuid,
           ca.business_name,
           ca.prc_license_number,
           ca.service_area,
           now(),
           now()
         FROM collaborator_applications ca
-        WHERE ca.id = $1::uuid
-          AND ca.user_id IS NOT NULL
+        WHERE ca.id = $2::uuid
           AND NOT EXISTS (
-            SELECT 1 FROM agents a WHERE a.user_id = ca.user_id
+            SELECT 1 FROM agents a WHERE a.user_id = $1::uuid
           )
       `,
-      values: [applicationId],
+      values: [userId, applicationId],
     });
   }
 
@@ -310,10 +258,28 @@ export async function PATCH(req: NextRequest) {
     values: [applicationId],
   });
 
+  try {
+    await sendGhlApprovalWebhook(application);
+  } catch (error) {
+    await db.query({
+      text: `
+        UPDATE collaborator_applications
+        SET ghl_error = $2,
+            updated_at = now()
+        WHERE id = $1::uuid
+      `,
+      values: [
+        applicationId,
+        error instanceof Error ? error.message : "GHL approval webhook failed.",
+      ],
+    });
+  }
+
   return NextResponse.json({
     success: true,
     status: "approved",
     userId,
     role: application.requested_role,
+    accountExists: Boolean(userId),
   });
 }
