@@ -3,14 +3,42 @@ export const dynamic = "force-dynamic";
 // src/app/api/admin/collaborators/route.ts
 //
 // Admin review API for seller, agent, and collaborator applications.
-// Supports both old account-based applications and new public form-based
-// applications where user_id can be null.
+// Supports old account-based applications and new public form-based
+// applications where user_id starts as null.
 
 import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
 import { requireRole } from "@/lib/auth/requireRole";
 import { db } from "@/lib/supabase/server";
 
 type RequestedRole = "seller" | "agent";
+
+function getSupabaseAdmin() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!url || !serviceRoleKey) {
+    throw new Error("Missing Supabase admin environment variables.");
+  }
+
+  return createClient(url, serviceRoleKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  });
+}
+
+function siteUrl(req: NextRequest) {
+  const fromEnv = process.env.NEXT_PUBLIC_SITE_URL || process.env.VERCEL_URL;
+
+  if (fromEnv) {
+    if (fromEnv.startsWith("http")) return fromEnv;
+    return `https://${fromEnv}`;
+  }
+
+  return req.nextUrl.origin;
+}
 
 export async function GET() {
   const actor = await requireRole(["admin"]);
@@ -86,19 +114,25 @@ export async function PATCH(req: NextRequest) {
   }
 
   const { rows: applications } = await db.query<{
+    id: string;
     user_id: string | null;
     requested_role: RequestedRole;
+    application_type: string | null;
     status: string;
     email: string | null;
     full_name: string | null;
+    phone: string | null;
   }>({
     text: `
       SELECT
+        id,
         user_id,
         requested_role,
+        application_type,
         status,
         email,
-        full_name
+        full_name,
+        phone
       FROM collaborator_applications
       WHERE id = $1::uuid
       LIMIT 1
@@ -134,17 +168,96 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ success: true, status: "rejected" });
   }
 
-  // Approval requires a user account because role access lives in users.role.
-  // Public form applications can be reviewed first, but account creation/invite
-  // will be handled in the next implementation step.
-  if (!application.user_id) {
-    return NextResponse.json(
-      {
-        error:
-          "This applicant does not have a user account yet. Keep it pending for now. Next step will add account invite/creation before approval.",
-      },
-      { status: 409 }
-    );
+  let userId = application.user_id;
+
+  if (!userId) {
+    const email = application.email?.trim().toLowerCase();
+    const fullName = application.full_name?.trim() || null;
+    const phone = application.phone?.trim() || null;
+
+    if (!email) {
+      return NextResponse.json(
+        { error: "This application has no email address, so an account invite cannot be created." },
+        { status: 400 }
+      );
+    }
+
+    const { rows: existingUsers } = await db.query<{ id: string }>({
+      text: `SELECT id FROM users WHERE lower(email) = lower($1) LIMIT 1`,
+      values: [email],
+    });
+
+    if (existingUsers[0]) {
+      userId = existingUsers[0].id;
+    } else {
+      const supabaseAdmin = getSupabaseAdmin();
+
+      const redirectTo = `${siteUrl(req)}/login`;
+
+      const inviteResult = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
+        redirectTo,
+        data: {
+          full_name: fullName,
+          phone,
+          approved_role: application.requested_role,
+          source: "MM Properties application approval",
+        },
+      });
+
+      if (inviteResult.error || !inviteResult.data.user) {
+        return NextResponse.json(
+          {
+            error:
+              inviteResult.error?.message ||
+              "Could not create Supabase invite for this applicant.",
+          },
+          { status: 500 }
+        );
+      }
+
+      userId = inviteResult.data.user.id;
+
+      await db.query({
+        text: `
+          INSERT INTO users (
+            id,
+            email,
+            full_name,
+            phone,
+            role,
+            created_at,
+            updated_at
+          )
+          VALUES (
+            $1::uuid,
+            $2,
+            $3,
+            $4,
+            $5,
+            now(),
+            now()
+          )
+          ON CONFLICT (id)
+          DO UPDATE SET
+            email = EXCLUDED.email,
+            full_name = COALESCE(users.full_name, EXCLUDED.full_name),
+            phone = COALESCE(users.phone, EXCLUDED.phone),
+            role = EXCLUDED.role,
+            updated_at = now()
+        `,
+        values: [userId, email, fullName, phone, application.requested_role],
+      });
+    }
+
+    await db.query({
+      text: `
+        UPDATE collaborator_applications
+        SET user_id = $2::uuid,
+            updated_at = now()
+        WHERE id = $1::uuid
+      `,
+      values: [applicationId, userId],
+    });
   }
 
   await db.query({
@@ -154,8 +267,37 @@ export async function PATCH(req: NextRequest) {
           updated_at = now()
       WHERE id = $2::uuid
     `,
-    values: [application.requested_role, application.user_id],
+    values: [application.requested_role, userId],
   });
+
+  if (application.requested_role === "agent") {
+    await db.query({
+      text: `
+        INSERT INTO agents (
+          user_id,
+          agency_name,
+          license_number,
+          service_area,
+          created_at,
+          updated_at
+        )
+        SELECT
+          ca.user_id,
+          ca.business_name,
+          ca.prc_license_number,
+          ca.service_area,
+          now(),
+          now()
+        FROM collaborator_applications ca
+        WHERE ca.id = $1::uuid
+          AND ca.user_id IS NOT NULL
+          AND NOT EXISTS (
+            SELECT 1 FROM agents a WHERE a.user_id = ca.user_id
+          )
+      `,
+      values: [applicationId],
+    });
+  }
 
   await db.query({
     text: `
@@ -168,5 +310,10 @@ export async function PATCH(req: NextRequest) {
     values: [applicationId],
   });
 
-  return NextResponse.json({ success: true, status: "approved" });
+  return NextResponse.json({
+    success: true,
+    status: "approved",
+    userId,
+    role: application.requested_role,
+  });
 }
