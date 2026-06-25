@@ -4,14 +4,33 @@ import { createClient as createSupabaseAdminClient } from '@supabase/supabase-js
 
 type AppRole = 'buyer' | 'seller' | 'agent' | 'admin'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+function getSiteUrl(request: NextRequest) {
+  return (
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    `${request.nextUrl.protocol}//${request.nextUrl.host}`
+  )
+}
 
-const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, '') ||
-  'https://mmpropertiesdavao.com'
+function normalizeRole(value: unknown): AppRole {
+  const role = String(value || '').trim().toLowerCase()
+
+  if (role === 'admin') return 'admin'
+  if (role === 'seller') return 'seller'
+  if (role === 'agent') return 'agent'
+
+  return 'buyer'
+}
+
+function getDashboardPath(role: AppRole) {
+  if (role === 'admin') return '/admin'
+  if (role === 'seller' || role === 'agent') return '/seller'
+  return '/search'
+}
 
 function getAdminClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
   if (!supabaseUrl) {
     throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL')
   }
@@ -28,107 +47,15 @@ function getAdminClient() {
   })
 }
 
-async function syncApprovedRole(params: {
-  authUserId: string
-  email: string
-}) {
-  const { authUserId, email } = params
-
-  const admin = getAdminClient()
-  const normalizedEmail = email.trim().toLowerCase()
-
-  let finalRole: AppRole = 'buyer'
-
-  const { data: approvedApplication, error: applicationError } = await admin
-    .from('collaborator_applications')
-    .select('*')
-    .ilike('email', normalizedEmail)
-    .eq('status', 'approved')
-    .limit(1)
-    .maybeSingle()
-
-  if (applicationError) {
-    console.error('Role sync application lookup failed:', applicationError)
-  }
-
-  const requestedRole = approvedApplication?.requested_role as AppRole | undefined
-
-  if (
-    approvedApplication &&
-    (requestedRole === 'seller' ||
-      requestedRole === 'agent' ||
-      requestedRole === 'admin')
-  ) {
-    finalRole = requestedRole
-  }
-
-  const { error: userUpsertError } = await admin.from('users').upsert(
-    {
-      id: authUserId,
-      email: normalizedEmail,
-      role: finalRole,
-      updated_at: new Date().toISOString(),
-    },
-    {
-      onConflict: 'id',
-    }
-  )
-
-  if (userUpsertError) {
-    console.error('Role sync users upsert failed:', userUpsertError)
-    throw userUpsertError
-  }
-
-  if (approvedApplication?.id) {
-    const { error: applicationUpdateError } = await admin
-      .from('collaborator_applications')
-      .update({
-        user_id: authUserId,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', approvedApplication.id)
-
-    if (applicationUpdateError) {
-      console.error(
-        'Role sync collaborator application link failed:',
-        applicationUpdateError
-      )
-    }
-  }
-
-  return finalRole
-}
-
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url)
-
   const code = requestUrl.searchParams.get('code')
-  const error = requestUrl.searchParams.get('error')
-  const errorDescription = requestUrl.searchParams.get('error_description')
+  const next = requestUrl.searchParams.get('next')
 
-  console.log('OAuth callback reached:', {
-    url: request.url,
-    hasCode: Boolean(code),
-    error,
-    errorDescription,
-  })
-
-  if (error) {
-    console.error('OAuth callback error:', error, errorDescription)
-
-    return NextResponse.redirect(
-      `${SITE_URL}/login?error=${encodeURIComponent(
-        errorDescription || error || 'OAuth login failed'
-      )}`
-    )
-  }
+  const siteUrl = getSiteUrl(request)
 
   if (!code) {
-    console.error('OAuth callback missing code')
-
-    return NextResponse.redirect(
-      `${SITE_URL}/login?error=${encodeURIComponent('Missing OAuth code')}`
-    )
+    return NextResponse.redirect(`${siteUrl}/login?error=Missing auth code`)
   }
 
   const supabase = await createSupabaseServerClient()
@@ -136,10 +63,8 @@ export async function GET(request: NextRequest) {
   const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
 
   if (exchangeError) {
-    console.error('OAuth code exchange failed:', exchangeError)
-
     return NextResponse.redirect(
-      `${SITE_URL}/login?error=${encodeURIComponent(exchangeError.message)}`
+      `${siteUrl}/login?error=${encodeURIComponent(exchangeError.message)}`
     )
   }
 
@@ -148,46 +73,51 @@ export async function GET(request: NextRequest) {
     error: userError,
   } = await supabase.auth.getUser()
 
-  if (userError || !user?.email) {
-    console.error('OAuth getUser failed:', userError)
-
-    return NextResponse.redirect(
-      `${SITE_URL}/login?error=${encodeURIComponent(
-        userError?.message || 'Unable to read authenticated user'
-      )}`
-    )
+  if (userError || !user || !user.email) {
+    return NextResponse.redirect(`${siteUrl}/login?error=Unable to read user`)
   }
 
-  console.log('OAuth user authenticated:', {
-    id: user.id,
-    email: user.email,
-  })
+  const admin = getAdminClient()
+  const email = user.email.toLowerCase()
 
-  let role: AppRole = 'buyer'
+  const { data: existingPublicUser } = await admin
+    .from('users')
+    .select('id, email, role')
+    .eq('id', user.id)
+    .maybeSingle()
 
-  try {
-    role = await syncApprovedRole({
-      authUserId: user.id,
-      email: user.email,
-    })
-  } catch (syncError) {
-    console.error('OAuth role sync failed:', syncError)
+  let finalRole: AppRole = normalizeRole(existingPublicUser?.role)
 
-    return NextResponse.redirect(
-      `${SITE_URL}/login?error=${encodeURIComponent(
-        'Login succeeded but role sync failed. Check server logs.'
-      )}`
-    )
+  if (!existingPublicUser) {
+    const { data: approvedApplication } = await admin
+      .from('collaborator_applications')
+      .select('requested_role, status, email')
+      .ilike('email', email)
+      .eq('status', 'approved')
+      .maybeSingle()
+
+    const requestedRole = normalizeRole(approvedApplication?.requested_role)
+
+    if (requestedRole === 'seller' || requestedRole === 'agent') {
+      finalRole = requestedRole
+    } else {
+      finalRole = 'buyer'
+    }
   }
 
-  console.log('OAuth role synced:', {
-    email: user.email,
-    role,
-  })
+  await admin.from('users').upsert(
+    {
+      id: user.id,
+      email,
+      role: finalRole,
+      updated_at: new Date().toISOString(),
+    },
+    {
+      onConflict: 'id',
+    }
+  )
 
-  if (role === 'seller' || role === 'agent' || role === 'admin') {
-    return NextResponse.redirect(`${SITE_URL}/seller`)
-  }
+  const redirectPath = next || getDashboardPath(finalRole)
 
-  return NextResponse.redirect(`${SITE_URL}/search`)
+  return NextResponse.redirect(`${siteUrl}${redirectPath}`)
 }
