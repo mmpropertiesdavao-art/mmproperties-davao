@@ -9,7 +9,7 @@ export default async function SellerDashboard() {
   if (!actor) redirect("/login?next=/seller");
 
   const { rows } = await db.query<{ listing_count: number }>({
-    text: `SELECT COUNT(*)::int AS listing_count FROM properties p LEFT JOIN agents a ON a.id = p.agent_id WHERE $1 = 'admin' OR ($1 = 'seller' AND p.seller_id = $2::uuid) OR ($1 = 'agent' AND a.user_id = $2::uuid)`,
+    text: `SELECT COUNT(*)::int AS listing_count FROM properties p LEFT JOIN agents a ON a.id = p.agent_id WHERE $1::text = 'admin' OR ($1::text = 'seller' AND p.seller_id = $2::uuid) OR ($1::text = 'agent' AND a.user_id = $2::uuid)`,
     values: [actor.role, actor.userId],
   });
 
@@ -33,3 +33,4 @@ export default async function SellerDashboard() {
 function DashboardCard({ href, title, text }: { href: string; title: string; text: string }) {
   return <Link href={href} className="admin-dashboard-card rounded-xl border border-navy-100 bg-white p-5 transition hover:border-gold-400 hover:shadow-md"><h2 className="font-semibold text-navy-900">{title}</h2><p className="mt-2 text-sm text-navy-500">{text}</p></Link>;
 }
+

@@ -105,8 +105,8 @@ export async function POST(req: NextRequest) {
           SELECT
             $1, $2, $3, pt.id,
             $27::uuid,
-            CASE WHEN $19 = 'agent' THEN (SELECT id FROM agents WHERE user_id = $18 LIMIT 1) ELSE NULL END,
-            CASE WHEN $19 = 'seller' THEN $18::uuid ELSE NULL END,
+            CASE WHEN $19::text = 'agent' THEN (SELECT id FROM agents WHERE user_id = $18 LIMIT 1) ELSE NULL END,
+            CASE WHEN $19::text = 'seller' THEN $18::uuid ELSE NULL END,
             $5, $6, $7, $8, $9, $10, $11, $26,
             (SELECT id FROM neighborhoods WHERE slug = $12 LIMIT 1),
             $13, $14, ST_MakePoint($15, $16)::geography, $17,
@@ -169,4 +169,5 @@ function parseManualPin(lat: unknown, lng: unknown): { lat: number; lng: number 
   if (parsedLat < 6.7 || parsedLat > 7.5 || parsedLng < 125.2 || parsedLng > 126) return null;
   return { lat: parsedLat, lng: parsedLng };
 }
+
 

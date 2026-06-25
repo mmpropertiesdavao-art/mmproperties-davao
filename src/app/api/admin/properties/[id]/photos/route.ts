@@ -20,7 +20,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
       LEFT JOIN agents a ON a.id = p.agent_id
       JOIN property_images pi ON pi.property_id = p.id
       WHERE p.id = $1::uuid
-        AND ($2 = 'admin' OR ($2 = 'seller' AND p.seller_id = $3::uuid) OR ($2 = 'agent' AND a.user_id = $3::uuid))
+        AND ($2::text = 'admin' OR ($2::text = 'seller' AND p.seller_id = $3::uuid) OR ($2::text = 'agent' AND a.user_id = $3::uuid))
       ORDER BY pi.is_cover DESC, pi.sort_order ASC
     `,
     values: [id, actor.role, actor.userId],
@@ -48,7 +48,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
       JOIN property_images pi ON pi.property_id = p.id
       WHERE p.id = $1::uuid
         AND pi.id = ANY($2::uuid[])
-        AND ($3 = 'admin' OR ($3 = 'seller' AND p.seller_id = $4::uuid) OR ($3 = 'agent' AND a.user_id = $4::uuid))
+        AND ($3::text = 'admin' OR ($3::text = 'seller' AND p.seller_id = $4::uuid) OR ($3::text = 'agent' AND a.user_id = $4::uuid))
     `,
     values: [id, photoIds, actor.role, actor.userId],
   });
@@ -110,7 +110,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         JOIN property_images pi ON pi.property_id = p.id
         WHERE p.id = $1::uuid
           AND pi.id = $2::uuid
-          AND ($3 = 'admin' OR ($3 = 'seller' AND p.seller_id = $4::uuid) OR ($3 = 'agent' AND a.user_id = $4::uuid))
+          AND ($3::text = 'admin' OR ($3::text = 'seller' AND p.seller_id = $4::uuid) OR ($3::text = 'agent' AND a.user_id = $4::uuid))
       ), cleared AS (
         UPDATE property_images
         SET is_cover = false
@@ -143,3 +143,4 @@ function storagePathFromPublicUrl(value: string): string | null {
     return null;
   }
 }
+

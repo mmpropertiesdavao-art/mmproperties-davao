@@ -21,7 +21,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       UPDATE properties p SET location = ST_MakePoint($1, $2)::geography, updated_at = now()
       FROM (SELECT p2.id, p2.seller_id, a.user_id AS agent_user_id FROM properties p2 LEFT JOIN agents a ON a.id = p2.agent_id WHERE p2.id = $3::uuid) owned
       WHERE p.id = owned.id
-        AND ($4 = 'admin' OR ($4 = 'seller' AND owned.seller_id = $5::uuid) OR ($4 = 'agent' AND owned.agent_user_id = $5::uuid))
+        AND ($4::text = 'admin' OR ($4::text = 'seller' AND owned.seller_id = $5::uuid) OR ($4::text = 'agent' AND owned.agent_user_id = $5::uuid))
       RETURNING p.id
     `,
     values: [lng, lat, id, actor.role, actor.userId],

@@ -20,7 +20,7 @@ export async function GET() {
           ST_X(p.location::geometry) AS lng
         FROM properties p
         LEFT JOIN agents a ON a.id = p.agent_id
-        WHERE ($1 = 'admin' OR ($1 = 'seller' AND p.seller_id = $2::uuid) OR ($1 = 'agent' AND a.user_id = $2::uuid))
+        WHERE ($1::text = 'admin' OR ($1::text = 'seller' AND p.seller_id = $2::uuid) OR ($1::text = 'agent' AND a.user_id = $2::uuid))
         ORDER BY p.updated_at DESC, p.title ASC
       `,
       values: [actor.role, actor.userId],
@@ -36,4 +36,5 @@ export async function GET() {
     );
   }
 }
+
 

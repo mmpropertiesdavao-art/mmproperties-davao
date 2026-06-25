@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
         FROM properties p
         LEFT JOIN agents a ON a.id = p.agent_id
         WHERE p.id = $1::uuid
-          AND ($2 = 'admin' OR ($2 = 'seller' AND p.seller_id = $3::uuid) OR ($2 = 'agent' AND a.user_id = $3::uuid))
+          AND ($2::text = 'admin' OR ($2::text = 'seller' AND p.seller_id = $3::uuid) OR ($2::text = 'agent' AND a.user_id = $3::uuid))
       `,
       values: [propertyId, actor.role, actor.userId],
     });

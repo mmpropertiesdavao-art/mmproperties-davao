@@ -44,7 +44,7 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
       LEFT JOIN neighborhoods n ON n.id = p.neighborhood_id
       LEFT JOIN agents a ON a.id = p.agent_id
       WHERE p.id = $1::uuid
-        AND ($2 = 'admin' OR ($2 = 'seller' AND p.seller_id = $3::uuid) OR ($2 = 'agent' AND a.user_id = $3::uuid))
+        AND ($2::text = 'admin' OR ($2::text = 'seller' AND p.seller_id = $3::uuid) OR ($2::text = 'agent' AND a.user_id = $3::uuid))
       LIMIT 1
     `,
     values: [id, actor.role, actor.userId],
@@ -114,13 +114,13 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   location = ST_MakePoint($19, $20)::geography,
   status = CASE WHEN $6 = 'sold' THEN 'sold' WHEN $6 IN ('rented','inactive') THEN 'inactive' ELSE $21 END,
   is_foreclosed = $22,
-  is_featured = CASE WHEN $25 = 'admin' THEN $23 ELSE p.is_featured END,
+  is_featured = CASE WHEN $25::text = 'admin' THEN $23 ELSE p.is_featured END,
   updated_at = now()
 WHERE p.id = $24::uuid
   AND (
-    $25 = 'admin'
-    OR ($25 = 'seller' AND p.seller_id = $26::uuid)
-    OR ($25 = 'agent' AND EXISTS (SELECT 1 FROM agents a WHERE a.id = p.agent_id AND a.user_id = $26::uuid))
+    $25::text = 'admin'
+    OR ($25::text = 'seller' AND p.seller_id = $26::uuid)
+    OR ($25::text = 'agent' AND EXISTS (SELECT 1 FROM agents a WHERE a.id = p.agent_id AND a.user_id = $26::uuid))
   )
 RETURNING p.id, p.slug
     `,
@@ -135,8 +135,8 @@ RETURNING p.id, p.slug
 export async function DELETE(request:NextRequest,{params}:{params:Promise<{id:string}>}){
   const actor=await requireRole(["admin","agent","seller"]);if(!actor)return NextResponse.json({error:"Not authorized"},{status:401});
   const{id}=await params;const body=await request.json().catch(()=>({}));
-  const owned=`($2='admin' OR ($2='seller' AND p.seller_id=$3::uuid) OR ($2='agent' AND EXISTS(SELECT 1 FROM agents a WHERE a.id=p.agent_id AND a.user_id=$3::uuid)))`;
-  if(body.mode!=="permanent") {const{rows}=await db.query({text:`UPDATE properties p SET status='inactive',availability='inactive',archived_at=now(),archive_reason=$4,updated_at=now() WHERE id=$1::uuid AND ${owned} RETURNING id`,values:[id,actor.role,actor.userId,body.reason||"Archived by listing owner"]});return rows[0]?NextResponse.json({success:true,mode:"archive"}):NextResponse.json({error:"Not found or access denied"},{status:403})}
+  const owned=`($2::text='admin' OR ($2::text='seller' AND p.seller_id=$3::uuid) OR ($2::text='agent' AND EXISTS(SELECT 1 FROM agents a WHERE a.id=p.agent_id AND a.user_id=$3::uuid)))`;
+  if(body.mode!=="permanent") {const{rows}=await db.query({text:`UPDATE properties p SET status='inactive',availability='inactive',archived_at=now(),archive_reason=$4::text,updated_at=now() WHERE id=$1::uuid AND ${owned} RETURNING id`,values:[id,actor.role,actor.userId,body.reason||"Archived by listing owner"]});return rows[0]?NextResponse.json({success:true,mode:"archive"}):NextResponse.json({error:"Not found or access denied"},{status:403})}
   if(actor.role!=="admin")return NextResponse.json({error:"Only an administrator can permanently delete a listing."},{status:403});
   const{rows}=await db.query<{title:string;imageUrls:string[]}>({text:`SELECT p.title,COALESCE(array_agg(pi.url) FILTER(WHERE pi.url IS NOT NULL),'{}') AS "imageUrls" FROM properties p LEFT JOIN property_images pi ON pi.property_id=p.id WHERE p.id=$1::uuid GROUP BY p.id`,values:[id]});if(!rows[0])return NextResponse.json({error:"Listing not found"},{status:404});
   if(body.confirmation!==rows[0].title)return NextResponse.json({error:"Type the exact listing title to confirm permanent deletion."},{status:400});
@@ -151,3 +151,4 @@ function optionalNumber(value: unknown): number | null {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
 }
+
