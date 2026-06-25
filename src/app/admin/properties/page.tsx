@@ -1,3 +1,4 @@
+import Image from 'next/image'
 import Link from 'next/link'
 import { requireRole } from '@/lib/auth/requireRole'
 import { db } from '@/lib/supabase/server'
@@ -14,6 +15,7 @@ type AdminPropertyRow = {
   sellerEmail: string | null
   sellerName: string | null
   propertyTypeId: string | null
+  coverImageUrl: string | null
   createdAt: string | null
 }
 
@@ -44,7 +46,14 @@ export default async function AdminPropertiesPage() {
         u.email AS "sellerEmail",
         u.full_name AS "sellerName",
         p.property_type_id::text AS "propertyTypeId",
-        p.created_at AS "createdAt"
+        p.created_at AS "createdAt",
+        (
+          SELECT pi.url
+          FROM property_images pi
+          WHERE pi.property_id = p.id
+          ORDER BY pi.is_cover DESC, pi.sort_order ASC, pi.created_at ASC
+          LIMIT 1
+        ) AS "coverImageUrl"
       FROM properties p
       LEFT JOIN users u ON u.id = p.seller_id
       ORDER BY p.created_at DESC NULLS LAST
@@ -66,7 +75,7 @@ export default async function AdminPropertiesPage() {
             </h1>
 
             <p className="mt-1 text-sm text-gray-600">
-              Admin view of all property listings, sellers, status, and availability.
+              Manage all property listings with photos, seller details, status, and availability.
             </p>
           </div>
 
@@ -90,125 +99,103 @@ export default async function AdminPropertiesPage() {
         <section className="mb-6 grid gap-4 md:grid-cols-4">
           <div className="rounded-xl border bg-white p-5 shadow-sm">
             <p className="text-sm text-gray-500">Total Listings</p>
-            <p className="mt-2 text-2xl font-bold text-gray-900">
-              {properties.length}
-            </p>
+            <p className="mt-2 text-2xl font-bold text-gray-900">{properties.length}</p>
           </div>
 
           <div className="rounded-xl border bg-white p-5 shadow-sm">
             <p className="text-sm text-gray-500">Pending Review</p>
-            <p className="mt-2 text-2xl font-bold text-gray-900">
-              {pendingCount}
-            </p>
+            <p className="mt-2 text-2xl font-bold text-gray-900">{pendingCount}</p>
           </div>
 
           <div className="rounded-xl border bg-white p-5 shadow-sm">
             <p className="text-sm text-gray-500">Active</p>
-            <p className="mt-2 text-2xl font-bold text-gray-900">
-              {activeCount}
-            </p>
+            <p className="mt-2 text-2xl font-bold text-gray-900">{activeCount}</p>
           </div>
 
           <div className="rounded-xl border bg-white p-5 shadow-sm">
             <p className="text-sm text-gray-500">Draft / No Status</p>
-            <p className="mt-2 text-2xl font-bold text-gray-900">
-              {draftCount}
-            </p>
+            <p className="mt-2 text-2xl font-bold text-gray-900">{draftCount}</p>
           </div>
         </section>
 
         <section className="overflow-hidden rounded-2xl border bg-white shadow-sm">
           {properties.length === 0 ? (
             <div className="p-10 text-center">
-              <p className="font-medium text-gray-800">
-                No listings found.
-              </p>
-
+              <p className="font-medium text-gray-800">No listings found.</p>
               <p className="mt-2 text-sm text-gray-500">
                 Listings submitted by sellers or created by admin will appear here.
               </p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead className="bg-gray-50 text-gray-600">
-                  <tr>
-                    <th className="px-4 py-3 font-medium">Listing</th>
-                    <th className="px-4 py-3 font-medium">Seller</th>
-                    <th className="px-4 py-3 font-medium">Type ID</th>
-                    <th className="px-4 py-3 font-medium">Location</th>
-                    <th className="px-4 py-3 font-medium">Price</th>
-                    <th className="px-4 py-3 font-medium">Status</th>
-                    <th className="px-4 py-3 font-medium">Availability</th>
-                    <th className="px-4 py-3 font-medium">Actions</th>
-                  </tr>
-                </thead>
+            <div className="divide-y">
+              {properties.map((property) => (
+                <div
+                  key={property.id}
+                  className="grid gap-4 p-4 md:grid-cols-[160px_1fr_auto] md:items-center"
+                >
+                  <div className="relative h-28 overflow-hidden rounded-xl border bg-gray-100">
+                    {property.coverImageUrl ? (
+                      <Image
+                        src={property.coverImageUrl}
+                        alt={property.title}
+                        fill
+                        className="object-cover"
+                        sizes="160px"
+                      />
+                    ) : (
+                      <div className="flex h-full items-center justify-center text-xs text-gray-400">
+                        No photo
+                      </div>
+                    )}
+                  </div>
 
-                <tbody className="divide-y">
-                  {properties.map((property) => (
-                    <tr key={property.id} className="align-top">
-                      <td className="px-4 py-3">
-                        <div className="font-medium text-gray-900">
-                          {property.title}
-                        </div>
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h2 className="font-semibold text-gray-900">
+                        {property.title}
+                      </h2>
 
-                        <div className="text-xs text-gray-500">
-                          {property.slug}
-                        </div>
-                      </td>
+                      <span className="rounded-full bg-gray-100 px-2 py-1 text-xs font-medium text-gray-700">
+                        {property.status || 'draft'}
+                      </span>
 
-                      <td className="px-4 py-3 text-gray-700">
-                        <div>{property.sellerName || 'No seller name'}</div>
-                        <div className="text-xs text-gray-500">
-                          {property.sellerEmail || 'No seller email'}
-                        </div>
-                      </td>
+                      <span className="rounded-full bg-gray-100 px-2 py-1 text-xs font-medium text-gray-700">
+                        {property.availability || 'not set'}
+                      </span>
+                    </div>
 
-                      <td className="px-4 py-3 text-gray-700">
-                        {property.propertyTypeId || 'Not set'}
-                      </td>
+                    <p className="mt-1 text-sm text-gray-600">
+                      {property.barangay || 'Location not set'} · {formatPrice(property.price)}
+                    </p>
 
-                      <td className="px-4 py-3 text-gray-700">
-                        {property.barangay || 'Not set'}
-                      </td>
+                    <p className="mt-1 text-xs text-gray-500">
+                      Seller: {property.sellerName || 'No seller name'} · {property.sellerEmail || 'No seller email'}
+                    </p>
 
-                      <td className="px-4 py-3 text-gray-700">
-                        {formatPrice(property.price)}
-                      </td>
+                    <p className="mt-1 text-xs text-gray-400">
+                      Slug: {property.slug}
+                    </p>
+                  </div>
 
-                      <td className="px-4 py-3">
-                        <span className="rounded-full bg-gray-100 px-2 py-1 text-xs font-medium text-gray-700">
-                          {property.status || 'draft'}
-                        </span>
-                      </td>
+                  <div className="flex flex-wrap gap-2 md:flex-col">
+                    {property.slug && (
+                      <Link
+                        href={`/property/${property.slug}`}
+                        className="rounded-lg border px-3 py-2 text-center text-sm font-medium text-gray-700 hover:bg-gray-50"
+                      >
+                        View
+                      </Link>
+                    )}
 
-                      <td className="px-4 py-3 text-gray-700">
-                        {property.availability || 'Not set'}
-                      </td>
-
-                      <td className="px-4 py-3">
-                        <div className="flex flex-col gap-2">
-                          {property.slug && (
-                            <Link
-                              href={`/property/${property.slug}`}
-                              className="text-sm font-medium text-gray-900 underline"
-                            >
-                              View Public
-                            </Link>
-                          )}
-
-                          <Link
-                            href={`/admin/properties/${property.id}`}
-                            className="text-sm font-medium text-gray-900 underline"
-                          >
-                            Manage
-                          </Link>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                    <Link
+                      href={`/admin/properties/${property.id}`}
+                      className="rounded-lg bg-gray-900 px-3 py-2 text-center text-sm font-medium text-white hover:bg-gray-800"
+                    >
+                      Manage
+                    </Link>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </section>
