@@ -16,13 +16,18 @@ import {
 import { PropertyCard } from '@/components/property/PropertyCard'
 import NeighborhoodPropertyMap from '@/components/neighborhood/NeighborhoodPropertyMap'
 
+type ListingIntent = 'sale' | 'rent' | 'sale_or_rent'
+
 type PropertyPin = {
   id: string
   title: string
   slug: string | null
   price: number | null
+  rentPrice?: number | null
+  listingIntent?: ListingIntent | null
   latitude: number
   longitude: number
+  neighborhoodName?: string | null
 }
 
 type ColumnRow = {
@@ -35,7 +40,19 @@ function quoteIdentifier(identifier: string) {
   return `"${identifier.replace(/"/g, '""')}"`
 }
 
-async function getPropertyPinsFromListings(listings: any[]) {
+function normalizeListingIntent(value: unknown): ListingIntent {
+  const intent = String(value || '').trim().toLowerCase()
+
+  if (intent === 'rent') return 'rent'
+  if (intent === 'sale_or_rent') return 'sale_or_rent'
+
+  return 'sale'
+}
+
+async function getPropertyPinsFromListings(
+  listings: any[],
+  neighborhoodName: string
+) {
   const propertyIds = listings
     .map((property) => property.id)
     .filter(Boolean)
@@ -114,6 +131,9 @@ async function getPropertyPinsFromListings(listings: any[]) {
     return []
   }
 
+  const hasRentPrice = columns.includes('rent_price')
+  const hasListingIntent = columns.includes('listing_intent')
+
   try {
     const { rows } = await db.query<PropertyPin>({
       text: `
@@ -122,23 +142,31 @@ async function getPropertyPinsFromListings(listings: any[]) {
           p.title,
           p.slug,
           p.price::float AS price,
+          ${hasRentPrice ? 'p.rent_price::float' : 'NULL::float'} AS "rentPrice",
+          ${hasListingIntent ? 'p.listing_intent' : "'sale'"} AS "listingIntent",
           ${latitudeExpression} AS latitude,
-          ${longitudeExpression} AS longitude
+          ${longitudeExpression} AS longitude,
+          $2::text AS "neighborhoodName"
         FROM properties p
         WHERE p.id = ANY($1::uuid[])
         AND ${coordinateWhere}
       `,
-      values: [propertyIds],
+      values: [propertyIds, neighborhoodName],
     })
 
-    return rows.filter((pin) => {
-      return (
-        Number.isFinite(pin.latitude) &&
-        Number.isFinite(pin.longitude) &&
-        pin.latitude !== 0 &&
-        pin.longitude !== 0
-      )
-    })
+    return rows
+      .map((pin) => ({
+        ...pin,
+        listingIntent: normalizeListingIntent(pin.listingIntent),
+      }))
+      .filter((pin) => {
+        return (
+          Number.isFinite(pin.latitude) &&
+          Number.isFinite(pin.longitude) &&
+          pin.latitude !== 0 &&
+          pin.longitude !== 0
+        )
+      })
   } catch {
     return []
   }
@@ -183,7 +211,10 @@ export default async function NeighborhoodPage({
     ),
   ])
 
-  const propertyPins = await getPropertyPinsFromListings(listings)
+  const propertyPins = await getPropertyPinsFromListings(
+    listings,
+    neighborhood.name
+  )
 
   const breadcrumbs = breadcrumbJsonLd([
     { name: 'Home', url: '/' },
@@ -224,10 +255,8 @@ export default async function NeighborhoodPage({
 
       {neighborhood.avgPricePerSqm && (
         <p className="mt-4 text-sm text-gray-500">
-          Illustrative average price: ₱
+          Estimated average price: ₱
           {neighborhood.avgPricePerSqm.toLocaleString()} per sqm
-          {' '}
-          (placeholder estimate — replace with verified market data)
         </p>
       )}
 
