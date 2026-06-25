@@ -1,36 +1,24 @@
 import Link from 'next/link'
 import { requireRole } from '@/lib/auth/requireRole'
 
-const listingTools = [
+const listingSections = [
   {
     title: 'All Listings',
     href: '/admin/properties',
-    description: 'View, edit, approve, reject, feature, and manage all property listings.',
+    description:
+      'View, edit, approve, reject, feature, and manage all property listings.',
   },
   {
     title: 'Create New Listing',
     href: '/admin/properties/new',
-    description: 'Create a new admin-managed property listing.',
-  },
-  {
-    title: 'Photos',
-    href: '/admin/properties/photos',
-    description: 'Find a listing and manage its uploaded property photos.',
-  },
-  {
-    title: 'Videos',
-    href: '/admin/properties/videos',
-    description: 'Find a listing and manage videos or media attached to the property.',
-  },
-  {
-    title: 'Location Pins',
-    href: '/admin/properties/locations',
-    description: 'Find a listing and manage map pins, coordinates, and location details.',
+    description:
+      'Create a new listing manually from the admin side.',
   },
   {
     title: 'Places & Amenities',
     href: '/admin/places',
-    description: 'Manage nearby places, landmarks, schools, malls, and amenities.',
+    description:
+      'Manage nearby places, schools, malls, hospitals, landmarks, and amenities.',
   },
 ]
 
@@ -40,14 +28,14 @@ export default async function AdminListingsPage() {
   return (
     <main className="min-h-screen bg-gray-50 px-4 py-8">
       <div className="mx-auto max-w-6xl">
-        <div className="mb-6 flex items-center justify-between gap-4">
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">
-              Listings Management
+              Listings
             </h1>
 
             <p className="mt-1 text-sm text-gray-600">
-              Manage listings, photos, videos, location pins, nearby places, and approvals from one area.
+              Manage property listings from one place. Photos, videos, and location pins should be managed inside each listing.
             </p>
           </div>
 
@@ -59,23 +47,35 @@ export default async function AdminListingsPage() {
           </Link>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {listingTools.map((tool) => (
+        <section className="grid gap-4 md:grid-cols-3">
+          {listingSections.map((section) => (
             <Link
-              key={tool.href}
-              href={tool.href}
+              key={section.href}
+              href={section.href}
               className="rounded-xl border bg-white p-5 shadow-sm transition hover:border-gray-400 hover:shadow-md"
             >
               <h2 className="font-semibold text-gray-900">
-                {tool.title}
+                {section.title}
               </h2>
 
               <p className="mt-2 text-sm text-gray-600">
-                {tool.description}
+                {section.description}
               </p>
             </Link>
           ))}
-        </div>
+        </section>
+
+        <section className="mt-8 rounded-2xl border bg-white p-6 shadow-sm">
+          <h2 className="text-lg font-bold text-gray-900">
+            How listing management should work
+          </h2>
+
+          <ol className="mt-4 list-decimal space-y-2 pl-5 text-sm text-gray-700">
+            <li>Open All Listings.</li>
+            <li>Select one property.</li>
+            <li>Inside that property, manage details, photos, videos, location pins, and approval status.</li>
+          </ol>
+        </section>
       </div>
     </main>
   )

@@ -13,7 +13,7 @@ type AdminPropertyRow = {
   barangay: string | null
   sellerEmail: string | null
   sellerName: string | null
-  propertyType: string | null
+  propertyTypeId: string | null
   createdAt: string | null
 }
 
@@ -43,15 +43,18 @@ export default async function AdminPropertiesPage() {
         p.barangay,
         u.email AS "sellerEmail",
         u.full_name AS "sellerName",
-        pt.name AS "propertyType",
+        p.property_type_id::text AS "propertyTypeId",
         p.created_at AS "createdAt"
       FROM properties p
       LEFT JOIN users u ON u.id = p.seller_id
-      LEFT JOIN property_types pt ON pt.id = p.property_type_id
       ORDER BY p.created_at DESC NULLS LAST
       LIMIT 500
     `,
   })
+
+  const pendingCount = properties.filter((p) => p.status === 'pending').length
+  const activeCount = properties.filter((p) => p.status === 'active').length
+  const draftCount = properties.filter((p) => !p.status || p.status === 'draft').length
 
   return (
     <main className="min-h-screen bg-gray-50 px-4 py-8">
@@ -84,6 +87,36 @@ export default async function AdminPropertiesPage() {
           </div>
         </div>
 
+        <section className="mb-6 grid gap-4 md:grid-cols-4">
+          <div className="rounded-xl border bg-white p-5 shadow-sm">
+            <p className="text-sm text-gray-500">Total Listings</p>
+            <p className="mt-2 text-2xl font-bold text-gray-900">
+              {properties.length}
+            </p>
+          </div>
+
+          <div className="rounded-xl border bg-white p-5 shadow-sm">
+            <p className="text-sm text-gray-500">Pending Review</p>
+            <p className="mt-2 text-2xl font-bold text-gray-900">
+              {pendingCount}
+            </p>
+          </div>
+
+          <div className="rounded-xl border bg-white p-5 shadow-sm">
+            <p className="text-sm text-gray-500">Active</p>
+            <p className="mt-2 text-2xl font-bold text-gray-900">
+              {activeCount}
+            </p>
+          </div>
+
+          <div className="rounded-xl border bg-white p-5 shadow-sm">
+            <p className="text-sm text-gray-500">Draft / No Status</p>
+            <p className="mt-2 text-2xl font-bold text-gray-900">
+              {draftCount}
+            </p>
+          </div>
+        </section>
+
         <section className="overflow-hidden rounded-2xl border bg-white shadow-sm">
           {properties.length === 0 ? (
             <div className="p-10 text-center">
@@ -102,7 +135,7 @@ export default async function AdminPropertiesPage() {
                   <tr>
                     <th className="px-4 py-3 font-medium">Listing</th>
                     <th className="px-4 py-3 font-medium">Seller</th>
-                    <th className="px-4 py-3 font-medium">Type</th>
+                    <th className="px-4 py-3 font-medium">Type ID</th>
                     <th className="px-4 py-3 font-medium">Location</th>
                     <th className="px-4 py-3 font-medium">Price</th>
                     <th className="px-4 py-3 font-medium">Status</th>
@@ -132,7 +165,7 @@ export default async function AdminPropertiesPage() {
                       </td>
 
                       <td className="px-4 py-3 text-gray-700">
-                        {property.propertyType || 'Not set'}
+                        {property.propertyTypeId || 'Not set'}
                       </td>
 
                       <td className="px-4 py-3 text-gray-700">

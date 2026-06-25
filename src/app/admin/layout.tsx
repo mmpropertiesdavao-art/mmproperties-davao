@@ -1,9 +1,57 @@
-import Link from "next/link";
-import { redirect } from "next/navigation";
-import { requireRole } from "@/lib/auth/requireRole";
+import Link from 'next/link'
+import { requireRole } from '@/lib/auth/requireRole'
 
-export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  const actor = await requireRole(["admin", "agent", "seller"]);
-  if (!actor) redirect("/login?next=/seller");
-  return <><div className="border-b border-navy-100 bg-white"><nav className="mx-auto flex max-w-6xl gap-5 overflow-x-auto px-6 py-3 text-sm font-medium text-navy-700"><Link href="/seller">Dashboard</Link><Link href="/admin/analytics">Analytics</Link><Link href="/admin/listings/new">New listing</Link><Link href="/admin/listings/edit">Edit listings</Link><Link href="/admin/listings/import">Bulk import</Link><Link href="/admin/locations">Locations</Link><Link href="/admin/photos">Photos</Link>{actor.role === "admin"&&<><Link href="/admin/developers">Developers</Link><Link href="/admin/places">Places</Link><Link href="/admin/collaborators">Applications</Link><Link href="/admin/blog">Blog posts</Link><Link href="/admin/settings/payments">Payments (future)</Link></>}</nav></div>{children}</>;
+const adminNav = [
+  {
+    label: 'Dashboard',
+    href: '/admin',
+  },
+  {
+    label: 'Listings',
+    href: '/admin/listings',
+  },
+  {
+    label: 'Leads',
+    href: '/admin/inquiries',
+  },
+  {
+    label: 'Users',
+    href: '/admin/users',
+  },
+  {
+    label: 'Applications',
+    href: '/admin/collaborators',
+  },
+  {
+    label: 'Content',
+    href: '/admin/content',
+  },
+]
+
+export default async function AdminLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  await requireRole(['admin'])
+
+  return (
+    <>
+      <div className="border-b bg-white">
+        <div className="mx-auto flex max-w-7xl gap-2 overflow-x-auto px-4 py-3">
+          {adminNav.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className="whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+            >
+              {item.label}
+            </Link>
+          ))}
+        </div>
+      </div>
+
+      {children}
+    </>
+  )
 }
