@@ -1,36 +1,48 @@
-export const dynamic = "force-dynamic";
-import Link from "next/link";
-import { redirect } from "next/navigation";
-import { requireRole } from "@/lib/auth/requireRole";
-import { db } from "@/lib/supabase/server";
+import { requireRole } from '@/lib/auth/requireRole'
 
-export default async function SellerDashboard() {
-  const actor = await requireRole(["seller", "agent", "admin"]);
-  if (!actor) redirect("/login?next=/seller");
-
-  const { rows } = await db.query<{ listing_count: number }>({
-    text: `SELECT COUNT(*)::int AS listing_count FROM properties p LEFT JOIN agents a ON a.id = p.agent_id WHERE $1::text = 'admin' OR ($1::text = 'seller' AND p.seller_id = $2::uuid) OR ($1::text = 'agent' AND a.user_id = $2::uuid)`,
-    values: [actor.role, actor.userId],
-  });
+export default async function SellerDashboardPage() {
+  const { user, publicUser } = await requireRole(['seller', 'agent', 'admin'])
 
   return (
-    <div className="mx-auto max-w-5xl px-6 py-10">
-      <p className="text-sm font-semibold uppercase tracking-wide text-gold-700">Partner dashboard</p>
-      <h1 className="mt-2 text-3xl font-semibold text-navy-900">Manage your Davao listings</h1>
-      <p className="mt-2 text-navy-500">You currently manage {rows[0]?.listing_count ?? 0} listing(s).</p>
-      <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <DashboardCard href="/admin/listings/new" title="Add a listing" text="Enter details, choose the exact map pin, and upload photos." />
-        <DashboardCard href="/admin/listings/edit" title="Edit listings" text="Update posted details, price, status, address, and map pin." />
-        <DashboardCard href="/admin/listings/import" title="Bulk import" text="Review a spreadsheet and pin multiple listings before import." />
-        <DashboardCard href="/admin/locations" title="Fix map pins" text="Set exact locations for listings that already exist." />
-        <DashboardCard href="/admin/photos" title="Manage photos" text="Add ordered photo batches to listings you manage." />
-        <DashboardCard href="/admin/analytics" title="Listing analytics" text="Track days listed, views, saves, inquiries, and attributed leads." />
+    <main className="min-h-screen bg-gray-50 px-4 py-8">
+      <div className="mx-auto max-w-6xl">
+        <div className="mb-8 rounded-2xl bg-white border shadow-sm p-6">
+          <h1 className="text-2xl font-bold text-gray-900">
+            Seller Dashboard
+          </h1>
+
+          <p className="mt-2 text-sm text-gray-600">
+            Logged in as {user?.email}
+          </p>
+
+          <p className="mt-1 text-sm text-gray-600">
+            Role: {publicUser?.role || 'seller'}
+          </p>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-3">
+          <div className="rounded-xl bg-white border p-5 shadow-sm">
+            <h2 className="font-semibold text-gray-900">My Listings</h2>
+            <p className="mt-2 text-sm text-gray-600">
+              Manage your approved property listings.
+            </p>
+          </div>
+
+          <div className="rounded-xl bg-white border p-5 shadow-sm">
+            <h2 className="font-semibold text-gray-900">Add Property</h2>
+            <p className="mt-2 text-sm text-gray-600">
+              Create a new property listing for review.
+            </p>
+          </div>
+
+          <div className="rounded-xl bg-white border p-5 shadow-sm">
+            <h2 className="font-semibold text-gray-900">Leads</h2>
+            <p className="mt-2 text-sm text-gray-600">
+              View inquiries from interested buyers.
+            </p>
+          </div>
+        </div>
       </div>
-    </div>
-  );
+    </main>
+  )
 }
-
-function DashboardCard({ href, title, text }: { href: string; title: string; text: string }) {
-  return <Link href={href} className="admin-dashboard-card rounded-xl border border-navy-100 bg-white p-5 transition hover:border-gold-400 hover:shadow-md"><h2 className="font-semibold text-navy-900">{title}</h2><p className="mt-2 text-sm text-navy-500">{text}</p></Link>;
-}
-

@@ -1,151 +1,70 @@
-﻿"use client";
+'use client'
 
-import Link from "next/link";
-import { useState } from "react";
-import { supabaseBrowser } from "@/lib/supabase/client";
+import { useState } from 'react'
+import { createClient } from '@/lib/supabase/client'
 
 export default function LoginPage() {
-  const [loading, setLoading] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
-  async function passwordLogin(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setLoading(true);
-    setError("");
+  async function handleGoogleLogin() {
+    setLoading(true)
+    setErrorMessage(null)
 
-    try {
-      const form = new FormData(event.currentTarget);
-      const email = String(form.get("email") || "").trim().toLowerCase();
-      const password = String(form.get("password") || "");
+    const supabase = createClient()
 
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
+    const origin =
+      typeof window !== 'undefined'
+        ? window.location.origin
+        : process.env.NEXT_PUBLIC_SITE_URL || 'https://mmpropertiesdavao.com'
 
-      const data = await response.json().catch(() => ({}));
-
-      if (!response.ok) {
-        setError(data.error || "Login failed.");
-        setLoading(false);
-        return;
-      }
-
-      const next = new URLSearchParams(window.location.search).get("next");
-
-      if (data.role === "buyer" && next?.startsWith("/seller")) {
-        setError(
-          "Your account exists, but partner access is still pending administrator approval."
-        );
-        setLoading(false);
-        return;
-      }
-
-      const destination =
-        next || (data.role === "buyer" ? "/search" : "/seller");
-
-      window.location.assign(destination);
-    } catch {
-      setError("Could not reach the login server. Please try again.");
-      setLoading(false);
-    }
-  }
-
-  async function googleSignIn() {
-    setGoogleLoading(true);
-    setError("");
-
-    const { error } = await supabaseBrowser.auth.signInWithOAuth({
-      provider: "google",
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/auth/bridge`,
+        redirectTo: `${origin}/auth/callback`,
         queryParams: {
-          access_type: "offline",
-          prompt: "consent",
+          prompt: 'select_account',
+          access_type: 'offline',
         },
       },
-    });
+    })
 
     if (error) {
-      setError(error.message);
-      setGoogleLoading(false);
+      setLoading(false)
+      setErrorMessage(error.message)
     }
   }
 
   return (
-    <div className="mx-auto max-w-md px-6 py-14">
-      <div className="rounded-xl border border-navy-100 bg-white p-7 shadow-sm">
-        <h1 className="text-2xl font-semibold text-navy-900">Sign in</h1>
+    <main className="min-h-screen flex items-center justify-center px-4 bg-gray-50">
+      <div className="w-full max-w-md rounded-2xl bg-white shadow-lg border p-8">
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">
+          Log in to MM Properties Davao
+        </h1>
 
-        <p className="mt-2 text-sm text-navy-500">
-          Access your saved properties, seller tools, or admin dashboard.
+        <p className="text-sm text-gray-600 mb-6">
+          Use your approved Google account to access your seller dashboard.
         </p>
+
+        {errorMessage && (
+          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+            {errorMessage}
+          </div>
+        )}
 
         <button
           type="button"
-          onClick={googleSignIn}
-          disabled={googleLoading || loading}
-          className="mt-6 w-full rounded-md border border-navy-200 px-4 py-3 font-medium text-navy-800 disabled:opacity-50"
+          onClick={handleGoogleLogin}
+          disabled={loading}
+          className="w-full rounded-lg bg-gray-900 px-4 py-3 text-white font-medium hover:bg-gray-800 disabled:opacity-60 disabled:cursor-not-allowed"
         >
-          {googleLoading ? "Redirecting..." : "Continue with Google"}
+          {loading ? 'Redirecting to Google...' : 'Continue with Google'}
         </button>
 
-        <div className="my-5 flex items-center gap-3 text-xs text-navy-400">
-          <span className="h-px flex-1 bg-navy-100" />
-          or use email
-          <span className="h-px flex-1 bg-navy-100" />
-        </div>
-
-        <form onSubmit={passwordLogin} className="space-y-4">
-          <input
-            name="email"
-            type="email"
-            required
-            placeholder="Email"
-            className="w-full rounded-md border border-navy-200 px-3 py-2"
-          />
-
-          <input
-            name="password"
-            type="password"
-            required
-            placeholder="Password"
-            className="w-full rounded-md border border-navy-200 px-3 py-2"
-          />
-
-          {error && (
-            <p className="rounded-md bg-red-50 p-3 text-sm text-red-700">
-              {error}
-            </p>
-          )}
-
-          <button
-            disabled={loading || googleLoading}
-            className="w-full rounded-md bg-gold-500 px-4 py-3 font-semibold text-navy-900 disabled:opacity-50"
-          >
-            {loading ? "Signing in..." : "Sign in"}
-          </button>
-        </form>
-
-        <p className="mt-5 text-center text-sm text-navy-500">
-          Need partner access?{" "}
-          <Link href="/apply" className="font-medium text-gold-700 underline">
-            Apply as a seller or collaborator
-          </Link>
-        </p>
-
-        <p className="mt-2 text-center text-sm text-navy-500">
-          Buying property?{" "}
-          <Link
-            href="/account/signup"
-            className="font-medium text-gold-700 underline"
-          >
-            Create a buyer account
-          </Link>
+        <p className="mt-5 text-xs text-gray-500">
+          Approved sellers and agents will be redirected to their seller dashboard after login.
         </p>
       </div>
-    </div>
-  );
+    </main>
+  )
 }

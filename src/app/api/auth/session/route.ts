@@ -1,239 +1,86 @@
-﻿export const dynamic = "force-dynamic";
+import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
 
-import { NextRequest, NextResponse } from "next/server";
-import { createServerClient, type CookieOptions } from "@supabase/ssr";
-import { db } from "@/lib/supabase/server";
+export async function GET() {
+  const supabase = await createClient()
 
-type Role = "buyer" | "seller" | "agent" | "admin";
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser()
 
-type ApprovedApplication = {
-  id: string;
-  requested_role: "seller" | "agent";
-  application_type: string | null;
-  email: string | null;
-  full_name: string | null;
-  phone: string | null;
-};
+  if (error || !user) {
+    return NextResponse.json(
+      {
+        authenticated: false,
+        authError: error?.message || 'Auth session missing!',
+      },
+      { status: 401 }
+    )
+  }
 
-function destinationFor(role: Role) {
-  return role === "seller" || role === "agent" || role === "admin"
-    ? "/seller"
-    : "/search";
+  return NextResponse.json({
+    authenticated: true,
+    user: {
+      id: user.id,
+      email: user.email,
+    },
+  })
 }
 
 export async function POST(request: NextRequest) {
-  const body = await request.json().catch(() => ({}));
+  const supabase = await createClient()
 
-  const accessToken =
-    typeof body.access_token === "string" ? body.access_token : null;
+  const body = await request.json().catch(() => null)
 
-  const refreshToken =
-    typeof body.refresh_token === "string" ? body.refresh_token : null;
+  const accessToken = body?.access_token
+  const refreshToken = body?.refresh_token
 
   if (!accessToken || !refreshToken) {
     return NextResponse.json(
-      { error: "Missing Supabase session tokens." },
-      { status: 400 }
-    );
-  }
-
-  const cookiesToSet: {
-    name: string;
-    value: string;
-    options: CookieOptions;
-  }[] = [];
-
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(items: { name: string; value: string; options: CookieOptions }[]) {
-          cookiesToSet.push(...items);
-        },
+      {
+        authenticated: false,
+        error: 'Missing access_token or refresh_token',
       },
-    }
-  );
+      { status: 400 }
+    )
+  }
 
-  const { data: sessionData, error: sessionError } =
-    await supabase.auth.setSession({
-      access_token: accessToken,
-      refresh_token: refreshToken,
-    });
+  const { error } = await supabase.auth.setSession({
+    access_token: accessToken,
+    refresh_token: refreshToken,
+  })
 
-  if (sessionError || !sessionData.user) {
+  if (error) {
     return NextResponse.json(
-      { error: sessionError?.message || "Could not set server session." },
+      {
+        authenticated: false,
+        error: error.message,
+      },
       { status: 401 }
-    );
+    )
   }
 
-  const authUser = sessionData.user;
-  const email = authUser.email?.trim().toLowerCase();
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser()
 
-  let finalRole: Role = "buyer";
-  let syncedApprovedApplication = false;
-
-  if (email) {
-    const metadataFullName =
-      typeof authUser.user_metadata?.full_name === "string"
-        ? authUser.user_metadata.full_name.trim()
-        : typeof authUser.user_metadata?.name === "string"
-          ? authUser.user_metadata.name.trim()
-          : null;
-
-    const metadataPhone =
-      typeof authUser.user_metadata?.phone === "string"
-        ? authUser.user_metadata.phone.trim()
-        : null;
-
-    const { rows: existingUsers } = await db.query<{
-      role: Role;
-      full_name: string | null;
-      phone: string | null;
-    }>({
-      text: `
-        SELECT role, full_name, phone
-        FROM users
-        WHERE id = $1::uuid
-        LIMIT 1
-      `,
-      values: [authUser.id],
-    });
-
-    const existingUser = existingUsers[0];
-
-    const { rows: applications } = await db.query<ApprovedApplication>({
-      text: `
-        SELECT
-          id,
-          requested_role,
-          application_type,
-          email,
-          full_name,
-          phone
-        FROM collaborator_applications
-        WHERE lower(email) = lower($1)
-          AND status = 'approved'
-        ORDER BY
-          CASE requested_role WHEN 'agent' THEN 0 WHEN 'seller' THEN 1 ELSE 2 END,
-          reviewed_at DESC NULLS LAST,
-          created_at DESC
-        LIMIT 1
-      `,
-      values: [email],
-    });
-
-    const application = applications[0];
-
-    finalRole =
-      existingUser?.role === "admin"
-        ? "admin"
-        : application?.requested_role || existingUser?.role || "buyer";
-
-    await db.query({
-      text: `
-        INSERT INTO users (
-          id,
-          email,
-          full_name,
-          phone,
-          role,
-          created_at,
-          updated_at
-        )
-        VALUES (
-          $1::uuid,
-          $2,
-          $3,
-          $4,
-          $5,
-          now(),
-          now()
-        )
-        ON CONFLICT (id)
-        DO UPDATE SET
-          email = EXCLUDED.email,
-          full_name = COALESCE(NULLIF(users.full_name, ''), EXCLUDED.full_name),
-          phone = COALESCE(NULLIF(users.phone, ''), EXCLUDED.phone),
-          role = CASE
-            WHEN users.role = 'admin' THEN users.role
-            ELSE EXCLUDED.role
-          END,
-          updated_at = now()
-      `,
-      values: [
-        authUser.id,
-        email,
-        existingUser?.full_name || metadataFullName || application?.full_name || null,
-        existingUser?.phone || metadataPhone || application?.phone || null,
-        finalRole,
-      ],
-    });
-
-    if (application) {
-      syncedApprovedApplication = true;
-
-      await db.query({
-        text: `
-          UPDATE collaborator_applications
-          SET user_id = $2::uuid,
-              updated_at = now()
-          WHERE id = $1::uuid
-             OR (
-              lower(email) = lower($3)
-              AND status = 'approved'
-              AND user_id IS NULL
-             )
-        `,
-        values: [application.id, authUser.id, email],
-      }).catch(() => null);
-
-      if (application.requested_role === "agent") {
-        await db.query({
-          text: `
-            INSERT INTO agents (
-              user_id,
-              agency_name,
-              license_number,
-              service_area,
-              created_at,
-              updated_at
-            )
-            SELECT
-              $1::uuid,
-              ca.business_name,
-              ca.prc_license_number,
-              ca.service_area,
-              now(),
-              now()
-            FROM collaborator_applications ca
-            WHERE ca.id = $2::uuid
-              AND NOT EXISTS (
-                SELECT 1 FROM agents a WHERE a.user_id = $1::uuid
-              )
-          `,
-          values: [authUser.id, application.id],
-        }).catch(() => null);
-      }
-    }
+  if (userError || !user) {
+    return NextResponse.json(
+      {
+        authenticated: false,
+        error: userError?.message || 'Could not read user after setting session',
+      },
+      { status: 401 }
+    )
   }
 
-  const response = NextResponse.json({
-    ok: true,
-    role: finalRole,
-    destination: destinationFor(finalRole),
-    syncedApprovedApplication,
-    email,
-    userId: authUser.id,
-  });
-
-  cookiesToSet.forEach(({ name, value, options }) => {
-    response.cookies.set(name, value, options);
-  });
-
-  return response;
+  return NextResponse.json({
+    authenticated: true,
+    user: {
+      id: user.id,
+      email: user.email,
+    },
+  })
 }

@@ -1,74 +1,91 @@
-﻿"use client";
+'use client'
 
-import { useEffect, useState } from "react";
-import { supabaseBrowser } from "@/lib/supabase/client";
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
 
 export default function AuthBridgePage() {
-  const [message, setMessage] = useState("Completing Google sign in...");
+  const router = useRouter()
+  const [message, setMessage] = useState('Completing login...')
 
   useEffect(() => {
-    let cancelled = false;
+    let mounted = true
 
-    async function completeLogin() {
-      try {
-        await new Promise((resolve) => setTimeout(resolve, 600));
+    async function bridgeSession() {
+      const supabase = createClient()
 
-        const { data, error } = await supabaseBrowser.auth.getSession();
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession()
 
-        if (error) {
-          if (!cancelled) setMessage(error.message);
-          return;
+      if (sessionError || !session) {
+        if (mounted) {
+          setMessage('No login session found. Redirecting...')
         }
 
-        if (!data.session) {
-          if (!cancelled) {
-            setMessage(
-              "Google sign in finished, but no browser session was found. Check Supabase redirect URL settings."
-            );
-          }
-          return;
+        router.replace('/login')
+        return
+      }
+
+      const response = await fetch('/api/auth/session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          access_token: session.access_token,
+          refresh_token: session.refresh_token,
+        }),
+      })
+
+      if (!response.ok) {
+        if (mounted) {
+          setMessage('Could not create server session. Redirecting...')
         }
 
-        const response = await fetch("/api/auth/session", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({
-            access_token: data.session.access_token,
-            refresh_token: data.session.refresh_token,
-          }),
-        });
+        router.replace('/login')
+        return
+      }
 
-        const result = await response.json().catch(() => ({}));
+      const syncResponse = await fetch('/api/auth/sync-approved-role', {
+        method: 'POST',
+        credentials: 'include',
+      })
 
-        if (!response.ok) {
-          if (!cancelled) {
-            setMessage(result.error || "Could not save server login session.");
-          }
-          return;
+      const syncData = await syncResponse.json().catch(() => null)
+
+      if (!syncResponse.ok) {
+        if (mounted) {
+          setMessage('Could not sync role. Redirecting...')
         }
 
-        window.location.assign(result.destination || "/search");
-      } catch {
-        if (!cancelled) {
-          setMessage("Could not complete Google sign in. Please try again.");
-        }
+        router.replace('/login')
+        return
+      }
+
+      const role = syncData?.role || 'buyer'
+
+      if (role === 'seller' || role === 'agent' || role === 'admin') {
+        router.replace('/seller')
+      } else {
+        router.replace('/search')
       }
     }
 
-    completeLogin();
+    bridgeSession()
 
     return () => {
-      cancelled = true;
-    };
-  }, []);
+      mounted = false
+    }
+  }, [router])
 
   return (
-    <main className="mx-auto flex min-h-[60vh] max-w-md items-center justify-center px-6 py-16">
-      <div className="w-full rounded-xl border border-navy-100 bg-white p-7 text-center shadow-sm">
-        <h1 className="text-xl font-semibold text-navy-900">Signing you in</h1>
-        <p className="mt-3 text-sm text-navy-500">{message}</p>
+    <main className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+      <div className="rounded-xl bg-white shadow border p-6 text-center">
+        <p className="text-gray-700">{message}</p>
       </div>
     </main>
-  );
+  )
 }
