@@ -60,7 +60,7 @@ export default function LoginPage() {
     const { error } = await supabaseBrowser.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: `${window.location.origin}/auth/bridge`,
         queryParams: {
           access_type: "offline",
           prompt: "consent",

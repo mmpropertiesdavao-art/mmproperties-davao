@@ -1,30 +1,38 @@
-"use client";
-
-// src/app/auth/bridge/page.tsx
-//
-// Client-side OAuth bridge.
-// Reads the browser Supabase session and sends it to the server
-// so server-side pages like /seller can authenticate correctly.
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase/client";
 
 export default function AuthBridgePage() {
-  const [message, setMessage] = useState("Completing sign in...");
+  const [message, setMessage] = useState("Completing Google sign in...");
 
   useEffect(() => {
+    let cancelled = false;
+
     async function completeLogin() {
       try {
+        await new Promise((resolve) => setTimeout(resolve, 600));
+
         const { data, error } = await supabaseBrowser.auth.getSession();
 
-        if (error || !data.session) {
-          setMessage("Could not find your login session. Please try signing in again.");
+        if (error) {
+          if (!cancelled) setMessage(error.message);
+          return;
+        }
+
+        if (!data.session) {
+          if (!cancelled) {
+            setMessage(
+              "Google sign in finished, but no browser session was found. Check Supabase redirect URL settings."
+            );
+          }
           return;
         }
 
         const response = await fetch("/api/auth/session", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          credentials: "include",
           body: JSON.stringify({
             access_token: data.session.access_token,
             refresh_token: data.session.refresh_token,
@@ -34,17 +42,25 @@ export default function AuthBridgePage() {
         const result = await response.json().catch(() => ({}));
 
         if (!response.ok) {
-          setMessage(result.error || "Could not complete server login.");
+          if (!cancelled) {
+            setMessage(result.error || "Could not save server login session.");
+          }
           return;
         }
 
         window.location.assign(result.destination || "/search");
       } catch {
-        setMessage("Could not complete sign in. Please try again.");
+        if (!cancelled) {
+          setMessage("Could not complete Google sign in. Please try again.");
+        }
       }
     }
 
     completeLogin();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return (
