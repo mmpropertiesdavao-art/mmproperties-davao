@@ -9,23 +9,23 @@ const listingTools = [
   },
   {
     title: 'Create New Listing',
-    href: '/admin/properties',
-    description: 'Add or import a property listing from the admin property manager.',
+    href: '/admin/properties/new',
+    description: 'Create a new admin-managed property listing.',
   },
   {
     title: 'Photos',
-    href: '/admin/properties',
-    description: 'Open a listing and manage its uploaded property photos.',
+    href: '/admin/properties/photos',
+    description: 'Find a listing and manage its uploaded property photos.',
   },
   {
     title: 'Videos',
-    href: '/admin/properties',
-    description: 'Open a listing and manage videos or media attached to the property.',
+    href: '/admin/properties/videos',
+    description: 'Find a listing and manage videos or media attached to the property.',
   },
   {
     title: 'Location Pins',
-    href: '/admin/properties',
-    description: 'Open a listing and manage map pins, coordinates, and location details.',
+    href: '/admin/properties/locations',
+    description: 'Find a listing and manage map pins, coordinates, and location details.',
   },
   {
     title: 'Places & Amenities',
@@ -62,7 +62,7 @@ export default async function AdminListingsPage() {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {listingTools.map((tool) => (
             <Link
-              key={tool.title}
+              key={tool.href}
               href={tool.href}
               className="rounded-xl border bg-white p-5 shadow-sm transition hover:border-gray-400 hover:shadow-md"
             >
@@ -75,19 +75,6 @@ export default async function AdminListingsPage() {
               </p>
             </Link>
           ))}
-        </div>
-
-        <div className="mt-8 rounded-2xl border bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-bold text-gray-900">
-            Recommended workflow
-          </h2>
-
-          <ol className="mt-4 list-decimal space-y-2 pl-5 text-sm text-gray-700">
-            <li>Open All Listings.</li>
-            <li>Select the listing you want to edit.</li>
-            <li>Update property details, photos, videos, location pins, and status.</li>
-            <li>Approve, reject, feature, or mark listing as sold/reserved when needed.</li>
-          </ol>
         </div>
       </div>
     </main>

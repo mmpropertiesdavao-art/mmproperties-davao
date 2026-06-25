@@ -1,3 +1,105 @@
-"use client";import{useEffect,useState}from"react";
-type Place={id:string;name:string;kind:string;status:string;aliases:string[];propertyCount:number};
-export default function PlacesPage(){const[rows,setRows]=useState<Place[]>([]),[name,setName]=useState(""),[message,setMessage]=useState("");async function load(){const r=await fetch("/api/admin/places",{cache:"no-store"});setRows(r.ok?await r.json():[])}useEffect(()=>{load()},[]);async function patch(body:object){const r=await fetch("/api/admin/places",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});setMessage(r.ok?"Place updated.":"Could not update place.");await load()}return <div className="mx-auto max-w-6xl px-6 py-8"><h1 className="text-3xl font-semibold text-navy-900">Places & aliases</h1><p className="mt-1 text-sm text-navy-500">Approve new collaborator suggestions, add spelling aliases, archive stale names, or merge duplicates.</p><form onSubmit={async e=>{e.preventDefault();const r=await fetch("/api/admin/places",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name})});setMessage(r.ok?"Place added.":(await r.json()).error);if(r.ok)setName("");await load()}} className="mt-6 flex gap-2"><input value={name} onChange={e=>setName(e.target.value)} placeholder="New neighborhood, subdivision or landmark" className="w-full rounded-md border px-3 py-2"/><button className="rounded-md bg-gold-500 px-5 font-semibold">Add</button></form>{message&&<p className="mt-3 text-sm">{message}</p>}<div className="mt-6 overflow-x-auto rounded-lg border bg-white"><table className="w-full text-left text-sm"><thead className="bg-navy-50"><tr><th className="p-3">Place</th><th>Type</th><th>Listings</th><th>Status</th><th>Aliases / actions</th></tr></thead><tbody>{rows.map(x=><tr key={x.id} className="border-t"><td className="p-3 font-medium">{x.name}</td><td>{x.kind}</td><td>{x.propertyCount}</td><td><span className={`rounded-full px-2 py-1 text-xs ${x.status==='pending'?'bg-amber-100 text-amber-800':'bg-green-50 text-green-800'}`}>{x.status}</span></td><td className="py-2"><div className="flex flex-wrap gap-2"><button onClick={()=>{const alias=prompt("Add spelling or alternate-name alias");if(alias)patch({id:x.id,alias})}} className="rounded border px-2 py-1">Add alias</button>{x.status==='pending'&&<button onClick={()=>patch({id:x.id,status:"active"})} className="rounded bg-green-700 px-2 py-1 text-white">Approve</button>}<button onClick={()=>patch({id:x.id,status:x.status==='archived'?'active':'archived'})} className="rounded border px-2 py-1">{x.status==='archived'?'Restore':'Archive'}</button><button onClick={()=>{const target=prompt("Paste the destination place ID. All listing links will move there.");if(target&&confirm("Merge this place?"))patch({id:x.id,mergeIntoId:target})}} className="rounded border border-red-200 px-2 py-1 text-red-700">Merge</button></div><p className="mt-1 text-xs text-navy-400">{x.aliases?.join(", ")}</p></td></tr>)}</tbody></table></div></div>}
+import Link from 'next/link'
+import { requireRole } from '@/lib/auth/requireRole'
+import { db } from '@/lib/supabase/server'
+
+type PlaceRow = {
+  id: string
+  name: string
+  category: string | null
+  address: string | null
+  barangay: string | null
+  created_at: string | null
+}
+
+export default async function AdminPlacesPage() {
+  await requireRole(['admin'])
+
+  const { rows: places } = await db.query<PlaceRow>({
+    text: `
+      SELECT
+        id,
+        name,
+        category,
+        address,
+        barangay,
+        created_at
+      FROM places
+      ORDER BY created_at DESC NULLS LAST
+      LIMIT 300
+    `,
+  })
+
+  return (
+    <main className="min-h-screen bg-gray-50 px-4 py-8">
+      <div className="mx-auto max-w-6xl">
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">
+              Places & Amenities
+            </h1>
+
+            <p className="mt-1 text-sm text-gray-600">
+              Manage nearby places, landmarks, schools, malls, hospitals, and amenities.
+            </p>
+          </div>
+
+          <Link
+            href="/admin/listings"
+            className="rounded-lg border px-4 py-2 text-sm font-medium text-gray-700 hover:bg-white"
+          >
+            Back to Listings
+          </Link>
+        </div>
+
+        <div className="overflow-hidden rounded-2xl border bg-white shadow-sm">
+          {places.length === 0 ? (
+            <div className="p-10 text-center">
+              <p className="font-medium text-gray-800">
+                No places found.
+              </p>
+
+              <p className="mt-2 text-sm text-gray-500">
+                Places and amenities will appear here once they are added.
+              </p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead className="bg-gray-50 text-gray-600">
+                  <tr>
+                    <th className="px-4 py-3 font-medium">Name</th>
+                    <th className="px-4 py-3 font-medium">Category</th>
+                    <th className="px-4 py-3 font-medium">Barangay</th>
+                    <th className="px-4 py-3 font-medium">Address</th>
+                  </tr>
+                </thead>
+
+                <tbody className="divide-y">
+                  {places.map((place) => (
+                    <tr key={place.id}>
+                      <td className="px-4 py-3 font-medium text-gray-900">
+                        {place.name}
+                      </td>
+
+                      <td className="px-4 py-3 text-gray-700">
+                        {place.category || 'Not set'}
+                      </td>
+
+                      <td className="px-4 py-3 text-gray-700">
+                        {place.barangay || 'Not set'}
+                      </td>
+
+                      <td className="px-4 py-3 text-gray-700">
+                        {place.address || 'Not set'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
+    </main>
+  )
+}
