@@ -7,15 +7,9 @@ type AppRole = 'buyer' | 'seller' | 'agent' | 'admin'
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
-function getBaseUrl(request: NextRequest) {
-  const configuredSiteUrl = process.env.NEXT_PUBLIC_SITE_URL
-
-  if (configuredSiteUrl) {
-    return configuredSiteUrl.replace(/\/$/, '')
-  }
-
-  return request.nextUrl.origin
-}
+const SITE_URL =
+  process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, '') ||
+  'https://mmpropertiesdavao.com'
 
 function getAdminClient() {
   if (!supabaseUrl) {
@@ -48,7 +42,7 @@ async function syncApprovedRole(params: {
   const { data: approvedApplication, error: applicationError } = await admin
     .from('collaborator_applications')
     .select('*')
-    .eq('email', normalizedEmail)
+    .ilike('email', normalizedEmail)
     .eq('status', 'approved')
     .limit(1)
     .maybeSingle()
@@ -107,23 +101,33 @@ async function syncApprovedRole(params: {
 
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url)
+
   const code = requestUrl.searchParams.get('code')
   const error = requestUrl.searchParams.get('error')
   const errorDescription = requestUrl.searchParams.get('error_description')
-  const baseUrl = getBaseUrl(request)
+
+  console.log('OAuth callback reached:', {
+    url: request.url,
+    hasCode: Boolean(code),
+    error,
+    errorDescription,
+  })
 
   if (error) {
     console.error('OAuth callback error:', error, errorDescription)
+
     return NextResponse.redirect(
-      `${baseUrl}/login?error=${encodeURIComponent(
+      `${SITE_URL}/login?error=${encodeURIComponent(
         errorDescription || error || 'OAuth login failed'
       )}`
     )
   }
 
   if (!code) {
+    console.error('OAuth callback missing code')
+
     return NextResponse.redirect(
-      `${baseUrl}/login?error=${encodeURIComponent('Missing OAuth code')}`
+      `${SITE_URL}/login?error=${encodeURIComponent('Missing OAuth code')}`
     )
   }
 
@@ -133,8 +137,9 @@ export async function GET(request: NextRequest) {
 
   if (exchangeError) {
     console.error('OAuth code exchange failed:', exchangeError)
+
     return NextResponse.redirect(
-      `${baseUrl}/login?error=${encodeURIComponent(exchangeError.message)}`
+      `${SITE_URL}/login?error=${encodeURIComponent(exchangeError.message)}`
     )
   }
 
@@ -145,12 +150,18 @@ export async function GET(request: NextRequest) {
 
   if (userError || !user?.email) {
     console.error('OAuth getUser failed:', userError)
+
     return NextResponse.redirect(
-      `${baseUrl}/login?error=${encodeURIComponent(
+      `${SITE_URL}/login?error=${encodeURIComponent(
         userError?.message || 'Unable to read authenticated user'
       )}`
     )
   }
+
+  console.log('OAuth user authenticated:', {
+    id: user.id,
+    email: user.email,
+  })
 
   let role: AppRole = 'buyer'
 
@@ -161,16 +172,22 @@ export async function GET(request: NextRequest) {
     })
   } catch (syncError) {
     console.error('OAuth role sync failed:', syncError)
+
     return NextResponse.redirect(
-      `${baseUrl}/login?error=${encodeURIComponent(
+      `${SITE_URL}/login?error=${encodeURIComponent(
         'Login succeeded but role sync failed. Check server logs.'
       )}`
     )
   }
 
+  console.log('OAuth role synced:', {
+    email: user.email,
+    role,
+  })
+
   if (role === 'seller' || role === 'agent' || role === 'admin') {
-    return NextResponse.redirect(`${baseUrl}/seller`)
+    return NextResponse.redirect(`${SITE_URL}/seller`)
   }
 
-  return NextResponse.redirect(`${baseUrl}/search`)
+  return NextResponse.redirect(`${SITE_URL}/search`)
 }

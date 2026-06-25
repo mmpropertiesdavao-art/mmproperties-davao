@@ -1,11 +1,26 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+
+const SITE_URL =
+  process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, '') ||
+  'https://mmpropertiesdavao.com'
 
 export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const params = new URLSearchParams(window.location.search)
+    const error = params.get('error')
+
+    if (error) {
+      setErrorMessage(error)
+    }
+  }, [])
 
   async function handleGoogleLogin() {
     setLoading(true)
@@ -13,15 +28,10 @@ export default function LoginPage() {
 
     const supabase = createClient()
 
-    const origin =
-      typeof window !== 'undefined'
-        ? window.location.origin
-        : process.env.NEXT_PUBLIC_SITE_URL || 'https://mmpropertiesdavao.com'
-
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${origin}/auth/callback`,
+        redirectTo: `${SITE_URL}/auth/callback`,
         queryParams: {
           prompt: 'select_account',
           access_type: 'offline',
