@@ -35,6 +35,8 @@ function AdminPhotosContent() {
   const [progress, setProgress] = useState({ completed: 0, total: 0 });
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
 
+  const selectedProperty = properties.find((property) => property.id === propertyId);
+
   const previews = useMemo(
     () => files.map((file) => ({ file, url: URL.createObjectURL(file) })),
     [files],
@@ -49,6 +51,7 @@ function AdminPhotosContent() {
 
           if (initialPropertyId) {
             const exists = data.some((property: AdminListingRow) => property.id === initialPropertyId);
+
             if (exists) {
               setPropertyId(initialPropertyId);
               void loadSavedPhotos(initialPropertyId);
@@ -69,37 +72,12 @@ function AdminPhotosContent() {
     return () => previews.forEach((preview) => URL.revokeObjectURL(preview.url));
   }, [previews]);
 
-  function addFiles(fileList: FileList | null) {
-    if (!fileList) return;
-
-    const incoming = Array.from(fileList);
-    const invalid = incoming.find((file) => !isSupportedImage(file) || file.size > 8 * 1024 * 1024);
-
-    if (invalid) {
-      const reason = fileSizeTooLarge(invalid)
-        ? "is larger than 8 MB"
-        : "must be a JPG, JPEG, JFIF, PNG, WebP, or AVIF image";
-      setMessage({ ok: false, text: `${invalid.name} ${reason}.` });
-      return;
-    }
-
-    setFiles((current) => {
-      const known = new Set(current.map(fileKey));
-      return [...current, ...incoming.filter((file) => !known.has(fileKey(file)))].slice(0, 12);
-    });
-
-    setMessage(incoming.length > 12 ? { ok: false, text: "Only the first 12 photos were added." } : null);
-  }
-
-  function moveFile(index: number, direction: -1 | 1) {
-    setFiles((current) => {
-      const target = index + direction;
-      if (target < 0 || target >= current.length) return current;
-
-      const next = [...current];
-      [next[index], next[target]] = [next[target], next[index]];
-      return next;
-    });
+  function chooseProperty(property: AdminListingRow) {
+    setPropertyId(property.id);
+    setFiles([]);
+    setMessage(null);
+    void loadSavedPhotos(property.id);
+    window.history.replaceState(null, "", `/admin/photos?propertyId=${property.id}`);
   }
 
   async function loadSavedPhotos(id: string) {
@@ -127,14 +105,37 @@ function AdminPhotosContent() {
     }
   }
 
-  function chooseProperty(property: AdminListingRow) {
-    setPropertyId(property.id);
-    setFiles([]);
-    setMessage(null);
-    void loadSavedPhotos(property.id);
+  function addFiles(fileList: FileList | null) {
+    if (!fileList) return;
 
-    const nextUrl = `/admin/photos?propertyId=${property.id}`;
-    window.history.replaceState(null, "", nextUrl);
+    const incoming = Array.from(fileList);
+    const invalid = incoming.find((file) => !isSupportedImage(file) || file.size > 8 * 1024 * 1024);
+
+    if (invalid) {
+      const reason = fileSizeTooLarge(invalid)
+        ? "is larger than 8 MB"
+        : "must be a JPG, JPEG, JFIF, PNG, WebP, or AVIF image";
+      setMessage({ ok: false, text: `${invalid.name} ${reason}.` });
+      return;
+    }
+
+    setFiles((current) => {
+      const known = new Set(current.map(fileKey));
+      return [...current, ...incoming.filter((file) => !known.has(fileKey(file)))].slice(0, 12);
+    });
+
+    setMessage(null);
+  }
+
+  function moveFile(index: number, direction: -1 | 1) {
+    setFiles((current) => {
+      const target = index + direction;
+      if (target < 0 || target >= current.length) return current;
+
+      const next = [...current];
+      [next[index], next[target]] = [next[target], next[index]];
+      return next;
+    });
   }
 
   function togglePhoto(id: string) {
@@ -262,199 +263,204 @@ function AdminPhotosContent() {
     }
   }
 
-  const selectedProperty = properties.find((property) => property.id === propertyId);
-
   return (
     <div className="mx-auto max-w-5xl px-6 py-8">
       <h1 className="text-2xl font-semibold text-navy-900">Manage listing photos</h1>
       <p className="mt-1 text-sm text-navy-400">
-        Add photos to imported or existing listings and confirm what is already saved.
+        Choose a listing first. After selection, the upload and saved-photo tools appear directly below.
       </p>
 
       <div className="mt-6 space-y-6">
-        <section>
-          <h2 className="mb-3 text-sm font-semibold text-navy-800">Choose a property</h2>
-
-          {selectedProperty && (
-            <p className="mb-3 rounded-md bg-green-50 p-3 text-sm text-green-700">
-              Selected: <strong>{selectedProperty.title}</strong>
-            </p>
-          )}
-
-          <AdminListingTable
-            listings={properties}
-            selectedId={propertyId}
-            onSelect={chooseProperty}
-          />
-        </section>
-
-        {propertyId && (
-          <section>
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <h2 className="text-sm font-medium text-navy-800">Saved photos ({savedPhotos.length})</h2>
-
-              {savedPhotos.length > 0 && (
-                <div className="flex items-center gap-3 text-xs">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setSelectedPhotoIds(
-                        selectedPhotoIds.length === savedPhotos.length ? [] : savedPhotos.map((photo) => photo.id),
-                      )
-                    }
-                    className="font-medium text-navy-700 underline"
-                  >
-                    {selectedPhotoIds.length === savedPhotos.length ? "Clear selection" : "Select all"}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={deleteSelectedPhotos}
-                    disabled={deleting || selectedPhotoIds.length === 0}
-                    className="rounded-md border border-red-300 px-3 py-1.5 font-medium text-red-700 disabled:opacity-40"
-                  >
-                    {deleting ? "Deleting..." : `Delete selected (${selectedPhotoIds.length})`}
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {loadingPhotos ? (
-              <p className="mt-2 text-sm text-navy-400">Loading saved photos...</p>
-            ) : savedPhotos.length > 0 ? (
-              <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-5">
-                {savedPhotos.map((photo) => (
-                  <div
-                    key={photo.id}
-                    className={`overflow-hidden rounded-md border-2 bg-white ${
-                      selectedPhotoIds.includes(photo.id) ? "border-red-500 ring-2 ring-red-100" : "border-navy-100"
-                    }`}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => togglePhoto(photo.id)}
-                      className="admin-thumbnail-frame relative block w-full overflow-hidden text-left"
-                    >
-                      <img
-                        src={photo.url}
-                        alt={photo.altText || "Listing photo"}
-                        className="admin-thumbnail-image h-28 w-full object-cover"
-                      />
-
-                      {photo.isCover && (
-                        <span className="absolute left-1 top-1 rounded bg-gold-500 px-1.5 py-0.5 text-[10px] font-semibold text-navy-900">
-                          Cover
-                        </span>
-                      )}
-
-                      <span
-                        className={`absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded border text-xs font-bold ${
-                          selectedPhotoIds.includes(photo.id)
-                            ? "border-red-600 bg-red-600 text-white"
-                            : "border-white bg-white/90 text-transparent"
-                        }`}
-                      >
-                        ✓
-                      </span>
-                    </button>
-
-                    <div className="border-t border-navy-100 p-1.5 text-center">
-                      {photo.isCover ? (
-                        <span className="text-[11px] font-semibold text-gold-700">Current cover</span>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => setCoverPhoto(photo.id)}
-                          disabled={settingCoverId !== null}
-                          className="text-[11px] font-medium text-navy-700 underline disabled:opacity-40"
-                        >
-                          {settingCoverId === photo.id ? "Setting..." : "Make cover"}
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="mt-2 text-sm text-navy-400">No photos saved to this listing yet.</p>
-            )}
-          </section>
-        )}
-
-        <div className="rounded-lg border-2 border-dashed border-navy-200 bg-white p-5">
-          <input
-            type="file"
-            multiple
-            accept=".jpg,.jpeg,.jfif,.png,.webp,.avif,image/jpeg,image/png,image/webp,image/avif"
-            onChange={(event) => addFiles(event.target.files)}
-            className="block w-full text-sm"
-          />
-
-          <p className="mt-2 text-xs text-navy-400">
-            Up to 12 photos, 8 MB each. Files upload in groups of four; the first saved photo becomes the cover.
-          </p>
-        </div>
-
-        {previews.length > 0 && (
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-            {previews.map((preview, index) => (
-              <div key={fileKey(preview.file)} className="overflow-hidden rounded-lg border border-navy-100 bg-white">
-                <img src={preview.url} alt={preview.file.name} className="h-32 w-full object-cover" />
-
-                <div className="p-2">
-                  <p className="truncate text-xs text-navy-500">
-                    {index === 0 ? "First - " : ""}
-                    {preview.file.name}
-                  </p>
-
-                  <p className="text-[11px] text-navy-400">{(preview.file.size / 1024 / 1024).toFixed(1)} MB</p>
-
-                  <div className="mt-2 flex gap-2 text-xs">
-                    <button
-                      type="button"
-                      disabled={index === 0}
-                      onClick={() => moveFile(index, -1)}
-                      className="disabled:opacity-30"
-                    >
-                      Left
-                    </button>
-
-                    <button
-                      type="button"
-                      disabled={index === files.length - 1}
-                      onClick={() => moveFile(index, 1)}
-                      className="disabled:opacity-30"
-                    >
-                      Right
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setFiles((current) => current.filter((_, itemIndex) => itemIndex !== index))}
-                      className="text-red-600"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
         {message && (
           <p className={`rounded-md p-3 text-sm ${message.ok ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"}`}>
             {message.text}
           </p>
         )}
 
-        <button
-          onClick={upload}
-          disabled={uploading || !propertyId || files.length === 0}
-          className="rounded-md bg-gold-500 px-6 py-3 font-medium text-navy-900 hover:bg-gold-300 disabled:opacity-50"
-        >
-          {uploading ? `Uploading ${progress.completed} of ${progress.total}...` : `Upload ${files.length || ""} photo${files.length === 1 ? "" : "s"}`}
-        </button>
+        <section>
+          <h2 className="mb-3 text-sm font-semibold text-navy-800">Choose a property</h2>
+
+          {selectedProperty && (
+            <div className="mb-4 rounded-lg border border-green-200 bg-green-50 p-4">
+              <p className="text-sm text-green-800">
+                Selected: <strong>{selectedProperty.title}</strong>
+              </p>
+              <p className="mt-1 text-xs text-green-700">
+                You can now upload photos, view saved photos, delete photos, or set a cover photo below.
+              </p>
+            </div>
+          )}
+
+          <AdminListingTable listings={properties} selectedId={propertyId} onSelect={chooseProperty} />
+        </section>
+
+        {propertyId && (
+          <section className="rounded-xl border border-navy-100 bg-white p-5 shadow-sm">
+            <h2 className="text-lg font-semibold text-navy-900">Photo tools for selected listing</h2>
+
+            <div className="mt-5 rounded-lg border-2 border-dashed border-navy-200 bg-white p-5">
+              <input
+                type="file"
+                multiple
+                accept=".jpg,.jpeg,.jfif,.png,.webp,.avif,image/jpeg,image/png,image/webp,image/avif"
+                onChange={(event) => addFiles(event.target.files)}
+                className="block w-full text-sm"
+              />
+
+              <p className="mt-2 text-xs text-navy-400">
+                Up to 12 photos, 8 MB each. Files upload in groups of four; the first saved photo becomes the cover.
+              </p>
+            </div>
+
+            {previews.length > 0 && (
+              <div className="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-4">
+                {previews.map((preview, index) => (
+                  <div key={fileKey(preview.file)} className="overflow-hidden rounded-lg border border-navy-100 bg-white">
+                    <img src={preview.url} alt={preview.file.name} className="h-32 w-full object-cover" />
+
+                    <div className="p-2">
+                      <p className="truncate text-xs text-navy-500">
+                        {index === 0 ? "First - " : ""}
+                        {preview.file.name}
+                      </p>
+
+                      <p className="text-[11px] text-navy-400">{(preview.file.size / 1024 / 1024).toFixed(1)} MB</p>
+
+                      <div className="mt-2 flex gap-2 text-xs">
+                        <button
+                          type="button"
+                          disabled={index === 0}
+                          onClick={() => moveFile(index, -1)}
+                          className="disabled:opacity-30"
+                        >
+                          Left
+                        </button>
+
+                        <button
+                          type="button"
+                          disabled={index === files.length - 1}
+                          onClick={() => moveFile(index, 1)}
+                          className="disabled:opacity-30"
+                        >
+                          Right
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setFiles((current) => current.filter((_, itemIndex) => itemIndex !== index))}
+                          className="text-red-600"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <button
+              onClick={upload}
+              disabled={uploading || !propertyId || files.length === 0}
+              className="mt-5 rounded-md bg-gold-500 px-6 py-3 font-medium text-navy-900 hover:bg-gold-300 disabled:opacity-50"
+            >
+              {uploading
+                ? `Uploading ${progress.completed} of ${progress.total}...`
+                : `Upload ${files.length || ""} photo${files.length === 1 ? "" : "s"}`}
+            </button>
+
+            <div className="mt-8">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <h2 className="text-sm font-medium text-navy-800">Saved photos ({savedPhotos.length})</h2>
+
+                {savedPhotos.length > 0 && (
+                  <div className="flex items-center gap-3 text-xs">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setSelectedPhotoIds(
+                          selectedPhotoIds.length === savedPhotos.length ? [] : savedPhotos.map((photo) => photo.id),
+                        )
+                      }
+                      className="font-medium text-navy-700 underline"
+                    >
+                      {selectedPhotoIds.length === savedPhotos.length ? "Clear selection" : "Select all"}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={deleteSelectedPhotos}
+                      disabled={deleting || selectedPhotoIds.length === 0}
+                      className="rounded-md border border-red-300 px-3 py-1.5 font-medium text-red-700 disabled:opacity-40"
+                    >
+                      {deleting ? "Deleting..." : `Delete selected (${selectedPhotoIds.length})`}
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {loadingPhotos ? (
+                <p className="mt-2 text-sm text-navy-400">Loading saved photos...</p>
+              ) : savedPhotos.length > 0 ? (
+                <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-5">
+                  {savedPhotos.map((photo) => (
+                    <div
+                      key={photo.id}
+                      className={`overflow-hidden rounded-md border-2 bg-white ${
+                        selectedPhotoIds.includes(photo.id) ? "border-red-500 ring-2 ring-red-100" : "border-navy-100"
+                      }`}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => togglePhoto(photo.id)}
+                        className="admin-thumbnail-frame relative block w-full overflow-hidden text-left"
+                      >
+                        <img
+                          src={photo.url}
+                          alt={photo.altText || "Listing photo"}
+                          className="admin-thumbnail-image h-28 w-full object-cover"
+                        />
+
+                        {photo.isCover && (
+                          <span className="absolute left-1 top-1 rounded bg-gold-500 px-1.5 py-0.5 text-[10px] font-semibold text-navy-900">
+                            Cover
+                          </span>
+                        )}
+
+                        <span
+                          className={`absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded border text-xs font-bold ${
+                            selectedPhotoIds.includes(photo.id)
+                              ? "border-red-600 bg-red-600 text-white"
+                              : "border-white bg-white/90 text-transparent"
+                          }`}
+                        >
+                          ✓
+                        </span>
+                      </button>
+
+                      <div className="border-t border-navy-100 p-1.5 text-center">
+                        {photo.isCover ? (
+                          <span className="text-[11px] font-semibold text-gold-700">Current cover</span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setCoverPhoto(photo.id)}
+                            disabled={settingCoverId !== null}
+                            className="text-[11px] font-medium text-navy-700 underline disabled:opacity-40"
+                          >
+                            {settingCoverId === photo.id ? "Setting..." : "Make cover"}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-2 text-sm text-navy-400">No photos saved to this listing yet.</p>
+              )}
+            </div>
+          </section>
+        )}
       </div>
     </div>
   );
