@@ -50,11 +50,11 @@ export async function syncPropertyPlaces(propertyId:string, primary:unknown, nea
 export async function findDuplicateListings(input:{title:string;address:string;price:number;lat:number;lng:number},excludeId?:string){
   const {rows}=await db.query({text:`SELECT id,title,address,price::float AS price,slug,
     round(ST_Distance(location,ST_MakePoint($4,$5)::geography))::int AS "distanceMeters"
-    FROM properties WHERE ($6::uuid IS NULL OR id<>$6::uuid) AND merged_into_id IS NULL AND status<>'inactive'
+    FROM properties WHERE (NULLIF($6,'')::uuid IS NULL OR id<>NULLIF($6,'')::uuid) AND merged_into_id IS NULL AND status<>'inactive'
       AND ((similarity(lower(title),lower($1))>=.58 AND price BETWEEN $3*.8 AND $3*1.2)
         OR (similarity(lower(coalesce(address,'')),lower($2))>=.62)
         OR (ST_DWithin(location,ST_MakePoint($4,$5)::geography,75) AND price BETWEEN $3*.8 AND $3*1.2))
     ORDER BY GREATEST(similarity(lower(title),lower($1)),similarity(lower(coalesce(address,'')),lower($2))) DESC LIMIT 5`,
-    values:[input.title,input.address,input.price,input.lng,input.lat,excludeId??null]});
+    values:[input.title,input.address,input.price,input.lng,input.lat,excludeId??'']});
   return rows;
 }

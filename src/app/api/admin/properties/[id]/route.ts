@@ -6,7 +6,7 @@ import { db } from "@/lib/supabase/server";
 import { findDuplicateListings, resolveDeveloper, syncPropertyPlaces } from "@/lib/taxonomy";
 import { createClient } from "@supabase/supabase-js";
 
-const storage=createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!,process.env.SUPABASE_SERVICE_ROLE_KEY!);
+function getStorage(){return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!,process.env.SUPABASE_SERVICE_ROLE_KEY!);}
 
 const PROPERTY_TYPES = new Set(["house-and-lot", "condominium", "lot-only", "commercial", "townhouse", "foreclosed"]);
 const STATUSES = new Set(["active", "pending", "sold", "inactive"]);
@@ -140,7 +140,7 @@ export async function DELETE(request:NextRequest,{params}:{params:Promise<{id:st
   if(actor.role!=="admin")return NextResponse.json({error:"Only an administrator can permanently delete a listing."},{status:403});
   const{rows}=await db.query<{title:string;imageUrls:string[]}>({text:`SELECT p.title,COALESCE(array_agg(pi.url) FILTER(WHERE pi.url IS NOT NULL),'{}') AS "imageUrls" FROM properties p LEFT JOIN property_images pi ON pi.property_id=p.id WHERE p.id=$1::uuid GROUP BY p.id`,values:[id]});if(!rows[0])return NextResponse.json({error:"Listing not found"},{status:404});
   if(body.confirmation!==rows[0].title)return NextResponse.json({error:"Type the exact listing title to confirm permanent deletion."},{status:400});
-  const paths=rows[0].imageUrls.map(storagePath).filter((x):x is string=>Boolean(x));if(paths.length){const{error}=await storage.storage.from("property-images").remove(paths);if(error)return NextResponse.json({error:"Storage cleanup failed, so the listing was not deleted. Please retry."},{status:502})}
+  const paths=rows[0].imageUrls.map(storagePath).filter((x):x is string=>Boolean(x));if(paths.length){const{error}=await getStorage().storage.from("property-images").remove(paths);if(error)return NextResponse.json({error:"Storage cleanup failed, so the listing was not deleted. Please retry."},{status:502})}
   await db.query({text:`DELETE FROM properties WHERE id=$1::uuid`,values:[id]});return NextResponse.json({success:true,mode:"permanent"});
 }
 
