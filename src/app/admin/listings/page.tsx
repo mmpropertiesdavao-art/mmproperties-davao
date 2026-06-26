@@ -3,16 +3,16 @@ import { requireRole } from '@/lib/auth/requireRole'
 
 const listingSections = [
   {
-    title: 'All Listings',
+    title: 'Manage Listings',
     href: '/admin/properties',
     description:
-      'View, edit, approve, reject, feature, and manage all property listings.',
+      'Search, edit, approve, reject, mark sold, update price, and manage all property listings.',
   },
   {
-    title: 'Create New Listing',
+    title: 'Add New Listing',
     href: '/admin/properties/new',
     description:
-      'Create a new listing manually from the admin side.',
+      'Create a new admin-managed property listing with neighborhood, price, pin, and status.',
   },
   {
     title: 'Places & Amenities',
@@ -35,7 +35,7 @@ export default async function AdminListingsPage() {
             </h1>
 
             <p className="mt-1 text-sm text-gray-600">
-              Manage property listings from one place. Photos, videos, and location pins should be managed inside each listing.
+              Manage property listings from one place. Photos, videos, location pins, and status should be managed inside each listing.
             </p>
           </div>
 
@@ -67,13 +67,13 @@ export default async function AdminListingsPage() {
 
         <section className="mt-8 rounded-2xl border bg-white p-6 shadow-sm">
           <h2 className="text-lg font-bold text-gray-900">
-            How listing management should work
+            Recommended workflow
           </h2>
 
           <ol className="mt-4 list-decimal space-y-2 pl-5 text-sm text-gray-700">
-            <li>Open All Listings.</li>
-            <li>Select one property.</li>
-            <li>Inside that property, manage details, photos, videos, location pins, and approval status.</li>
+            <li>Use Add New Listing for admin-created listings.</li>
+            <li>Use Manage Listings to find and edit existing listings.</li>
+            <li>Open one listing to update price, sold status, photos, videos, and location pins.</li>
           </ol>
         </section>
       </div>
