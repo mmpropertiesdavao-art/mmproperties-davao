@@ -10,9 +10,27 @@ const listingSections = [
   },
   {
     title: 'Add New Listing',
-    href: '/admin/properties/new',
+    href: '/admin/listings/new',
     description:
-      'Create a new admin-managed property listing with neighborhood, price, pin, and status.',
+      'Create a new admin listing using the full form with neighborhoods and visual map pinning.',
+  },
+  {
+    title: 'Bulk Import',
+    href: '/admin/listings/import',
+    description:
+      'Import multiple listings at once using the admin bulk upload workflow.',
+  },
+  {
+    title: 'Edit Listings',
+    href: '/admin/listings/edit',
+    description:
+      'Use the older admin listing editor tools if needed.',
+  },
+  {
+    title: 'Locations',
+    href: '/admin/locations',
+    description:
+      'Manage listing location data, coordinates, and map-related tools.',
   },
   {
     title: 'Places & Amenities',
@@ -35,7 +53,7 @@ export default async function AdminListingsPage() {
             </h1>
 
             <p className="mt-1 text-sm text-gray-600">
-              Manage property listings from one place. Photos, videos, location pins, and status should be managed inside each listing.
+              Manage listings, add new properties, edit existing listings, import bulk data, and maintain location/amenity tools.
             </p>
           </div>
 
@@ -47,7 +65,7 @@ export default async function AdminListingsPage() {
           </Link>
         </div>
 
-        <section className="grid gap-4 md:grid-cols-3">
+        <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {listingSections.map((section) => (
             <Link
               key={section.href}
@@ -71,9 +89,9 @@ export default async function AdminListingsPage() {
           </h2>
 
           <ol className="mt-4 list-decimal space-y-2 pl-5 text-sm text-gray-700">
-            <li>Use Add New Listing for admin-created listings.</li>
-            <li>Use Manage Listings to find and edit existing listings.</li>
-            <li>Open one listing to update price, sold status, photos, videos, and location pins.</li>
+            <li>Use Add New Listing for admin-created listings with multiple neighborhoods and visual map pinning.</li>
+            <li>Use Manage Listings to find, edit, mark sold, update price, or archive existing listings.</li>
+            <li>Use Places & Amenities to manage nearby schools, malls, hospitals, landmarks, and area data.</li>
           </ol>
         </section>
       </div>
