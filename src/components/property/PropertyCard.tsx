@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { MapPin } from "lucide-react";
+import { Bath, BedDouble, Car, MapPin, Ruler, Square } from "lucide-react";
 import { FavoriteButton } from "@/components/property/FavoriteButton";
 import { CompareButton } from "@/components/compare/CompareButton";
 
@@ -91,6 +91,21 @@ function getListedByName(params: {
   return "MM Properties";
 }
 
+function SpecItem({
+  icon,
+  children,
+}: {
+  icon: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <span className="inline-flex items-center gap-1 whitespace-nowrap">
+      {icon}
+      <span>{children}</span>
+    </span>
+  );
+}
+
 export function PropertyCard({
   id,
   slug,
@@ -115,6 +130,7 @@ export function PropertyCard({
   agencyName,
   listedByName,
   listedByRole,
+  carport,
   daysListed = 0,
   viewCount = 0,
   saveCount = 0,
@@ -196,9 +212,7 @@ export function PropertyCard({
       <div className="flex flex-1 flex-col p-4">
         {previousPrice && previousPrice > price && (
           <p className="text-xs font-medium text-red-600">
-            <span className="line-through">
-              {formatPeso(previousPrice)}
-            </span>{" "}
+            <span className="line-through">{formatPeso(previousPrice)}</span>{" "}
             · PRICE DOWN
           </p>
         )}
@@ -219,12 +233,36 @@ export function PropertyCard({
           </p>
         )}
 
-        <p className="text-sm text-navy-400">
-          {bedrooms ?? "-"} bd · {bathrooms ?? "-"} ba ·{" "}
-          {lotAreaSqm ? `${lotAreaSqm.toLocaleString("en-PH")} sqm lot` : `${floorAreaSqm ?? "-"} sqm`}
-          {lotAreaSqm && floorAreaSqm
-            ? ` · ${floorAreaSqm.toLocaleString("en-PH")} sqm floor`
-            : ""}
+        <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-navy-400">
+          <SpecItem icon={<BedDouble size={14} className="text-navy-700" />}>
+            {bedrooms ?? "-"} bd
+          </SpecItem>
+
+          <SpecItem icon={<Bath size={14} className="text-gold-600" />}>
+            {bathrooms ?? "-"} ba
+          </SpecItem>
+
+          {lotAreaSqm ? (
+            <SpecItem icon={<Square size={14} className="text-navy-600" />}>
+              {lotAreaSqm.toLocaleString("en-PH")} sqm lot
+            </SpecItem>
+          ) : (
+            <SpecItem icon={<Square size={14} className="text-navy-600" />}>
+              -
+            </SpecItem>
+          )}
+
+          {floorAreaSqm ? (
+            <SpecItem icon={<Ruler size={14} className="text-gold-600" />}>
+              {floorAreaSqm.toLocaleString("en-PH")} sqm floor
+            </SpecItem>
+          ) : null}
+
+          {carport !== undefined && carport !== null ? (
+            <SpecItem icon={<Car size={14} className="text-navy-700" />}>
+              {carport} carport
+            </SpecItem>
+          ) : null}
         </p>
 
         <p className="mt-1 truncate font-medium text-navy-800">
@@ -232,7 +270,7 @@ export function PropertyCard({
         </p>
 
         <p className="flex items-center gap-1 text-sm text-navy-400">
-          <MapPin size={14} />{" "}
+          <MapPin size={14} className="text-gold-600" />{" "}
           {barangay || neighborhoodName || "Davao City"}, Davao City
         </p>
 
