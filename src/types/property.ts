@@ -25,7 +25,10 @@ export interface Property {
   bathrooms: number | null;
   floorAreaSqm: number | null;
   lotAreaSqm: number | null;
-  parkingSpaces?: number | null;
+    parkingSpaces?: number | null;
+  carport?: number | null;
+  listedByName?: string | null;
+  listedByRole?: string | null;
   neighborhoodName: string;
   neighborhoodSlug: string;
   primaryPlace?: string | null;

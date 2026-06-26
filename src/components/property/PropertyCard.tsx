@@ -1,8 +1,11 @@
+"use client";
+
 import Image from "next/image";
-import Link from "next/link";
+import { useState } from "react";
 import { Bath, BedDouble, Car, MapPin, Ruler, Square } from "lucide-react";
 import { FavoriteButton } from "@/components/property/FavoriteButton";
 import { CompareButton } from "@/components/compare/CompareButton";
+import { PropertyQuickViewModal } from "@/components/property/PropertyQuickViewModal";
 
 interface PropertyCardProps {
   id: string;
@@ -59,10 +62,10 @@ function isHouseAndLotType(propertyType?: string | null) {
   );
 }
 
-function shouldShowPricePerSqm(propertyType?: string | null) {
-  const normalized = normalizePropertyType(propertyType);
+function shouldShowPricePerSqm(propertyType?: string | null, title?: string) {
+  const normalized = normalizePropertyType(`${propertyType || ""} ${title || ""}`);
 
-  if (isHouseAndLotType(propertyType)) {
+  if (isHouseAndLotType(normalized)) {
     return false;
   }
 
@@ -135,8 +138,10 @@ export function PropertyCard({
   viewCount = 0,
   saveCount = 0,
 }: PropertyCardProps) {
+  const [quickViewOpen, setQuickViewOpen] = useState(false);
+
   const pricePerSqm =
-    shouldShowPricePerSqm(propertyType) && lotAreaSqm && price
+    shouldShowPricePerSqm(propertyType, title) && lotAreaSqm && price
       ? price / lotAreaSqm
       : null;
 
@@ -147,148 +152,170 @@ export function PropertyCard({
   });
 
   return (
-    <Link
-      href={`/property/${slug}`}
-      className="group flex h-full flex-col overflow-hidden rounded-lg border border-navy-100 bg-white transition-all hover:border-gold-400 hover:shadow-lg"
-    >
-      <div className="image-zoom-frame relative aspect-[4/3] overflow-hidden">
-        <Image
-          src={coverImageUrl || "/placeholder-property.png"}
-          alt={title}
-          fill
-          className="zoomable-image object-cover"
-        />
+    <>
+      <article
+        role="button"
+        tabIndex={0}
+        onClick={() => setQuickViewOpen(true)}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            setQuickViewOpen(true);
+          }
+        }}
+        className="group flex h-full cursor-pointer flex-col overflow-hidden rounded-lg border border-navy-100 bg-white transition-all hover:border-gold-400 hover:shadow-lg"
+      >
+        <div className="image-zoom-frame relative aspect-[4/3] overflow-hidden">
+          <Image
+            src={coverImageUrl || "/placeholder-property.png"}
+            alt={title}
+            fill
+            className="zoomable-image object-cover"
+          />
 
-        <div className="absolute left-3 top-3 flex flex-col items-start gap-1">
-          <span
-            className={`rounded-md px-2 py-1 text-xs font-bold text-white ${
-              listingIntent === "rent"
-                ? "bg-sky-600"
+          <div className="absolute left-3 top-3 flex flex-col items-start gap-1">
+            <span
+              className={`rounded-md px-2 py-1 text-xs font-bold text-white ${
+                listingIntent === "rent"
+                  ? "bg-sky-600"
+                  : listingIntent === "sale_or_rent"
+                    ? "bg-violet-600"
+                    : "bg-emerald-700"
+              }`}
+            >
+              {listingIntent === "rent"
+                ? "FOR RENT"
                 : listingIntent === "sale_or_rent"
-                  ? "bg-violet-600"
-                  : "bg-emerald-700"
-            }`}
-          >
-            {listingIntent === "rent"
-              ? "FOR RENT"
-              : listingIntent === "sale_or_rent"
-                ? "SALE / RENT"
-                : "FOR SALE"}
-          </span>
-
-          {availability !== "available" && (
-            <span className="rounded-md bg-slate-800 px-2 py-1 text-xs font-bold uppercase text-white">
-              {availability}
+                  ? "SALE / RENT"
+                  : "FOR SALE"}
             </span>
-          )}
 
-          {isForeclosed && (
-            <span className="rounded-md bg-gold-500 px-2 py-1 text-xs font-medium text-navy-900">
-              Foreclosed
-            </span>
-          )}
+            {availability !== "available" && (
+              <span className="rounded-md bg-slate-800 px-2 py-1 text-xs font-bold uppercase text-white">
+                {availability}
+              </span>
+            )}
 
-          {financingAvailable && (
-            <span className="rounded-md bg-cyan-500 px-2 py-1 text-xs font-bold text-navy-950">
-              FINANCING
-            </span>
-          )}
+            {isForeclosed && (
+              <span className="rounded-md bg-gold-500 px-2 py-1 text-xs font-medium text-navy-900">
+                Foreclosed
+              </span>
+            )}
 
-          {assumeBalanceAvailable && (
-            <span className="rounded-md bg-orange-500 px-2 py-1 text-xs font-bold text-white">
-              ASSUME
-            </span>
-          )}
+            {financingAvailable && (
+              <span className="rounded-md bg-cyan-500 px-2 py-1 text-xs font-bold text-navy-950">
+                FINANCING
+              </span>
+            )}
+
+            {assumeBalanceAvailable && (
+              <span className="rounded-md bg-orange-500 px-2 py-1 text-xs font-bold text-white">
+                ASSUME
+              </span>
+            )}
+          </div>
+
+          <div onClick={(event) => event.stopPropagation()}>
+            <FavoriteButton propertyId={id} />
+          </div>
+
+          <div onClick={(event) => event.stopPropagation()}>
+            <CompareButton
+              item={{ id, slug, title, listingIntent }}
+              className="absolute right-3 top-14"
+            />
+          </div>
         </div>
 
-        <FavoriteButton propertyId={id} />
-
-        <CompareButton
-          item={{ id, slug, title, listingIntent }}
-          className="absolute right-3 top-14"
-        />
-      </div>
-
-      <div className="flex flex-1 flex-col p-4">
-        {previousPrice && previousPrice > price && (
-          <p className="text-xs font-medium text-red-600">
-            <span className="line-through">{formatPeso(previousPrice)}</span>{" "}
-            · PRICE DOWN
-          </p>
-        )}
-
-        <p className="text-lg font-semibold text-navy-900">
-          {formatPeso(price)}
-        </p>
-
-        {listingIntent !== "sale" && rentPrice && (
-          <p className="text-sm font-semibold text-sky-700">
-            {formatPeso(rentPrice)}/month
-          </p>
-        )}
-
-        {pricePerSqm && (
-          <p className="text-xs font-medium text-navy-500">
-            {formatPeso(pricePerSqm)}/sqm
-          </p>
-        )}
-
-        <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-navy-400">
-          <SpecItem icon={<BedDouble size={14} className="text-navy-700" />}>
-            {bedrooms ?? "-"} bd
-          </SpecItem>
-
-          <SpecItem icon={<Bath size={14} className="text-gold-600" />}>
-            {bathrooms ?? "-"} ba
-          </SpecItem>
-
-          {lotAreaSqm ? (
-            <SpecItem icon={<Square size={14} className="text-navy-600" />}>
-              {lotAreaSqm.toLocaleString("en-PH")} sqm lot
-            </SpecItem>
-          ) : (
-            <SpecItem icon={<Square size={14} className="text-navy-600" />}>
-              -
-            </SpecItem>
+        <div className="flex flex-1 flex-col p-4">
+          {previousPrice && previousPrice > price && (
+            <p className="text-xs font-medium text-red-600">
+              <span className="line-through">{formatPeso(previousPrice)}</span>{" "}
+              · PRICE DOWN
+            </p>
           )}
 
-          {floorAreaSqm ? (
-            <SpecItem icon={<Ruler size={14} className="text-gold-600" />}>
-              {floorAreaSqm.toLocaleString("en-PH")} sqm floor
+          <p className="text-lg font-semibold text-navy-900">
+            {formatPeso(price)}
+          </p>
+
+          {listingIntent !== "sale" && rentPrice && (
+            <p className="text-sm font-semibold text-sky-700">
+              {formatPeso(rentPrice)}/month
+            </p>
+          )}
+
+          {pricePerSqm && (
+            <p className="text-xs font-medium text-navy-500">
+              {formatPeso(pricePerSqm)}/sqm
+            </p>
+          )}
+
+          <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-navy-400">
+            <SpecItem icon={<BedDouble size={14} className="text-navy-700" />}>
+              {bedrooms ?? "-"} bd
             </SpecItem>
-          ) : null}
 
-          {carport !== undefined && carport !== null ? (
-            <SpecItem icon={<Car size={14} className="text-navy-700" />}>
-              {carport} carport
+            <SpecItem icon={<Bath size={14} className="text-gold-600" />}>
+              {bathrooms ?? "-"} ba
             </SpecItem>
-          ) : null}
-        </p>
 
-        <p className="mt-1 truncate font-medium text-navy-800">
-          {title}
-        </p>
+            {lotAreaSqm ? (
+              <SpecItem icon={<Square size={14} className="text-navy-600" />}>
+                {lotAreaSqm.toLocaleString("en-PH")} sqm lot
+              </SpecItem>
+            ) : (
+              <SpecItem icon={<Square size={14} className="text-navy-600" />}>
+                -
+              </SpecItem>
+            )}
 
-        <p className="flex items-center gap-1 text-sm text-navy-400">
-          <MapPin size={14} className="text-gold-600" />{" "}
-          {barangay || neighborhoodName || "Davao City"}, Davao City
-        </p>
+            {floorAreaSqm ? (
+              <SpecItem icon={<Ruler size={14} className="text-gold-600" />}>
+                {floorAreaSqm.toLocaleString("en-PH")} sqm floor
+              </SpecItem>
+            ) : null}
 
-        <div className="mt-auto border-t border-navy-100 pt-3 text-xs text-navy-500">
-          <p className="text-[11px] uppercase tracking-wide text-navy-400">
-            Listed by
+            {carport !== undefined && carport !== null ? (
+              <SpecItem icon={<Car size={14} className="text-navy-700" />}>
+                {carport} carport
+              </SpecItem>
+            ) : null}
           </p>
 
-          <p className="font-medium text-navy-700">
-            {displayListedByName}
-            {listedByRole ? ` · ${listedByRole}` : ""}
+          <p className="mt-1 truncate font-medium text-navy-800">
+            {title}
           </p>
 
-          <p className="mt-1">
-            {daysListed} days on MM Properties · {viewCount} views · {saveCount} saves
+          <p className="flex items-center gap-1 text-sm text-navy-400">
+            <MapPin size={14} className="text-gold-600" />{" "}
+            {barangay || neighborhoodName || "Davao City"}, Davao City
           </p>
+
+          <div className="mt-auto border-t border-navy-100 pt-3 text-xs text-navy-500">
+            <p className="text-[11px] uppercase tracking-wide text-navy-400">
+              Listed by
+            </p>
+
+            <p className="font-medium text-navy-700">
+              {displayListedByName}
+              {listedByRole ? ` · ${listedByRole}` : ""}
+            </p>
+
+            <p className="mt-1">
+              {daysListed} days on MM Properties · {viewCount} views · {saveCount} saves
+            </p>
+          </div>
         </div>
-      </div>
-    </Link>
+      </article>
+
+      <PropertyQuickViewModal
+        slug={slug}
+        open={quickViewOpen}
+        onClose={() => setQuickViewOpen(false)}
+        fallbackTitle={title}
+        fallbackImageUrl={coverImageUrl}
+      />
+    </>
   );
 }
