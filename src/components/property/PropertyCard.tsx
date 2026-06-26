@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { BedDouble, Bath, Car, MapPin, Ruler, Square } from "lucide-react";
+import { MapPin } from "lucide-react";
 import { FavoriteButton } from "@/components/property/FavoriteButton";
 import { CompareButton } from "@/components/compare/CompareButton";
 
@@ -40,25 +40,42 @@ function formatPeso(value: number) {
   return `PHP ${Math.round(value).toLocaleString("en-PH")}`;
 }
 
-function isLotType(propertyType?: string | null) {
-  const normalized = String(propertyType || "").toLowerCase();
-
-  return (
-    normalized.includes("lot") ||
-    normalized.includes("land") ||
-    normalized.includes("commercial lot")
-  );
+function normalizePropertyType(propertyType?: string | null) {
+  return String(propertyType || "")
+    .toLowerCase()
+    .replace(/[-_]/g, " ")
+    .trim();
 }
 
-function isHouseType(propertyType?: string | null) {
-  const normalized = String(propertyType || "").toLowerCase();
+function isHouseAndLotType(propertyType?: string | null) {
+  const normalized = normalizePropertyType(propertyType);
 
   return (
     normalized.includes("house") ||
-    normalized.includes("home") ||
-    normalized.includes("residential") ||
+    normalized.includes("bungalow") ||
     normalized.includes("townhouse") ||
-    normalized.includes("duplex")
+    normalized.includes("duplex") ||
+    normalized.includes("home")
+  );
+}
+
+function shouldShowPricePerSqm(propertyType?: string | null) {
+  const normalized = normalizePropertyType(propertyType);
+
+  if (isHouseAndLotType(propertyType)) {
+    return false;
+  }
+
+  return (
+    normalized === "lot" ||
+    normalized === "lot only" ||
+    normalized.includes("lot only") ||
+    normalized.includes("commercial lot") ||
+    normalized.includes("residential lot") ||
+    normalized.includes("farm lot") ||
+    normalized.includes("beach lot") ||
+    normalized.includes("industrial lot") ||
+    normalized.includes("land")
   );
 }
 
@@ -98,16 +115,14 @@ export function PropertyCard({
   agencyName,
   listedByName,
   listedByRole,
-  carport,
   daysListed = 0,
   viewCount = 0,
   saveCount = 0,
 }: PropertyCardProps) {
-  const lotLike = isLotType(propertyType);
-  const houseLike = isHouseType(propertyType);
-
   const pricePerSqm =
-    lotLike && lotAreaSqm && price ? price / lotAreaSqm : null;
+    shouldShowPricePerSqm(propertyType) && lotAreaSqm && price
+      ? price / lotAreaSqm
+      : null;
 
   const displayListedByName = getListedByName({
     listedByName,
@@ -204,55 +219,19 @@ export function PropertyCard({
           </p>
         )}
 
-        <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-sm text-navy-500">
-          {houseLike && (
-            <>
-              <span className="inline-flex items-center gap-1">
-                <BedDouble size={14} /> {bedrooms ?? "-"} bd
-              </span>
+        <p className="text-sm text-navy-400">
+          {bedrooms ?? "-"} bd · {bathrooms ?? "-"} ba ·{" "}
+          {lotAreaSqm ? `${lotAreaSqm.toLocaleString("en-PH")} sqm lot` : `${floorAreaSqm ?? "-"} sqm`}
+          {lotAreaSqm && floorAreaSqm
+            ? ` · ${floorAreaSqm.toLocaleString("en-PH")} sqm floor`
+            : ""}
+        </p>
 
-              <span className="inline-flex items-center gap-1">
-                <Bath size={14} /> {bathrooms ?? "-"} ba
-              </span>
-            </>
-          )}
-
-          {!houseLike && !lotLike && (
-            <>
-              <span className="inline-flex items-center gap-1">
-                <BedDouble size={14} /> {bedrooms ?? "-"} bd
-              </span>
-
-              <span className="inline-flex items-center gap-1">
-                <Bath size={14} /> {bathrooms ?? "-"} ba
-              </span>
-            </>
-          )}
-
-          {lotAreaSqm !== undefined && lotAreaSqm !== null && (
-            <span className="inline-flex items-center gap-1">
-              <Square size={14} /> {lotAreaSqm.toLocaleString("en-PH")} sqm lot
-            </span>
-          )}
-
-          {floorAreaSqm !== undefined && floorAreaSqm !== null && (
-            <span className="inline-flex items-center gap-1">
-              <Ruler size={14} /> {floorAreaSqm.toLocaleString("en-PH")} sqm floor
-            </span>
-          )}
-
-          {houseLike && carport !== undefined && carport !== null && (
-            <span className="inline-flex items-center gap-1">
-              <Car size={14} /> {carport} carport
-            </span>
-          )}
-        </div>
-
-        <p className="mt-2 truncate font-medium text-navy-800">
+        <p className="mt-1 truncate font-medium text-navy-800">
           {title}
         </p>
 
-        <p className="mt-1 flex items-center gap-1 text-sm text-navy-400">
+        <p className="flex items-center gap-1 text-sm text-navy-400">
           <MapPin size={14} />{" "}
           {barangay || neighborhoodName || "Davao City"}, Davao City
         </p>
