@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 
 import { FilterBar } from "@/components/search/FilterBar";
-import { PropertyCard } from "@/components/property/PropertyCard";
+import { PropertyQuickViewCard } from "@/components/property/PropertyQuickViewCard";
 import type { Property, PropertySearchFilters } from "@/types/property";
 
 const MapView = dynamic(() => import("@/components/search/MapView").then((m) => m.MapView), { ssr: false });
@@ -73,7 +73,7 @@ export default function SearchPage() {
           {error && <p className="mb-3 rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</p>}
           <div className="grid grid-cols-2 gap-4">
             {results.map((property) => (
-              <PropertyCard
+              <PropertyQuickViewCard
                 key={property.id}
                 id={property.id}
                 slug={property.slug}
