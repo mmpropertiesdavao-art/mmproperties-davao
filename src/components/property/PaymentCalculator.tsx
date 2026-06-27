@@ -1,10 +1,12 @@
 // src/components/property/PaymentCalculator.tsx
 "use client";
+
 import { useState } from "react";
 
 interface PaymentCalculatorProps {
   price: number;
   defaultDownpaymentPercent?: number;
+  className?: string;
 }
 
 /**
@@ -19,7 +21,7 @@ function monthlyPayment(principal: number, annualRatePercent: number, years: num
   return (principal * r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
 }
 
-export function PaymentCalculator({ price, defaultDownpaymentPercent = 20 }: PaymentCalculatorProps) {
+export function PaymentCalculator({ price, defaultDownpaymentPercent = 20, className = "" }: PaymentCalculatorProps) {
   const [downpaymentPercent, setDownpaymentPercent] = useState(defaultDownpaymentPercent);
   const [annualRate, setAnnualRate] = useState(6.5); // typical PH bank housing loan rate, illustrative
   const [termYears, setTermYears] = useState(20);
@@ -29,11 +31,11 @@ export function PaymentCalculator({ price, defaultDownpaymentPercent = 20 }: Pay
   const monthly = monthlyPayment(loanAmount, annualRate, termYears);
 
   return (
-    <div className="rounded-xl border p-5">
+    <div className={`rounded-xl border border-navy-100 bg-white p-5 text-navy-900 shadow-sm ${className}`}>
       <h3 className="mb-4 text-lg font-semibold">Payment &amp; loan calculator</h3>
 
       <label className="mb-3 block text-sm">
-        Downpayment: {downpaymentPercent}% (₱{downpaymentAmount.toLocaleString(undefined, { maximumFractionDigits: 0 })})
+        Downpayment: {downpaymentPercent}% (PHP {downpaymentAmount.toLocaleString("en-PH", { maximumFractionDigits: 0 })})
         <input
           type="range"
           min={10}
@@ -73,9 +75,9 @@ export function PaymentCalculator({ price, defaultDownpaymentPercent = 20 }: Pay
 
       <div className="rounded-lg bg-gray-50 p-4">
         <p className="text-sm text-gray-600">Estimated monthly payment</p>
-        <p className="text-2xl font-semibold">₱{monthly.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+        <p className="text-2xl font-semibold">PHP {monthly.toLocaleString("en-PH", { maximumFractionDigits: 0 })}</p>
         <p className="mt-1 text-xs text-gray-500">
-          Loan amount ₱{loanAmount.toLocaleString(undefined, { maximumFractionDigits: 0 })} at {annualRate}% over {termYears} years.
+          Loan amount PHP {loanAmount.toLocaleString("en-PH", { maximumFractionDigits: 0 })} at {annualRate}% over {termYears} years.
           Estimate only — actual terms depend on the lender and buyer qualification.
         </p>
       </div>

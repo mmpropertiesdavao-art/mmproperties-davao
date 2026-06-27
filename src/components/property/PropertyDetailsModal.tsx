@@ -19,6 +19,7 @@ import type { Property } from "@/types/property";
 import { InquiryForm } from "@/components/property/InquiryForm";
 import { FavoriteButton } from "@/components/property/FavoriteButton";
 import { CompareButton } from "@/components/compare/CompareButton";
+import { PaymentCalculator } from "@/components/property/PaymentCalculator";
 
 type GalleryImage = { url: string; altText: string | null };
 type Video = { id: string; url: string; thumbnailUrl?: string | null; videoType?: string };
@@ -127,10 +128,10 @@ export function PropertyDetailsModal({ payload }: { payload: PropertyDetailPaylo
 
   return (
     <>
-      <div className="grid flex-1 overflow-y-auto lg:grid-cols-[minmax(0,1.08fr)_420px]">
-        <section className="border-r border-navy-100 bg-slate-950 p-3 text-white md:p-5">
+      <div className="grid min-h-0 flex-1 overflow-y-auto lg:grid-cols-[minmax(0,1.08fr)_420px] lg:overflow-hidden">
+        <section className="border-r border-navy-100 bg-slate-950 p-3 text-white md:p-5 lg:flex lg:h-full lg:flex-col lg:overflow-hidden">
           <div
-            className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-black md:aspect-[16/10]"
+            className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-black md:aspect-[16/10] lg:min-h-0 lg:flex-1 lg:aspect-auto"
             onTouchStart={(event) => {
               touchStartX.current = event.touches[0]?.clientX ?? null;
             }}
@@ -180,13 +181,13 @@ export function PropertyDetailsModal({ payload }: { payload: PropertyDetailPaylo
           </div>
 
           {images.length > 1 && (
-            <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+            <div className="mt-3 flex shrink-0 gap-2 overflow-x-auto pb-1">
               {images.map((image, index) => (
                 <button
                   key={`${image.url}-${index}`}
                   type="button"
                   onClick={() => setActiveIndex(index)}
-                  className={`image-zoom-frame h-20 w-28 shrink-0 overflow-hidden rounded-xl border-2 bg-white/10 ${
+                  className={`image-zoom-frame h-16 w-24 shrink-0 overflow-hidden rounded-xl border-2 bg-white/10 md:h-20 md:w-28 lg:h-14 lg:w-20 ${
                     index === activeIndex ? "border-gold-400" : "border-transparent"
                   }`}
                   aria-label={`Show property photo ${index + 1}`}
@@ -204,9 +205,17 @@ export function PropertyDetailsModal({ payload }: { payload: PropertyDetailPaylo
               ))}
             </div>
           )}
+
+          {property.price > 0 && property.listingIntent !== "rent" && (
+            <PaymentCalculator
+              price={property.price}
+              defaultDownpaymentPercent={property.downpaymentPercent ?? 20}
+              className="mt-4 shrink-0 text-sm [&_h3]:mb-3 [&_h3]:text-base [&_label]:mb-2"
+            />
+          )}
         </section>
 
-        <aside className="bg-white p-5 md:p-7">
+        <aside className="bg-white p-5 md:p-7 lg:h-full lg:overflow-y-auto">
           <div className="mb-3 flex items-start justify-between gap-3">
             <div className="flex flex-wrap items-center gap-2">
               <span className={`rounded-md px-3 py-1 text-xs font-bold uppercase text-white ${intentClass(property.listingIntent)}`}>
