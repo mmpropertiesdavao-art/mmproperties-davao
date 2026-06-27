@@ -1,11 +1,9 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import Image from "next/image";
 import "./globals.css";
 import "./interactive.css";
-import { AccountLink } from "@/components/auth/AccountLink";
 import { CompareTray } from "@/components/compare/CompareTray";
 import { PropertyModalProvider } from "@/components/property/PropertyModalProvider";
+import { SiteHeader } from "@/components/layout/SiteHeader";
 import { Figtree } from "next/font/google";
 
 const figtree=Figtree({subsets:["latin"],display:"swap"});
@@ -44,65 +42,8 @@ export default function RootLayout({
         />
 
         <PropertyModalProvider>
-        <header className="border-b border-navy-800 bg-navy-900 text-white">
-  <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-8">
-
-    {/* LEFT SIDE - LOGO */}
-    <Link href="/" className="flex items-center gap-4">
-      <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-white shadow-md">
-        <Image
-          src="/logo.jpg"
-          alt="MM Properties"
-          width={58}
-          height={58}
-          className="object-contain"
-          priority
-        />
-      </div>
-
-      <div>
-        <div className="text-3xl font-bold leading-none">
-          MM <span className="text-gold-400">Properties</span>
-        </div>
-        <div className="text-sm text-slate-300">
-          Davao Real Estate
-        </div>
-      </div>
-    </Link>
-
-    {/* RIGHT SIDE - NAVIGATION */}
-    <nav className="flex items-center gap-8 text-sm font-medium">
-      <Link href="/search" className="transition hover:text-gold-400">
-        Search
-      </Link>
-
-      <Link href="/neighborhoods" className="transition hover:text-gold-400">
-        Neighborhoods
-      </Link>
-
-      <Link href="/compare" className="transition hover:text-gold-400">
-        Compare
-      </Link>
-
-      <Link href="/matcher" className="transition hover:text-gold-400">
-        MM Pulse
-      </Link>
-
-      <Link href="/guides" className="transition hover:text-gold-400">
-        Guides
-      </Link>
-
-      <Link href="/about" className="transition hover:text-gold-400">
-        Contact Us
-      </Link>
-
-      <AccountLink />
-    </nav>
-
-  </div>
-</header>
-
-        <main>{children}</main><CompareTray />
+        <SiteHeader />
+        <main className="overflow-x-clip">{children}</main><CompareTray />
         </PropertyModalProvider>
       </body>
     </html>

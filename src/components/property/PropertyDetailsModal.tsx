@@ -267,7 +267,7 @@ export function PropertyDetailsModal({ payload }: { payload: PropertyDetailPaylo
             <span>{propertyLocation}</span>
           </p>
 
-          <div className="mt-5 grid grid-cols-2 gap-3">
+          <div className="mt-5 grid gap-3 sm:grid-cols-2">
             {stats.map((item) => (
               <div key={item.label} className="rounded-xl border border-navy-100 bg-navy-50 p-3">
                 <div className="flex items-center gap-2 text-navy-500">

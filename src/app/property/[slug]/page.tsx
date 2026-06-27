@@ -74,8 +74,8 @@ export default async function PropertyPage({
 
       <PropertyGallery images={images.map((image) => ({ url: image.url, altText: image.alt_text }))} title={property.title} />
 
-      <div className="grid grid-cols-3 gap-8">
-        <div className="col-span-2">
+      <div className="grid gap-8 lg:grid-cols-3">
+        <div className="lg:col-span-2">
           <div className="mb-3 flex flex-wrap gap-2">
             <span className={`rounded-md px-3 py-1 text-xs font-bold text-white ${property.listingIntent === "rent" ? "bg-sky-600" : property.listingIntent === "sale_or_rent" ? "bg-violet-600" : "bg-emerald-700"}`}>
               {property.listingIntent === "rent" ? "FOR RENT" : property.listingIntent === "sale_or_rent" ? "FOR SALE OR RENT" : "FOR SALE"}

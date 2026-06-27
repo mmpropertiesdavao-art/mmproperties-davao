@@ -29,6 +29,7 @@ interface FilterBarProps {
 export function FilterBar({ onChange }: FilterBarProps) {
   const [filters, setFilters] = useState<PropertySearchFilters>({});
   const [developers,setDevelopers]=useState<{id:string;name:string}[]>([]);
+  const [open,setOpen]=useState(false);
   useEffect(()=>{fetch("/api/developers").then(r=>r.json()).then(setDevelopers).catch(()=>{})},[]);
 
   function update(partial: Partial<PropertySearchFilters>) {
@@ -38,12 +39,17 @@ export function FilterBar({ onChange }: FilterBarProps) {
   }
 
   return (
-    <div className="flex flex-wrap gap-3 border-b bg-white p-4">
-      <select className="rounded-md border px-3 py-2 text-sm" onChange={(e) => update({ listingIntent: (e.target.value || undefined) as PropertySearchFilters["listingIntent"] })}>
+    <div className="border-b bg-white p-4">
+      <button type="button" onClick={()=>setOpen(value=>!value)} className="mb-3 flex w-full items-center justify-between rounded-lg border border-navy-200 px-4 py-3 text-sm font-semibold text-navy-900 md:hidden" aria-expanded={open}>
+        Filters
+        <span>{open ? "Hide" : "Show"}</span>
+      </button>
+      <div className={`${open ? "grid" : "hidden"} gap-3 md:flex md:flex-wrap`}>
+      <select className="w-full rounded-md border px-3 py-2 text-sm md:w-auto" onChange={(e) => update({ listingIntent: (e.target.value || undefined) as PropertySearchFilters["listingIntent"] })}>
         <option value="">For sale or rent</option><option value="sale">For sale</option><option value="rent">For rent</option><option value="sale_or_rent">Sale or rent</option>
       </select>
       <select
-        className="rounded-md border px-3 py-2 text-sm"
+        className="w-full rounded-md border px-3 py-2 text-sm md:w-auto"
         onChange={(e) => {
           const band = PRICE_BANDS[Number(e.target.value)];
           update({ minPrice: band?.min, maxPrice: band?.max });
@@ -58,7 +64,7 @@ export function FilterBar({ onChange }: FilterBarProps) {
       </select>
 
       <select
-        className="rounded-md border px-3 py-2 text-sm"
+        className="w-full rounded-md border px-3 py-2 text-sm md:w-auto"
         onChange={(e) => update({ propertyType: (e.target.value || undefined) as PropertyTypeSlug | undefined })}
       >
         <option value="">Property type</option>
@@ -69,7 +75,7 @@ export function FilterBar({ onChange }: FilterBarProps) {
         ))}
       </select>
 
-      <select className="rounded-md border px-3 py-2 text-sm" onChange={(e) => update({ minBedrooms: e.target.value ? Number(e.target.value) : undefined })}>
+      <select className="w-full rounded-md border px-3 py-2 text-sm md:w-auto" onChange={(e) => update({ minBedrooms: e.target.value ? Number(e.target.value) : undefined })}>
         <option value="">Bedrooms</option>
         {[1, 2, 3, 4, 5].map((n) => (
           <option key={n} value={n}>
@@ -79,7 +85,7 @@ export function FilterBar({ onChange }: FilterBarProps) {
       </select>
 
       <select
-        className="rounded-md border px-3 py-2 text-sm"
+        className="w-full rounded-md border px-3 py-2 text-sm md:w-auto"
         onChange={(e) => update({ maxMonthlyAmortization: e.target.value ? Number(e.target.value) : undefined })}
       >
         <option value="">Monthly amortization</option>
@@ -91,7 +97,7 @@ export function FilterBar({ onChange }: FilterBarProps) {
       </select>
 
       <select
-        className="rounded-md border px-3 py-2 text-sm"
+        className="w-full rounded-md border px-3 py-2 text-sm md:w-auto"
         onChange={(e) => update({ minDownpaymentPercent: e.target.value ? Number(e.target.value) : undefined })}
       >
         <option value="">Downpayment</option>
@@ -102,7 +108,7 @@ export function FilterBar({ onChange }: FilterBarProps) {
         ))}
       </select>
 
-      <select className="rounded-md border px-3 py-2 text-sm" onChange={(e) => update({ developerName: e.target.value || undefined })}>
+      <select className="w-full rounded-md border px-3 py-2 text-sm md:w-auto" onChange={(e) => update({ developerName: e.target.value || undefined })}>
         <option value="">Developer</option>
         {developers.map((d) => (
           <option key={d.id} value={d.name}>
@@ -111,21 +117,22 @@ export function FilterBar({ onChange }: FilterBarProps) {
         ))}
       </select>
 
-      <div className="flex flex-col gap-2">
-      <label className="flex items-center gap-2 text-sm">
+      <div className="flex flex-col gap-2 rounded-lg bg-navy-50 p-3 md:bg-transparent md:p-0">
+      <label className="flex min-h-11 items-center gap-2 text-sm md:min-h-0">
         <input type="checkbox" checked={Boolean(filters.financingAvailable)} onChange={(e) => update({ financingAvailable: e.target.checked || undefined })} />
         Financing available
       </label>
-      <label className="flex items-center gap-2 text-sm">
+      <label className="flex min-h-11 items-center gap-2 text-sm md:min-h-0">
         <input type="checkbox" checked={Boolean(filters.assumeBalanceAvailable)} onChange={(e) => update({ assumeBalanceAvailable: e.target.checked || undefined })} />
         Assume balance
       </label>
-      <label className="flex items-center gap-2 text-sm">
+      <label className="flex min-h-11 items-center gap-2 text-sm md:min-h-0">
         <input type="checkbox" onChange={(e) => update({ isForeclosed: e.target.checked || undefined })} />
         Foreclosed only
       </label>
       </div>
       {(filters.financingAvailable || filters.assumeBalanceAvailable || filters.isForeclosed) && <div className="flex flex-wrap items-center gap-1.5 text-xs"><span className="font-medium text-navy-500">Active:</span>{filters.financingAvailable&&<span className="rounded-full bg-cyan-100 px-2 py-1 font-semibold text-cyan-800">Financing</span>}{filters.assumeBalanceAvailable&&<span className="rounded-full bg-orange-100 px-2 py-1 font-semibold text-orange-800">Assume balance</span>}{filters.isForeclosed&&<span className="rounded-full bg-gold-100 px-2 py-1 font-semibold text-gold-800">Foreclosed</span>}</div>}
+      </div>
     </div>
   );
 }

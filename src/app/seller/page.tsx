@@ -131,7 +131,7 @@ export default async function SellerDashboardPage() {
               </Link>
             </div>
           ) : (
-            <div className="mt-6 overflow-hidden rounded-xl border">
+            <div className="responsive-card-table mt-6 overflow-hidden rounded-xl border">
               <table className="w-full text-left text-sm">
                 <thead className="bg-gray-50 text-gray-600">
                   <tr>
@@ -146,7 +146,7 @@ export default async function SellerDashboardPage() {
                 <tbody className="divide-y">
                   {properties.map((property) => (
                     <tr key={property.id}>
-                      <td className="px-4 py-3">
+                      <td data-label="Property" className="px-4 py-3">
                         <div className="font-medium text-gray-900">
                           {property.title}
                         </div>
@@ -155,21 +155,21 @@ export default async function SellerDashboardPage() {
                         </div>
                       </td>
 
-                      <td className="px-4 py-3 text-gray-700">
+                      <td data-label="Location" className="px-4 py-3 text-gray-700">
                         {property.barangay || 'Not set'}
                       </td>
 
-                      <td className="px-4 py-3 text-gray-700">
+                      <td data-label="Price" className="px-4 py-3 text-gray-700">
                         {formatPrice(property.price)}
                       </td>
 
-                      <td className="px-4 py-3">
+                      <td data-label="Status" className="px-4 py-3">
                         <span className="rounded-full bg-gray-100 px-2 py-1 text-xs text-gray-700">
                           {property.status || 'draft'}
                         </span>
                       </td>
 
-                      <td className="px-4 py-3">
+                      <td data-label="Action" className="px-4 py-3">
                         <Link
                           href={`/seller/properties/${property.id}`}
                           className="font-medium text-gray-900 underline"

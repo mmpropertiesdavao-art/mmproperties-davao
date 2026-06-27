@@ -39,14 +39,14 @@ export function FeaturedPropertyCarousel({ properties }: { properties: Property[
           </p>
         </div>
 
-        <div className="group overflow-hidden">
-          <div className="flex w-max gap-4 overflow-x-auto pb-2 [scrollbar-width:none] group-hover:[animation-play-state:paused] md:animate-[featuredCarousel_38s_linear_infinite] md:overflow-visible">
+        <div className="group max-w-full overflow-hidden [contain:layout_paint]">
+          <div className="flex w-full max-w-full gap-4 overflow-x-auto pb-2 [scrollbar-width:none] group-hover:[animation-play-state:paused] md:w-max md:max-w-none md:animate-[featuredCarousel_38s_linear_infinite] md:overflow-visible">
             {items.map((property, index) => (
               <button
                 key={`${property.id}-${index}`}
                 type="button"
                 onClick={() => propertyModal?.openProperty(property.slug)}
-                className="image-zoom-frame w-[270px] shrink-0 overflow-hidden rounded-2xl border border-navy-100 bg-white text-left shadow-sm transition hover:-translate-y-1 hover:border-gold-400 hover:shadow-lg sm:w-[310px]"
+                className="image-zoom-frame w-[270px] max-w-[270px] shrink-0 basis-[270px] overflow-hidden rounded-2xl border border-navy-100 bg-white text-left shadow-sm transition hover:-translate-y-1 hover:border-gold-400 hover:shadow-lg sm:w-[310px] sm:max-w-[310px] sm:basis-[310px]"
               >
                 <div className="relative h-40 overflow-hidden bg-navy-50">
                   <img

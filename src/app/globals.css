@@ -38,7 +38,107 @@
   }
 }
 
-body { font-family: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif; }
+html {
+  overflow-x: hidden;
+}
+
+body {
+  overflow-x: hidden;
+  font-family: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+img,
+video,
+canvas,
+svg {
+  max-width: 100%;
+}
+
+img:not([class*="h-"]),
+video:not([class*="h-"]) {
+  height: auto;
+}
+
+input,
+select,
+textarea,
+button {
+  font: inherit;
+}
+
+@media (max-width: 767px) {
+  button,
+  input,
+  select,
+  textarea,
+  a[role="button"] {
+    min-height: 44px;
+  }
+
+  .responsive-card-table {
+    overflow: visible;
+  }
+
+  .responsive-card-table table,
+  .responsive-card-table thead,
+  .responsive-card-table tbody,
+  .responsive-card-table th,
+  .responsive-card-table td,
+  .responsive-card-table tr {
+    display: block;
+  }
+
+  .responsive-card-table table {
+    min-width: 0 !important;
+  }
+
+  .responsive-card-table thead {
+    position: absolute;
+    height: 1px;
+    width: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .responsive-card-table tbody {
+    display: grid;
+    gap: 0.75rem;
+    padding: 0.75rem;
+  }
+
+  .responsive-card-table tr {
+    border: 1px solid rgb(226 232 240);
+    border-radius: 0.875rem;
+    background: white;
+    overflow: hidden;
+  }
+
+  .responsive-card-table td {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.75rem 1rem;
+    text-align: right;
+    border-top: 1px solid rgb(241 245 249);
+  }
+
+  .responsive-card-table td:first-child {
+    border-top: 0;
+    text-align: left;
+  }
+
+  .responsive-card-table td::before {
+    content: attr(data-label);
+    flex: 0 0 38%;
+    text-align: left;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: #64748b;
+    text-transform: uppercase;
+  }
+}
 
 .zoomable-image {
   cursor: zoom-in;

@@ -125,7 +125,7 @@ export function PlacesManager() {
               <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search places, kind, aliases, status..." className="w-full bg-transparent text-sm outline-none" />
             </div>
 
-            <div className="overflow-x-auto">
+            <div className="responsive-card-table overflow-x-auto">
               <table className="w-full min-w-[760px] text-left text-sm">
                 <thead className="bg-navy-50 text-xs uppercase tracking-wide text-navy-500">
                   <tr>
@@ -141,19 +141,19 @@ export function PlacesManager() {
                     const hasPin = Number.isFinite(Number(place.lat)) && Number.isFinite(Number(place.lng));
                     return (
                       <tr key={place.id} className={`border-t border-navy-100 ${selected?.id === place.id ? "bg-gold-50" : "hover:bg-navy-50/60"}`}>
-                        <td className="p-3">
+                        <td data-label="Place" className="p-3">
                           <p className="font-bold text-navy-900">{place.name}</p>
                           <p className="text-xs text-navy-400">{place.status}{place.aliases?.length ? ` · aliases: ${place.aliases.join(", ")}` : ""}</p>
                         </td>
-                        <td className="p-3 capitalize">{place.kind}</td>
-                        <td className="p-3">{place.propertyCount} listing{place.propertyCount === 1 ? "" : "s"}</td>
-                        <td className="p-3">
+                        <td data-label="Kind" className="p-3 capitalize">{place.kind}</td>
+                        <td data-label="Used by" className="p-3">{place.propertyCount} listing{place.propertyCount === 1 ? "" : "s"}</td>
+                        <td data-label="Pin" className="p-3">
                           <span className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-semibold ${hasPin ? "bg-green-50 text-green-700" : "bg-amber-50 text-amber-700"}`}>
                             <MapPin size={13} />
                             {hasPin ? `${Number(place.lat).toFixed(5)}, ${Number(place.lng).toFixed(5)}` : "Needs pin"}
                           </span>
                         </td>
-                        <td className="p-3 text-right">
+                        <td data-label="Action" className="p-3 text-right">
                           <button type="button" onClick={() => choose(place)} className="rounded-lg border border-gold-300 px-3 py-2 text-xs font-bold text-navy-800 hover:bg-gold-50">
                             Pin / edit
                           </button>
@@ -184,7 +184,7 @@ export function PlacesManager() {
                   <input value={selected.name} onChange={(event) => setSelected({ ...selected, name: event.target.value })} className="mt-1 w-full rounded-lg border border-navy-200 px-3 py-2 text-sm" />
                 </label>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid gap-3 sm:grid-cols-2">
                   <label className="text-sm font-semibold text-navy-700">
                     Kind
                     <select value={selected.kind} onChange={(event) => setSelected({ ...selected, kind: event.target.value })} className="mt-1 w-full rounded-lg border border-navy-200 px-3 py-2 text-sm">
@@ -202,7 +202,7 @@ export function PlacesManager() {
 
               <LocationPicker value={pin} onChange={setPin} />
 
-              <div className="grid grid-cols-2 gap-3 text-sm">
+              <div className="grid gap-3 text-sm sm:grid-cols-2">
                 <div className="rounded-lg bg-navy-50 p-3">
                   <p className="text-xs uppercase tracking-wide text-navy-400">Latitude</p>
                   <p className="font-bold text-navy-900">{pin ? pin.lat.toFixed(6) : "Not pinned"}</p>

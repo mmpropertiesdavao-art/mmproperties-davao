@@ -1,6 +1,157 @@
-"use client";import{useState}from"react";import type{BlogBlock,BlogBlockType}from"@/lib/blog-blocks";
-export async function uploadBlogImage(file:File){const form=new FormData();form.append("file",await optimize(file));const r=await fetch("/api/admin/blog/upload",{method:"POST",body:form}),d=await r.json();if(!r.ok)throw new Error(d.error||"Image upload failed.");return d.url as string}
-async function optimize(file:File){try{const b=await createImageBitmap(file),scale=Math.min(1,2000/b.width),c=document.createElement("canvas");c.width=Math.round(b.width*scale);c.height=Math.round(b.height*scale);c.getContext("2d")?.drawImage(b,0,0,c.width,c.height);b.close();const blob=await new Promise<Blob|null>(x=>c.toBlob(x,"image/webp",.84));return blob?new File([blob],file.name.replace(/\.[^.]+$/,".webp"),{type:"image/webp"}):file}catch{return file}}
-const buttons:{type:BlogBlockType;label:string}[]=[{type:"paragraph",label:"Text"},{type:"heading",label:"Heading"},{type:"list",label:"List"},{type:"quote",label:"Quote"},{type:"image",label:"Image"},{type:"button",label:"Button"},{type:"partner_cta",label:"Invite brokers/appraisers"},{type:"divider",label:"Divider"}];
-const fresh=(type:BlogBlockType):BlogBlock=>({id:crypto.randomUUID(),type,text:type==="button"?"Learn more":type==="partner_cta"?"Are you a broker or property appraiser?":"",level:type==="heading"?2:undefined,partnerType:type==="partner_cta"?"both":undefined});
-export function BlockEditor({value,onChange}:{value:BlogBlock[];onChange:(b:BlogBlock[])=>void}){const[uploading,setUploading]=useState<string|null>(null);const update=(i:number,p:Partial<BlogBlock>)=>onChange(value.map((b,j)=>i===j?{...b,...p}:b));const move=(i:number,d:number)=>{const j=i+d;if(j<0||j>=value.length)return;const n=[...value];[n[i],n[j]]=[n[j],n[i]];onChange(n)};async function image(i:number,file?:File){if(!file)return;setUploading(value[i].id);try{update(i,{url:await uploadBlogImage(file),alt:file.name.replace(/\.[^.]+$/,'')})}finally{setUploading(null)}}return <div><div className="flex flex-wrap gap-2 rounded-lg border bg-navy-50 p-3">{buttons.map(b=><button key={b.type} type="button" onClick={()=>onChange([...value,fresh(b.type)])} className="rounded-md border bg-white px-3 py-2 text-sm hover:border-gold-400">+ {b.label}</button>)}</div><div className="mt-4 space-y-3">{value.map((b,i)=><div key={b.id} className="rounded-lg border bg-white p-4"><div className="mb-3 flex justify-between"><span className="text-xs font-bold uppercase text-navy-400">{b.type.replace('_',' ')}</span><div className="flex gap-3"><button type="button" onClick={()=>move(i,-1)}>↑</button><button type="button" onClick={()=>move(i,1)}>↓</button><button type="button" onClick={()=>onChange(value.filter((_,j)=>j!==i))} className="text-red-600">Remove</button></div></div>{b.type==="heading"&&<div className="flex gap-2"><select value={b.level||2} onChange={e=>update(i,{level:+e.target.value as 1|2|3})} className="rounded border"><option value="1">H1</option><option value="2">H2</option><option value="3">H3</option></select><input value={b.text||""} onChange={e=>update(i,{text:e.target.value})} className="w-full rounded border p-2"/></div>}{["paragraph","quote"].includes(b.type)&&<textarea value={b.text||""} onChange={e=>update(i,{text:e.target.value})} rows={4} className="w-full rounded border p-2"/>}{b.type==="list"&&<><label className="text-xs"><input type="checkbox" checked={!!b.ordered} onChange={e=>update(i,{ordered:e.target.checked})}/> Numbered</label><textarea value={b.text||""} onChange={e=>update(i,{text:e.target.value})} rows={4} placeholder="One item per line" className="mt-2 w-full rounded border p-2"/></>}{b.type==="image"&&<div>{b.url&&<img src={b.url} alt="" className="mb-3 max-h-64 w-full object-cover"/>}<input type="file" accept="image/*" onChange={e=>void image(i,e.target.files?.[0])}/>{uploading===b.id&&<p>Uploading…</p>}<input value={b.alt||""} onChange={e=>update(i,{alt:e.target.value})} placeholder="Alt text" className="mt-2 w-full rounded border p-2"/></div>}{b.type==="button"&&<div className="grid gap-2 sm:grid-cols-2"><input value={b.text||""} onChange={e=>update(i,{text:e.target.value})} placeholder="Label" className="rounded border p-2"/><input value={b.url||""} onChange={e=>update(i,{url:e.target.value})} placeholder="URL" className="rounded border p-2"/></div>}{b.type==="partner_cta"&&<div className="grid gap-2 sm:grid-cols-2"><input value={b.text||""} onChange={e=>update(i,{text:e.target.value})} placeholder="Invitation headline" className="rounded border p-2"/><select value={b.partnerType||"both"} onChange={e=>update(i,{partnerType:e.target.value as BlogBlock["partnerType"]})} className="rounded border p-2"><option value="both">Brokers and appraisers</option><option value="broker">Brokers</option><option value="appraiser">Appraisers</option></select></div>}{b.type==="divider"&&<hr/>}</div>)}</div></div>}
+"use client";
+
+import { useState } from "react";
+import type { BlogBlock, BlogBlockType } from "@/lib/blog-blocks";
+
+export async function uploadBlogImage(file: File) {
+  const form = new FormData();
+  form.append("file", await optimize(file));
+  const response = await fetch("/api/admin/blog/upload", { method: "POST", body: form });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || "Image upload failed.");
+  return data.url as string;
+}
+
+async function optimize(file: File) {
+  try {
+    const bitmap = await createImageBitmap(file);
+    const scale = Math.min(1, 2000 / bitmap.width);
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(bitmap.width * scale);
+    canvas.height = Math.round(bitmap.height * scale);
+    canvas.getContext("2d")?.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    bitmap.close();
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/webp", 0.84));
+    return blob ? new File([blob], file.name.replace(/\.[^.]+$/, ".webp"), { type: "image/webp" }) : file;
+  } catch {
+    return file;
+  }
+}
+
+const buttons: { type: BlogBlockType; label: string }[] = [
+  { type: "paragraph", label: "Text" },
+  { type: "heading", label: "Heading" },
+  { type: "list", label: "List" },
+  { type: "quote", label: "Quote" },
+  { type: "image", label: "Image" },
+  { type: "button", label: "Button" },
+  { type: "partner_cta", label: "Invite brokers/appraisers" },
+  { type: "divider", label: "Divider" },
+];
+
+const fresh = (type: BlogBlockType): BlogBlock => ({
+  id: crypto.randomUUID(),
+  type,
+  text: type === "button" ? "Learn more" : type === "partner_cta" ? "Are you a broker or property appraiser?" : "",
+  level: type === "heading" ? 2 : undefined,
+  partnerType: type === "partner_cta" ? "both" : undefined,
+});
+
+export function BlockEditor({ value, onChange }: { value: BlogBlock[]; onChange: (blocks: BlogBlock[]) => void }) {
+  const [uploading, setUploading] = useState<string | null>(null);
+  const update = (index: number, patch: Partial<BlogBlock>) => onChange(value.map((block, itemIndex) => (index === itemIndex ? { ...block, ...patch } : block)));
+  const move = (index: number, direction: number) => {
+    const nextIndex = index + direction;
+    if (nextIndex < 0 || nextIndex >= value.length) return;
+    const next = [...value];
+    [next[index], next[nextIndex]] = [next[nextIndex], next[index]];
+    onChange(next);
+  };
+
+  async function image(index: number, file?: File) {
+    if (!file) return;
+    setUploading(value[index].id);
+    try {
+      update(index, { url: await uploadBlogImage(file), alt: file.name.replace(/\.[^.]+$/, "") });
+    } finally {
+      setUploading(null);
+    }
+  }
+
+  return (
+    <div>
+      <div className="flex flex-wrap gap-2 rounded-lg border bg-navy-50 p-3">
+        {buttons.map((button) => (
+          <button
+            key={button.type}
+            type="button"
+            onClick={() => onChange([...value, fresh(button.type)])}
+            className="rounded-md border bg-white px-3 py-2 text-sm hover:border-gold-400"
+          >
+            + {button.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="mt-4 space-y-3">
+        {value.map((block, index) => (
+          <div key={block.id} className="rounded-lg border bg-white p-4">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+              <span className="text-xs font-bold uppercase text-navy-400">{block.type.replace("_", " ")}</span>
+              <div className="flex flex-wrap gap-3">
+                <button type="button" onClick={() => move(index, -1)}>Up</button>
+                <button type="button" onClick={() => move(index, 1)}>Down</button>
+                <button type="button" onClick={() => onChange(value.filter((_, itemIndex) => itemIndex !== index))} className="text-red-600">
+                  Remove
+                </button>
+              </div>
+            </div>
+
+            {block.type === "heading" && (
+              <div className="grid gap-2 sm:grid-cols-[90px_1fr]">
+                <select value={block.level || 2} onChange={(event) => update(index, { level: +event.target.value as 1 | 2 | 3 })} className="rounded border p-2">
+                  <option value="1">H1</option>
+                  <option value="2">H2</option>
+                  <option value="3">H3</option>
+                </select>
+                <input value={block.text || ""} onChange={(event) => update(index, { text: event.target.value })} className="w-full rounded border p-2" />
+              </div>
+            )}
+
+            {["paragraph", "quote"].includes(block.type) && (
+              <textarea value={block.text || ""} onChange={(event) => update(index, { text: event.target.value })} rows={4} className="w-full rounded border p-2" />
+            )}
+
+            {block.type === "list" && (
+              <>
+                <label className="text-xs">
+                  <input type="checkbox" checked={!!block.ordered} onChange={(event) => update(index, { ordered: event.target.checked })} /> Numbered
+                </label>
+                <textarea value={block.text || ""} onChange={(event) => update(index, { text: event.target.value })} rows={4} placeholder="One item per line" className="mt-2 w-full rounded border p-2" />
+              </>
+            )}
+
+            {block.type === "image" && (
+              <div>
+                {block.url && <img src={block.url} alt="" className="mb-3 max-h-64 w-full object-cover" />}
+                <input type="file" accept="image/*" onChange={(event) => void image(index, event.target.files?.[0])} className="w-full text-sm" />
+                {uploading === block.id && <p>Uploading...</p>}
+                <input value={block.alt || ""} onChange={(event) => update(index, { alt: event.target.value })} placeholder="Alt text" className="mt-2 w-full rounded border p-2" />
+              </div>
+            )}
+
+            {block.type === "button" && (
+              <div className="grid gap-2 sm:grid-cols-2">
+                <input value={block.text || ""} onChange={(event) => update(index, { text: event.target.value })} placeholder="Label" className="rounded border p-2" />
+                <input value={block.url || ""} onChange={(event) => update(index, { url: event.target.value })} placeholder="URL" className="rounded border p-2" />
+              </div>
+            )}
+
+            {block.type === "partner_cta" && (
+              <div className="grid gap-2 sm:grid-cols-2">
+                <input value={block.text || ""} onChange={(event) => update(index, { text: event.target.value })} placeholder="Invitation headline" className="rounded border p-2" />
+                <select value={block.partnerType || "both"} onChange={(event) => update(index, { partnerType: event.target.value as BlogBlock["partnerType"] })} className="rounded border p-2">
+                  <option value="both">Brokers and appraisers</option>
+                  <option value="broker">Brokers</option>
+                  <option value="appraiser">Appraisers</option>
+                </select>
+              </div>
+            )}
+
+            {block.type === "divider" && <hr />}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}

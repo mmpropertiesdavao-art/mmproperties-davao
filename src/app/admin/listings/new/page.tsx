@@ -167,7 +167,7 @@ export default function NewListingPage() {
             <textarea name="description" rows={4} className={inputClass} />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <label className={labelClass}>Property type</label>
               <select name="propertyTypeSlug" required className={inputClass}>
@@ -184,7 +184,7 @@ export default function NewListingPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid gap-4 sm:grid-cols-3">
             <div>
               <label className={labelClass}>Price (PHP)</label>
               <input name="price" type="number" required min={0} className={inputClass} />
@@ -224,7 +224,7 @@ export default function NewListingPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-5 gap-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
             <div>
               <label className={labelClass}>Bedrooms</label>
               <input name="bedrooms" type="number" min={0} className={inputClass} />
@@ -247,7 +247,7 @@ export default function NewListingPage() {
 
         <section className="space-y-4">
           <PlaceFields primary={primaryPlace} onPrimaryChange={setPrimaryPlace} nearby={nearbyPlaces} onNearbyChange={setNearbyPlaces} className={inputClass}/>
-          <div className="grid grid-cols-2 gap-4"><div>
+          <div className="grid gap-4 sm:grid-cols-2"><div>
               <label className={labelClass}>Barangay</label>
               <input name="barangay" className={inputClass} />
             </div>

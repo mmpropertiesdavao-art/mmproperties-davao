@@ -65,13 +65,13 @@ export default function SearchPage() {
   }, [filters]);
 
   return (
-    <div className="flex flex-col" style={{ height: "calc(100vh - 80px)" }}>
+    <div className="flex min-h-[calc(100vh-80px)] flex-col lg:h-[calc(100vh-80px)]">
       <FilterBar onChange={(next) => setFilters({ ...next, page: 1 })} />
-      <div className="flex flex-1 overflow-hidden">
-        <div className="w-1/2 overflow-y-auto p-4">
+      <div className="flex flex-1 flex-col overflow-visible lg:flex-row lg:overflow-hidden">
+        <div className="w-full overflow-visible p-4 lg:w-1/2 lg:overflow-y-auto">
           <p className="mb-3 text-sm text-gray-500">{totalCount} properties found</p>
           {error && <p className="mb-3 rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</p>}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {results.map((property) => (
               <PropertyCard
                 key={property.id}
@@ -106,7 +106,7 @@ export default function SearchPage() {
           {totalCount > 24 && <div className="mt-6 flex items-center justify-center gap-3 pb-6"><button disabled={(filters.page ?? 1) <= 1} onClick={() => setFilters((current) => ({ ...current, page: Math.max(1, (current.page ?? 1) - 1) }))} className="rounded-md border px-4 py-2 text-sm disabled:opacity-40">Previous</button><span className="text-sm text-navy-500">Page {filters.page ?? 1} of {Math.ceil(totalCount / 24)}</span><button disabled={(filters.page ?? 1) >= Math.ceil(totalCount / 24)} onClick={() => setFilters((current) => ({ ...current, page: (current.page ?? 1) + 1 }))} className="rounded-md border px-4 py-2 text-sm disabled:opacity-40">Next</button></div>}
         </div>
 
-        <div className="h-full w-1/2 overflow-hidden border-l">
+        <div className="h-[420px] w-full overflow-hidden border-t lg:h-full lg:w-1/2 lg:border-l lg:border-t-0">
           <MapView
             properties={mapResults.map((property) => ({
               id: property.id,

@@ -57,7 +57,7 @@ export default async function AdminUsersPage() {
           </Link>
         </div>
 
-        <div className="overflow-x-auto rounded-2xl border bg-white shadow-sm">
+        <div className="responsive-card-table overflow-x-auto rounded-2xl border bg-white shadow-sm">
           <table className="w-full text-left text-sm">
             <thead className="bg-gray-50 text-gray-600">
               <tr>
@@ -73,7 +73,7 @@ export default async function AdminUsersPage() {
             <tbody className="divide-y">
               {users.map((user) => (
                 <tr key={user.id} className="align-top">
-                  <td className="px-4 py-3">
+                  <td data-label="User" className="px-4 py-3">
                     <div className="font-medium text-gray-900">
                       {user.full_name || 'No name'}
                     </div>
@@ -85,11 +85,11 @@ export default async function AdminUsersPage() {
                     </div>
                   </td>
 
-                  <td className="px-4 py-3 text-gray-700">
+                  <td data-label="Role" className="px-4 py-3 text-gray-700">
                     {user.role || 'buyer'}
                   </td>
 
-                  <td className="px-4 py-3">
+                  <td data-label="Status" className="px-4 py-3">
                     <span className="rounded-full bg-gray-100 px-2 py-1 text-xs text-gray-700">
                       {user.account_status || 'active'}
                     </span>
@@ -107,19 +107,19 @@ export default async function AdminUsersPage() {
                     )}
                   </td>
 
-                  <td className="max-w-xs px-4 py-3 text-gray-700">
+                  <td data-label="Reason" className="max-w-xs px-4 py-3 text-gray-700">
                     {user.status_reason || (
                       <span className="text-gray-400">No reason</span>
                     )}
                   </td>
 
-                  <td className="px-4 py-3 text-xs text-gray-500">
+                  <td data-label="Created" className="px-4 py-3 text-xs text-gray-500">
                     {user.created_at
                       ? new Date(user.created_at).toLocaleString()
                       : 'Unknown'}
                   </td>
 
-                  <td className="px-4 py-3">
+                  <td data-label="Actions" className="px-4 py-3">
                     <UserStatusActions
                       userId={user.id}
                       currentStatus={user.account_status || 'active'}
