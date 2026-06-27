@@ -151,6 +151,10 @@ function createPopup(property: MapPin) {
     link.href = `/property/${encodeURIComponent(property.slug)}`;
     link.className = "text-sm font-medium text-gold-700 underline";
     link.textContent = "View listing";
+    link.addEventListener("click", (event) => {
+      event.preventDefault();
+      window.dispatchEvent(new CustomEvent("mm:open-property", { detail: { slug: property.slug } }));
+    });
     popup.appendChild(link);
   }
 

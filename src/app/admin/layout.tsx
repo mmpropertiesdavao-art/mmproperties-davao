@@ -26,6 +26,10 @@ const adminNav = [
     label: 'Content',
     href: '/admin/content',
   },
+  {
+    label: 'Homepage',
+    href: '/admin/homepage-carousel',
+  },
 ]
 
 export default async function AdminLayout({

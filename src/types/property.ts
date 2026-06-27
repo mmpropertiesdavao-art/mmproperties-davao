@@ -37,6 +37,8 @@ export interface Property {
   coverImageUrl: string;
   isForeclosed: boolean;
   isFeatured: boolean;
+  carouselEnabled?: boolean;
+  carouselOrder?: number;
   status: "active" | "pending" | "sold" | "inactive";
   listingIntent: "sale" | "rent" | "sale_or_rent";
   availability: "available" | "reserved" | "rented" | "sold" | "inactive";

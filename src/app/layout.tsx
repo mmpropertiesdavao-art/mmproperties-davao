@@ -5,6 +5,7 @@ import "./globals.css";
 import "./interactive.css";
 import { AccountLink } from "@/components/auth/AccountLink";
 import { CompareTray } from "@/components/compare/CompareTray";
+import { PropertyModalProvider } from "@/components/property/PropertyModalProvider";
 import { Figtree } from "next/font/google";
 
 const figtree=Figtree({subsets:["latin"],display:"swap"});
@@ -42,6 +43,7 @@ export default function RootLayout({
           }}
         />
 
+        <PropertyModalProvider>
         <header className="border-b border-navy-800 bg-navy-900 text-white">
   <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-8">
 
@@ -90,6 +92,10 @@ export default function RootLayout({
         Guides
       </Link>
 
+      <Link href="/about" className="transition hover:text-gold-400">
+        Contact Us
+      </Link>
+
       <AccountLink />
     </nav>
 
@@ -97,6 +103,7 @@ export default function RootLayout({
 </header>
 
         <main>{children}</main><CompareTray />
+        </PropertyModalProvider>
       </body>
     </html>
   );

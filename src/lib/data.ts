@@ -53,6 +53,7 @@ export async function getPropertyBySlug(slug: string): Promise<Property | null> 
              p.monthly_amortization::float AS "monthlyAmortization",p.downpayment_percent::float AS "downpaymentPercent",p.payment_terms AS "paymentTerms",
              p.bedrooms,p.bathrooms::float AS bathrooms,p.floor_area_sqm::float AS "floorAreaSqm",p.lot_area_sqm::float AS "lotAreaSqm",p.parking_spaces AS "parkingSpaces",
              p.barangay,p.address,p.status,p.is_foreclosed AS "isForeclosed",p.is_featured AS "isFeatured",
+             COALESCE(p.carousel_enabled,false) AS "carouselEnabled",COALESCE(p.carousel_order,100) AS "carouselOrder",
              p.listing_intent AS "listingIntent",p.availability,p.rent_price::float AS "rentPrice",
              p.financing_available AS "financingAvailable",p.assume_balance_available AS "assumeBalanceAvailable",
              p.previous_price::float AS "previousPrice",p.price_reduced_at AS "priceReducedAt",

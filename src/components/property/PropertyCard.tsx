@@ -1,8 +1,11 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
 import { Bath, BedDouble, Car, MapPin, Ruler, Square } from "lucide-react";
 import { FavoriteButton } from "@/components/property/FavoriteButton";
 import { CompareButton } from "@/components/compare/CompareButton";
+import { usePropertyModal } from "@/components/property/PropertyModalProvider";
 
 interface PropertyCardProps {
   id: string;
@@ -135,6 +138,7 @@ export function PropertyCard({
   viewCount = 0,
   saveCount = 0,
 }: PropertyCardProps) {
+  const propertyModal = usePropertyModal();
   const pricePerSqm =
     shouldShowPricePerSqm(propertyType) && lotAreaSqm && price
       ? price / lotAreaSqm
@@ -149,6 +153,18 @@ export function PropertyCard({
   return (
     <Link
       href={`/property/${slug}`}
+      onClick={(event) => {
+        if (!propertyModal) return;
+
+        const target = event.target as HTMLElement | null;
+        const interactive = target?.closest("button, input, select, textarea, [role='button']");
+        if (interactive) return;
+
+        if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+
+        event.preventDefault();
+        propertyModal.openProperty(slug);
+      }}
       className="group flex h-full flex-col overflow-hidden rounded-lg border border-navy-100 bg-white transition-all hover:border-gold-400 hover:shadow-lg"
     >
       <div className="image-zoom-frame relative aspect-[4/3] overflow-hidden">

@@ -48,6 +48,8 @@ const BASE_SELECT = `
     p.address,
     p.is_foreclosed AS "isForeclosed",
     p.is_featured AS "isFeatured",
+    COALESCE(p.carousel_enabled, false) AS "carouselEnabled",
+    COALESCE(p.carousel_order, 100) AS "carouselOrder",
     p.status,
     EXTRACT(day FROM now() - p.created_at)::int AS "daysListed",
     (SELECT COUNT(*)::int FROM property_views pv WHERE pv.property_id = p.id) AS "viewCount",
