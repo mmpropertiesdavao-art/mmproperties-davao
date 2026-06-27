@@ -18,6 +18,14 @@ const inputClass =
   "w-full rounded-md border border-navy-200 px-3 py-2 text-sm focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-500";
 const labelClass = "mb-1 block text-sm font-medium text-navy-800";
 
+async function readJson(response: Response) {
+  return response.json().catch(() => ({
+    error: response.ok
+      ? "The server returned an empty response."
+      : "Your session may have expired or the server returned a non-JSON error.",
+  }));
+}
+
 export default function NewListingPage() {
   const [photos, setPhotos] = useState<File[]>([]);
   const [pin, setPin] = useState<{ lat: number; lng: number } | null>(null);
@@ -114,8 +122,8 @@ export default function NewListingPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
-    let data = await response.json();
-    if(response.status===409&&data.requiresConfirmation&&window.confirm(`${data.error}\n\n${data.duplicates.map((d:{title:string;address:string})=>`• ${d.title} — ${d.address}`).join("\n")}\n\nCreate it anyway?`)){response=await fetch("/api/admin/properties",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({...payload,allowDuplicate:true})});data=await response.json()}
+    let data = await readJson(response);
+    if(response.status===409&&data.requiresConfirmation&&window.confirm(`${data.error}\n\n${data.duplicates.map((d:{title:string;address:string})=>`• ${d.title} — ${d.address}`).join("\n")}\n\nCreate it anyway?`)){response=await fetch("/api/admin/properties",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({...payload,allowDuplicate:true})});data=await readJson(response)}
     if (!response.ok) {
       setResult({ ok: false, message: data.error ?? "Something went wrong." });
       setSubmitting(false);

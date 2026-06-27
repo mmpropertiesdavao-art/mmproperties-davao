@@ -30,6 +30,14 @@ const PROPERTY_TYPES = [
 const inputClass = "w-full rounded-md border border-navy-200 px-3 py-2 text-sm focus:border-gold-500 focus:outline-none focus:ring-1 focus:ring-gold-500";
 const labelClass = "mb-1 block text-sm font-medium text-navy-800";
 
+async function readJson(response: Response) {
+  return response.json().catch(() => ({
+    error: response.ok
+      ? "The server returned an empty response."
+      : "Your session may have expired or the server returned a non-JSON error.",
+  }));
+}
+
 export default function EditListingPage() {
   const id = String(useParams<{ id: string }>().id);
   const [listing, setListing] = useState<EditableListing | null>(null);
@@ -42,7 +50,7 @@ export default function EditListingPage() {
 
   useEffect(() => {
     fetch(`/api/admin/properties/${id}`, { cache: "no-store" })
-      .then(async (response) => ({ response, data: await response.json() }))
+      .then(async (response) => ({ response, data: await readJson(response) }))
       .then(({ response, data }) => {
         if (!response.ok) throw new Error(data.error ?? "Could not load listing.");
         setListing(data); setPin({ lat: Number(data.lat), lng: Number(data.lng) });setPrimaryPlace(data.primaryPlace||"");setNearbyPlaces(data.nearbyPlaces||[]);
@@ -63,8 +71,8 @@ export default function EditListingPage() {
       method: "PATCH", headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
-    let data = await response.json().catch(() => ({}));
-    if(response.status===409&&data.requiresConfirmation&&window.confirm(`${data.error}\n${data.duplicates.map((d:{title:string})=>`• ${d.title}`).join("\n")}\nSave anyway?`)){response=await fetch(`/api/admin/properties/${id}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({...body,allowDuplicate:true})});data=await response.json().catch(()=>({}))}
+    let data = await readJson(response);
+    if(response.status===409&&data.requiresConfirmation&&window.confirm(`${data.error}\n${data.duplicates.map((d:{title:string})=>`• ${d.title}`).join("\n")}\nSave anyway?`)){response=await fetch(`/api/admin/properties/${id}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({...body,allowDuplicate:true})});data=await readJson(response)}
     setMessage(response.ok ? { ok: true, text: "Listing changes saved." } : { ok: false, text: data.error ?? "Could not save changes." });
     setSaving(false);
   }
