@@ -270,14 +270,14 @@ function AdminPhotosContent() {
         Choose a listing first. After selection, the upload and saved-photo tools appear directly below.
       </p>
 
-      <div className="mt-6 space-y-6">
+      <div className="mt-6 flex flex-col gap-6">
         {message && (
           <p className={`rounded-md p-3 text-sm ${message.ok ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"}`}>
             {message.text}
           </p>
         )}
 
-        <section>
+        <section className={propertyId ? "order-2" : "order-1"}>
           <h2 className="mb-3 text-sm font-semibold text-navy-800">Choose a property</h2>
 
           {selectedProperty && (
@@ -295,8 +295,13 @@ function AdminPhotosContent() {
         </section>
 
         {propertyId && (
-          <section className="rounded-xl border border-navy-100 bg-white p-5 shadow-sm">
+          <section className="order-1 rounded-xl border border-navy-100 bg-white p-5 shadow-sm">
             <h2 className="text-lg font-semibold text-navy-900">Photo tools for selected listing</h2>
+            {selectedProperty && (
+              <p className="mt-1 text-sm text-navy-500">
+                Editing photos for <span className="font-semibold text-navy-800">{selectedProperty.title}</span>.
+              </p>
+            )}
 
             <div className="mt-5 rounded-lg border-2 border-dashed border-navy-200 bg-white p-5">
               <input

@@ -207,28 +207,32 @@ export function PropertyDetailsModal({ payload }: { payload: PropertyDetailPaylo
         </section>
 
         <aside className="bg-white p-5 md:p-7">
-          <div className="mb-3 flex flex-wrap items-center gap-2">
-            <span className={`rounded-md px-3 py-1 text-xs font-bold uppercase text-white ${intentClass(property.listingIntent)}`}>
-              {intentLabel(property.listingIntent)}
-            </span>
-
-            {property.availability !== "available" && (
-              <span className="rounded-md bg-slate-800 px-3 py-1 text-xs font-bold uppercase text-white">
-                {property.availability}
+          <div className="mb-3 flex items-start justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className={`rounded-md px-3 py-1 text-xs font-bold uppercase text-white ${intentClass(property.listingIntent)}`}>
+                {intentLabel(property.listingIntent)}
               </span>
-            )}
 
-            {property.financingAvailable && (
-              <span className="rounded-md bg-cyan-500 px-3 py-1 text-xs font-bold text-navy-950">
-                Financing
-              </span>
-            )}
+              {property.availability !== "available" && (
+                <span className="rounded-md bg-slate-800 px-3 py-1 text-xs font-bold uppercase text-white">
+                  {property.availability}
+                </span>
+              )}
 
-            {property.assumeBalanceAvailable && (
-              <span className="rounded-md bg-orange-500 px-3 py-1 text-xs font-bold text-white">
-                Assume balance
-              </span>
-            )}
+              {property.financingAvailable && (
+                <span className="rounded-md bg-cyan-500 px-3 py-1 text-xs font-bold text-navy-950">
+                  Financing
+                </span>
+              )}
+
+              {property.assumeBalanceAvailable && (
+                <span className="rounded-md bg-orange-500 px-3 py-1 text-xs font-bold text-white">
+                  Assume balance
+                </span>
+              )}
+            </div>
+
+            <FavoriteButton propertyId={property.id} className="relative right-auto top-auto shrink-0" />
           </div>
 
           {property.previousPrice && property.previousPrice > property.price && (
@@ -267,7 +271,6 @@ export function PropertyDetailsModal({ payload }: { payload: PropertyDetailPaylo
           </div>
 
           <div className="mt-5 flex flex-wrap gap-2">
-            <FavoriteButton propertyId={property.id} />
             <CompareButton
               item={{
                 id: property.id,
