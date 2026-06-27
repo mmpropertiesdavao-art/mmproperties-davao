@@ -23,6 +23,10 @@ const adminNav = [
     href: '/admin/collaborators',
   },
   {
+    label: 'Places',
+    href: '/admin/places',
+  },
+  {
     label: 'Content',
     href: '/admin/content',
   },

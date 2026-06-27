@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Bath, BedDouble, Car, MapPin, Ruler, Square } from "lucide-react";
+import { Bath, BedDouble, CarFront, LandPlot, MapPin, Ruler } from "lucide-react";
 import { FavoriteButton } from "@/components/property/FavoriteButton";
 import { CompareButton } from "@/components/compare/CompareButton";
 import { usePropertyModal } from "@/components/property/PropertyModalProvider";
@@ -34,6 +34,7 @@ interface PropertyCardProps {
   listedByName?: string | null;
   listedByRole?: string | null;
   carport?: number | null;
+  parkingSpaces?: number | null;
   daysListed?: number;
   viewCount?: number;
   saveCount?: number;
@@ -78,8 +79,16 @@ function shouldShowPricePerSqm(propertyType?: string | null) {
     normalized.includes("farm lot") ||
     normalized.includes("beach lot") ||
     normalized.includes("industrial lot") ||
-    normalized.includes("land")
+    normalized.includes("land") ||
+    normalized.includes("commercial")
   );
+}
+
+function getPricePerSqmArea(propertyType: string | null | undefined, lotAreaSqm?: number | null, floorAreaSqm?: number | null) {
+  if (!shouldShowPricePerSqm(propertyType)) return null;
+  const normalized = normalizePropertyType(propertyType);
+  if (normalized.includes("commercial")) return lotAreaSqm || floorAreaSqm || null;
+  return lotAreaSqm || null;
 }
 
 function getListedByName(params: {
@@ -96,14 +105,17 @@ function getListedByName(params: {
 
 function SpecItem({
   icon,
+  label,
   children,
 }: {
   icon: React.ReactNode;
+  label: string;
   children: React.ReactNode;
 }) {
   return (
-    <span className="inline-flex items-center gap-1 whitespace-nowrap">
-      {icon}
+    <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full bg-navy-50 px-2.5 py-1 text-xs font-semibold text-navy-700">
+      <span className="text-gold-700">{icon}</span>
+      <span className="sr-only">{label}: </span>
       <span>{children}</span>
     </span>
   );
@@ -134,15 +146,15 @@ export function PropertyCard({
   listedByName,
   listedByRole,
   carport,
+  parkingSpaces,
   daysListed = 0,
   viewCount = 0,
   saveCount = 0,
 }: PropertyCardProps) {
   const propertyModal = usePropertyModal();
-  const pricePerSqm =
-    shouldShowPricePerSqm(propertyType) && lotAreaSqm && price
-      ? price / lotAreaSqm
-      : null;
+  const pricePerSqmArea = getPricePerSqmArea(propertyType, lotAreaSqm, floorAreaSqm);
+  const pricePerSqm = pricePerSqmArea && price ? price / pricePerSqmArea : null;
+  const displayParking = parkingSpaces ?? carport ?? null;
 
   const displayListedByName = getListedByName({
     listedByName,
@@ -249,34 +261,34 @@ export function PropertyCard({
           </p>
         )}
 
-        <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-navy-400">
-          <SpecItem icon={<BedDouble size={14} className="text-navy-700" />}>
+        <p className="flex flex-wrap items-center gap-1.5 text-sm text-navy-400">
+          <SpecItem label="Bedrooms" icon={<BedDouble size={14} />}>
             {bedrooms ?? "-"} bd
           </SpecItem>
 
-          <SpecItem icon={<Bath size={14} className="text-gold-600" />}>
+          <SpecItem label="Bathrooms" icon={<Bath size={14} />}>
             {bathrooms ?? "-"} ba
           </SpecItem>
 
           {lotAreaSqm ? (
-            <SpecItem icon={<Square size={14} className="text-navy-600" />}>
+            <SpecItem label="Lot area" icon={<LandPlot size={14} />}>
               {lotAreaSqm.toLocaleString("en-PH")} sqm lot
             </SpecItem>
           ) : (
-            <SpecItem icon={<Square size={14} className="text-navy-600" />}>
+            <SpecItem label="Lot area" icon={<LandPlot size={14} />}>
               -
             </SpecItem>
           )}
 
           {floorAreaSqm ? (
-            <SpecItem icon={<Ruler size={14} className="text-gold-600" />}>
+            <SpecItem label="Floor area" icon={<Ruler size={14} />}>
               {floorAreaSqm.toLocaleString("en-PH")} sqm floor
             </SpecItem>
           ) : null}
 
-          {carport !== undefined && carport !== null ? (
-            <SpecItem icon={<Car size={14} className="text-navy-700" />}>
-              {carport} carport
+          {displayParking !== undefined && displayParking !== null ? (
+            <SpecItem label="Parking" icon={<CarFront size={14} />}>
+              {displayParking} parking
             </SpecItem>
           ) : null}
         </p>

@@ -96,6 +96,7 @@ export default function SearchPage() {
                 previousPrice={property.previousPrice}
                 agentName={property.agentName}
                 agencyName={property.agencyName}
+                parkingSpaces={property.parkingSpaces}
                 daysListed={property.daysListed}
                 viewCount={property.viewCount}
                 saveCount={property.saveCount}
