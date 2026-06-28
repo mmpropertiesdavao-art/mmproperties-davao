@@ -35,7 +35,7 @@ export function SiteFooter() {
               href="/about"
               className="rounded-full bg-white/10 px-3 py-1.5 text-white ring-1 ring-white/15 hover:bg-gold-400 hover:text-navy-950"
             >
-              Contact Us
+              About Us
             </Link>
           </nav>
           <p className="text-xs font-semibold text-white/85">© 2026 MM Properties. All Rights Reserved.</p>

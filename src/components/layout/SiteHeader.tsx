@@ -12,7 +12,7 @@ const navLinks = [
   { href: "/compare", label: "Compare" },
   { href: "/matcher", label: "MM Pulse" },
   { href: "/guides", label: "Guides" },
-  { href: "/about", label: "Contact Us" },
+  { href: "/about", label: "About Us" },
 ];
 
 export function SiteHeader() {
