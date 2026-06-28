@@ -67,7 +67,7 @@ export default function SearchPage() {
   return (
     <div className="min-h-[calc(100vh-80px)]">
       <FilterBar onChange={(next) => setFilters({ ...next, page: 1 })} />
-      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(440px,48vw)] lg:items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(440px,48vw)]">
         <div className="min-w-0 p-4">
           <p className="mb-3 text-sm text-gray-500">{totalCount} properties found</p>
           {error && <p className="mb-3 rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</p>}
@@ -106,7 +106,7 @@ export default function SearchPage() {
           {totalCount > 24 && <div className="mt-6 flex items-center justify-center gap-3 pb-6"><button disabled={(filters.page ?? 1) <= 1} onClick={() => setFilters((current) => ({ ...current, page: Math.max(1, (current.page ?? 1) - 1) }))} className="rounded-md border px-4 py-2 text-sm disabled:opacity-40">Previous</button><span className="text-sm text-navy-500">Page {filters.page ?? 1} of {Math.ceil(totalCount / 24)}</span><button disabled={(filters.page ?? 1) >= Math.ceil(totalCount / 24)} onClick={() => setFilters((current) => ({ ...current, page: (current.page ?? 1) + 1 }))} className="rounded-md border px-4 py-2 text-sm disabled:opacity-40">Next</button></div>}
         </div>
 
-        <aside className="min-w-0 border-t lg:border-l lg:border-t-0">
+        <aside className="min-w-0 border-t lg:self-stretch lg:border-l lg:border-t-0">
           <div className="h-[420px] overflow-hidden lg:sticky lg:top-0 lg:h-screen">
             <MapView
               properties={mapResults.map((property) => ({
