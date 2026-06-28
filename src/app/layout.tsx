@@ -4,6 +4,8 @@ import "./interactive.css";
 import { CompareTray } from "@/components/compare/CompareTray";
 import { PropertyModalProvider } from "@/components/property/PropertyModalProvider";
 import { SiteHeader } from "@/components/layout/SiteHeader";
+import { SiteFooter } from "@/components/layout/SiteFooter";
+import { MessengerButton } from "@/components/layout/MessengerButton";
 import { Figtree } from "next/font/google";
 
 const figtree=Figtree({subsets:["latin"],display:"swap"});
@@ -25,7 +27,7 @@ export const metadata: Metadata = {
     url: "https://mmpropertiesdavao.com",
     images: [
       {
-        url: "/opengraph-image",
+        url: "/mm-social-preview.png",
         width: 1200,
         height: 630,
         alt: "MM Properties Davao Real Estate",
@@ -37,11 +39,14 @@ export const metadata: Metadata = {
     title: "MM Properties | Davao Real Estate",
     description:
       "Davao-focused property search for homes, lots, condos, and commercial investments.",
-    images: ["/opengraph-image"],
+    images: ["/mm-social-preview.png"],
   },
   icons: {
-    icon: "/logo.jpg",
-    apple: "/logo.jpg",
+    icon: [
+      { url: "/favicon.ico" },
+      { url: "/mm-favicon.png", type: "image/png", sizes: "512x512" },
+    ],
+    apple: "/mm-favicon.png",
   },
 };
 
@@ -71,7 +76,10 @@ export default function RootLayout({
 
         <PropertyModalProvider>
         <SiteHeader />
-        <main className="overflow-x-clip">{children}</main><CompareTray />
+        <main className="overflow-x-clip">{children}</main>
+        <SiteFooter />
+        <MessengerButton />
+        <CompareTray />
         </PropertyModalProvider>
       </body>
     </html>

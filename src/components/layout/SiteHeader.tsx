@@ -24,7 +24,7 @@ export function SiteHeader() {
         <Link href="/" className="flex min-w-0 items-center gap-3 sm:gap-4" onClick={() => setOpen(false)}>
           <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white shadow-md sm:h-16 sm:w-16">
             <Image
-              src="/logo.jpg"
+              src="/mmprologo_new.png"
               alt="MM Properties"
               width={58}
               height={58}

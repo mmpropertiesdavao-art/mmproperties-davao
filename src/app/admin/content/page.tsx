@@ -22,6 +22,11 @@ const contentTools = [
     href: '/admin/blog',
     description: 'Manage buyer guides, educational articles, and SEO content.',
   },
+  {
+    title: 'Privacy & Terms',
+    href: '/admin/legal',
+    description: 'Update the public Privacy Policy and Terms of Service linked in the footer.',
+  },
 ]
 
 export default async function AdminContentPage() {
