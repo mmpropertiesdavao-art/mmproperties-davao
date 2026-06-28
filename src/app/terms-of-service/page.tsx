@@ -5,6 +5,8 @@ export const metadata: Metadata = {
   title: "Terms of Service",
 };
 
+export const dynamic = "force-dynamic";
+
 export default async function TermsOfServicePage() {
   const page = await getSitePage("terms-of-service");
 

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth/requireRole";
 import { db } from "@/lib/supabase/server";
 
@@ -51,6 +52,9 @@ export async function PATCH(request: Request) {
       `,
       values: [slug, title, content],
     });
+
+    revalidatePath(`/${slug}`);
+    revalidatePath("/admin/legal");
 
     return NextResponse.json({ ok: true, slug: rows[0]?.slug || slug });
   } catch (error) {

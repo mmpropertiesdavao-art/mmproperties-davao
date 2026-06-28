@@ -3,6 +3,8 @@ import { requireRole } from "@/lib/auth/requireRole";
 import { getEditableSitePages } from "@/lib/sitePages";
 import { LegalPageEditor } from "./LegalPageEditor";
 
+export const dynamic = "force-dynamic";
+
 export default async function AdminLegalPage() {
   await requireRole(["admin"]);
   const pages = await getEditableSitePages();

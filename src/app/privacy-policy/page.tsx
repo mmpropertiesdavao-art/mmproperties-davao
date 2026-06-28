@@ -5,6 +5,8 @@ export const metadata: Metadata = {
   title: "Privacy Policy",
 };
 
+export const dynamic = "force-dynamic";
+
 export default async function PrivacyPolicyPage() {
   const page = await getSitePage("privacy-policy");
 
