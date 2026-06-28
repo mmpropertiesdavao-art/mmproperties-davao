@@ -2,7 +2,7 @@
 import type { Metadata } from "next";
 import type { Property, Neighborhood } from "@/types/property";
 
-const SITE_URL = "https://davaopropertyfinder.com"; // placeholder — set to the real domain at launch
+const SITE_URL = "https://mmpropertiesdavao.com";
 
 export function propertyMetadata(property: Property): Metadata {
   return {

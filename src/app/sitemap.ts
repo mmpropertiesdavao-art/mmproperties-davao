@@ -4,7 +4,7 @@ import { getAllActiveProperties, getAllNeighborhoods } from "@/lib/data";
 
 export const dynamic = "force-dynamic";
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://davaopropertyfinder.com";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://mmpropertiesdavao.com";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const [properties, neighborhoods] = await Promise.all([getAllActiveProperties(), getAllNeighborhoods()]);
