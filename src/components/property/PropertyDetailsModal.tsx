@@ -128,10 +128,10 @@ export function PropertyDetailsModal({ payload }: { payload: PropertyDetailPaylo
 
   return (
     <>
-      <div className="grid min-h-0 flex-1 overflow-y-auto lg:grid-cols-[minmax(0,1.08fr)_420px] lg:overflow-hidden">
-        <section className="border-r border-navy-100 bg-slate-950 p-3 text-white md:p-5 lg:flex lg:h-full lg:flex-col lg:overflow-hidden">
+      <div className="grid min-h-0 w-full max-w-full flex-1 overflow-y-auto overscroll-contain xl:grid-cols-[minmax(0,1.08fr)_420px] xl:overflow-hidden">
+        <section className="min-w-0 w-full max-w-full bg-slate-950 p-3 text-white md:p-5 xl:flex xl:h-full xl:flex-col xl:overflow-hidden xl:border-r xl:border-navy-100">
           <div
-            className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-black md:aspect-[16/10] lg:min-h-0 lg:flex-1 lg:aspect-auto"
+            className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-black md:aspect-[16/10] xl:min-h-0 xl:flex-1 xl:aspect-auto"
             onTouchStart={(event) => {
               touchStartX.current = event.touches[0]?.clientX ?? null;
             }}
@@ -187,7 +187,7 @@ export function PropertyDetailsModal({ payload }: { payload: PropertyDetailPaylo
                   key={`${image.url}-${index}`}
                   type="button"
                   onClick={() => setActiveIndex(index)}
-                  className={`image-zoom-frame h-16 w-24 shrink-0 overflow-hidden rounded-xl border-2 bg-white/10 md:h-20 md:w-28 lg:h-14 lg:w-20 ${
+                  className={`image-zoom-frame h-16 w-24 shrink-0 overflow-hidden rounded-xl border-2 bg-white/10 md:h-20 md:w-28 xl:h-14 xl:w-20 ${
                     index === activeIndex ? "border-gold-400" : "border-transparent"
                   }`}
                   aria-label={`Show property photo ${index + 1}`}
@@ -210,12 +210,12 @@ export function PropertyDetailsModal({ payload }: { payload: PropertyDetailPaylo
             <PaymentCalculator
               price={property.price}
               defaultDownpaymentPercent={property.downpaymentPercent ?? 20}
-              className="mt-4 shrink-0 text-sm [&_h3]:mb-3 [&_h3]:text-base [&_label]:mb-2"
+              className="mt-4 shrink-0 text-sm [&_*]:min-w-0 [&_h3]:mb-3 [&_h3]:text-base [&_label]:mb-2 [&_p]:break-words"
             />
           )}
         </section>
 
-        <aside className="bg-white p-5 md:p-7 lg:h-full lg:overflow-y-auto">
+        <aside className="min-w-0 w-full max-w-full bg-white p-5 pb-24 md:p-7 md:pb-24 xl:h-full xl:overflow-y-auto xl:pb-7">
           <div className="mb-3 flex items-start justify-between gap-3">
             <div className="flex flex-wrap items-center gap-2">
               <span className={`rounded-md px-3 py-1 text-xs font-bold uppercase text-white ${intentClass(property.listingIntent)}`}>
@@ -395,8 +395,8 @@ export function PropertyDetailsModal({ payload }: { payload: PropertyDetailPaylo
       </div>
 
       {inquiryOpen && (
-        <div className="fixed inset-0 z-[9100] flex items-center justify-center bg-navy-950/75 p-4" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && setInquiryOpen(false)}>
-          <div role="dialog" aria-modal="true" aria-label="Property inquiry form" className="w-full max-w-lg animate-[modalPop_.18s_ease-out] rounded-2xl bg-white p-4 shadow-2xl">
+        <div className="fixed inset-0 z-[9100] flex items-end justify-center overflow-y-auto bg-navy-950/75 p-0 sm:items-center sm:p-4" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && setInquiryOpen(false)}>
+          <div role="dialog" aria-modal="true" aria-label="Property inquiry form" className="max-h-[100dvh] w-full max-w-lg animate-[modalPop_.18s_ease-out] overflow-y-auto rounded-t-2xl bg-white p-4 shadow-2xl sm:max-h-[92dvh] sm:rounded-2xl">
             <div className="mb-3 flex items-center justify-between">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wide text-gold-700">Inquiry</p>

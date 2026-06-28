@@ -29,7 +29,7 @@ export function InquiryForm({ propertyId }: { propertyId: string }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-3 rounded-xl border p-5">
+    <form onSubmit={handleSubmit} className="space-y-3 rounded-xl border p-4 sm:p-5">
       <h3 className="text-lg font-semibold">Inquire about this property</h3>
       <input name="name" required placeholder="Full name" className="w-full rounded-md border px-3 py-2 text-sm" />
       <input name="email" type="email" required placeholder="Email" className="w-full rounded-md border px-3 py-2 text-sm" />
@@ -39,7 +39,7 @@ export function InquiryForm({ propertyId }: { propertyId: string }) {
         <input type="checkbox" checked={isRemoteBuyer} onChange={(e) => setIsRemoteBuyer(e.target.checked)} />
         I'm an OFW / overseas buyer inquiring remotely
       </label>
-      <div className="flex gap-2">
+      <div className="flex flex-col gap-2 sm:flex-row">
         <button type="submit" className="rounded-md bg-blue-600 px-4 py-2 text-sm text-white">
           Send inquiry
         </button>

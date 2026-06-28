@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { requireRole } from '@/lib/auth/requireRole'
 import { db } from '@/lib/supabase/server'
+import { InquiryLeadActions } from '@/components/admin/InquiryLeadActions'
 
 type SearchParams = {
   q?: string
@@ -25,6 +26,8 @@ type InquiryRow = {
   propertySlug: string | null
   sellerName: string | null
   sellerEmail: string | null
+  internalNotes: string | null
+  followUpAt: string | null
   createdAt: string | null
 }
 
@@ -40,11 +43,10 @@ const SORT_OPTIONS = [
 const STATUS_OPTIONS = [
   { label: 'All statuses', value: 'all' },
   { label: 'New', value: 'new' },
-  { label: 'Open', value: 'open' },
   { label: 'Contacted', value: 'contacted' },
-  { label: 'Qualified', value: 'qualified' },
+  { label: 'Interested', value: 'interested' },
+  { label: 'Viewing scheduled', value: 'viewing_scheduled' },
   { label: 'Closed', value: 'closed' },
-  { label: 'Archived', value: 'archived' },
 ]
 
 function quoteIdentifier(identifier: string) {
@@ -230,8 +232,10 @@ export default async function AdminInquiriesPage({
     total: 0,
     newCount: 0,
     contacted: 0,
-    qualified: 0,
+    interested: 0,
   }
+  let supportsNotes = false
+  let supportsFollowUp = false
 
   try {
     const exists = await tableExists('inquiries')
@@ -288,6 +292,19 @@ export default async function AdminInquiriesPage({
         'submitted_at',
         'date_created',
       ])
+      const internalNotesColumn = firstExisting(columns, [
+        'internal_notes',
+        'private_notes',
+        'admin_notes',
+      ])
+      const followUpAtColumn = firstExisting(columns, [
+        'follow_up_at',
+        'next_follow_up_at',
+        'followup_at',
+      ])
+
+      supportsNotes = Boolean(internalNotesColumn)
+      supportsFollowUp = Boolean(followUpAtColumn)
 
       const propertyJoin = propertyIdColumn
         ? `LEFT JOIN properties p ON p.id = i.${quoteIdentifier(propertyIdColumn)}`
@@ -324,6 +341,8 @@ export default async function AdminInquiriesPage({
             p.slug::text AS "propertySlug",
             u.full_name::text AS "sellerName",
             u.email::text AS "sellerEmail",
+            ${selectTextColumn('i', internalNotesColumn, 'internalNotes')},
+            ${selectTextColumn('i', followUpAtColumn, 'followUpAt')},
             ${selectTextColumn('i', createdAtColumn, 'createdAt')}
           FROM inquiries i
           ${propertyJoin}
@@ -355,19 +374,19 @@ export default async function AdminInquiriesPage({
           `COUNT(*) FILTER (WHERE ${quoteIdentifier(statusColumn)} = 'contacted')::text AS contacted`
         )
         countSelectParts.push(
-          `COUNT(*) FILTER (WHERE ${quoteIdentifier(statusColumn)} = 'qualified')::text AS qualified`
+          `COUNT(*) FILTER (WHERE ${quoteIdentifier(statusColumn)} = 'interested')::text AS interested`
         )
       } else {
         countSelectParts.push(`0::text AS "newCount"`)
         countSelectParts.push(`0::text AS contacted`)
-        countSelectParts.push(`0::text AS qualified`)
+        countSelectParts.push(`0::text AS interested`)
       }
 
       const countResult = await db.query<{
         total: string
         newCount: string
         contacted: string
-        qualified: string
+        interested: string
       }>({
         text: `
           SELECT
@@ -380,7 +399,7 @@ export default async function AdminInquiriesPage({
         total: Number(countResult.rows[0]?.total || 0),
         newCount: Number(countResult.rows[0]?.newCount || 0),
         contacted: Number(countResult.rows[0]?.contacted || 0),
-        qualified: Number(countResult.rows[0]?.qualified || 0),
+        interested: Number(countResult.rows[0]?.interested || 0),
       }
     }
   } catch (error) {
@@ -468,9 +487,9 @@ export default async function AdminInquiriesPage({
           </div>
 
           <div className="rounded-xl border bg-white p-5 shadow-sm">
-            <p className="text-sm text-gray-500">Qualified</p>
+            <p className="text-sm text-gray-500">Interested</p>
             <p className="mt-2 text-2xl font-bold text-gray-900">
-              {counts.qualified}
+              {counts.interested}
             </p>
           </div>
         </section>
@@ -609,6 +628,19 @@ export default async function AdminInquiriesPage({
                         Submitted {new Date(inquiry.createdAt).toLocaleString()}
                       </p>
                     )}
+
+                    <InquiryLeadActions
+                      id={inquiry.id}
+                      name={inquiry.name}
+                      email={inquiry.email}
+                      phone={inquiry.phone}
+                      propertyTitle={inquiry.propertyTitle}
+                      status={inquiry.status}
+                      internalNotes={inquiry.internalNotes}
+                      followUpAt={inquiry.followUpAt}
+                      supportsNotes={supportsNotes}
+                      supportsFollowUp={supportsFollowUp}
+                    />
                   </div>
 
                   <aside className="rounded-xl border bg-gray-50 p-4 text-sm">

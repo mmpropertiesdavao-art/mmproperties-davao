@@ -112,7 +112,7 @@ export function PropertyModalProvider({ children }: { children: React.ReactNode 
             role="dialog"
             aria-modal="true"
             aria-label="Property details"
-            className="fixed inset-x-0 bottom-0 mx-auto flex h-[94dvh] max-w-6xl animate-[modalSlideUp_.22s_ease-out] flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl md:inset-y-5 md:rounded-3xl"
+            className="fixed inset-0 mx-auto flex h-[100dvh] max-w-6xl animate-[modalSlideUp_.22s_ease-out] flex-col overflow-hidden rounded-none bg-white shadow-2xl md:inset-x-4 md:inset-y-4 md:h-auto md:rounded-3xl xl:inset-x-6"
           >
             <div className="flex items-center justify-between border-b border-navy-100 px-4 py-3">
               <p className="text-sm font-semibold text-navy-500">
