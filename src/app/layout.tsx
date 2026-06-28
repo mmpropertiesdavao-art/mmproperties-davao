@@ -66,7 +66,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={`${figtree.className} bg-slate-50 text-slate-900`}>
+      <body className={`${figtree.className} flex min-h-screen flex-col bg-slate-50 text-slate-900`}>
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
@@ -76,7 +76,7 @@ export default function RootLayout({
 
         <PropertyModalProvider>
         <SiteHeader />
-        <main className="overflow-x-clip">{children}</main>
+        <main className="flex-1 overflow-x-clip">{children}</main>
         <SiteFooter />
         <MessengerButton />
         <CompareTray />
