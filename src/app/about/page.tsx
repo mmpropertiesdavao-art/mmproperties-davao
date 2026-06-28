@@ -20,7 +20,7 @@ export default function AboutPage() {
       <section className="bg-navy-900 px-6 py-16 text-white">
         <div className="mx-auto max-w-5xl">
           <p className="text-sm font-bold uppercase tracking-[.22em] text-gold-300">
-            Contact Us
+            About Us
           </p>
           <h1 className="mt-4 max-w-4xl text-4xl font-bold leading-tight sm:text-6xl">
             Honest Davao real estate guidance — not pressure.
