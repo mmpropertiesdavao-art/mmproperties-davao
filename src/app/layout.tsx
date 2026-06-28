@@ -9,19 +9,47 @@ import { Figtree } from "next/font/google";
 const figtree=Figtree({subsets:["latin"],display:"swap"});
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://mmpropertiesdavao.com"),
   title: {
     default: "MM Properties | Davao Real Estate",
     template: "%s | MM Properties",
   },
   description:
     "Search houses, condos, lots, and commercial properties for sale in Davao City. Compare listings, explore neighborhoods, and connect with local agents.",
+  openGraph: {
+    type: "website",
+    siteName: "MM Properties Davao",
+    title: "MM Properties | Davao Real Estate",
+    description:
+      "Davao-focused property search for homes, lots, condos, and commercial investments.",
+    url: "https://mmpropertiesdavao.com",
+    images: [
+      {
+        url: "/opengraph-image",
+        width: 1200,
+        height: 630,
+        alt: "MM Properties Davao Real Estate",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "MM Properties | Davao Real Estate",
+    description:
+      "Davao-focused property search for homes, lots, condos, and commercial investments.",
+    images: ["/opengraph-image"],
+  },
+  icons: {
+    icon: "/logo.jpg",
+    apple: "/logo.jpg",
+  },
 };
 
 const orgJsonLd = {
   "@context": "https://schema.org",
   "@type": "Organization",
   name: "MM Properties",
-  url: "https://mmproperties.com",
+  url: "https://mmpropertiesdavao.com",
   description:
     "MM Properties – Real estate listings and property discovery in Davao City.",
 };

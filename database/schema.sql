@@ -217,7 +217,19 @@ CREATE TABLE inquiries (
   message TEXT,
   is_remote_buyer BOOLEAN DEFAULT false,    -- e.g. OFW inquiring from abroad; surfaces in agent workflow
   status TEXT NOT NULL DEFAULT 'new'
-    CHECK (status IN ('new', 'contacted', 'interested', 'viewing_scheduled', 'closed')),
+    CHECK (status IN ('new', 'contacted', 'follow_up', 'interested', 'under_contract', 'closed', 'lost')),
+  internal_notes TEXT,
+  follow_up_at TIMESTAMPTZ,
+  lead_source TEXT DEFAULT 'website',
+  assigned_user_id UUID REFERENCES users(id),
+  assigned_agent_id UUID REFERENCES agents(id),
+  assigned_seller_id UUID REFERENCES users(id),
+  external_crm_provider TEXT,
+  external_crm_contact_id TEXT,
+  external_crm_deal_id TEXT,
+  last_synced_at TIMESTAMPTZ,
+  sync_status TEXT,
+  sync_error TEXT,
   scheduled_viewing_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now()

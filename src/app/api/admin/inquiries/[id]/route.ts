@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { requireRole } from "@/lib/auth/requireRole";
 import { db } from "@/lib/supabase/server";
 
-const VALID_STATUSES = new Set(["new", "contacted", "interested", "viewing_scheduled", "closed"]);
+const VALID_STATUSES = new Set(["new", "contacted", "follow_up", "interested", "under_contract", "closed", "lost"]);
 
 async function getInquiryColumns() {
   const { rows } = await db.query<{ column_name: string }>({
@@ -21,7 +21,7 @@ export async function PATCH(
   request: Request,
   context: { params: Promise<{ id: string }> },
 ) {
-  await requireRole(["admin"]);
+  const actor = await requireRole(["admin", "seller", "agent"]);
 
   const { id } = await context.params;
   const body = await request.json().catch(() => null);
@@ -61,11 +61,44 @@ export async function PATCH(
 
   values.push(id);
 
+  const agentAssignedCheck = columns.includes("assigned_user_id")
+    ? `OR inquiries.assigned_user_id = $${valueIndex + 1}::uuid`
+    : "";
+  const sellerAssignedCheck = columns.includes("assigned_seller_id")
+    ? `OR inquiries.assigned_seller_id = $${valueIndex + 1}::uuid`
+    : "";
+  const visibilitySql =
+    actor.role === "admin"
+      ? ""
+      : actor.role === "agent"
+        ? `
+          AND EXISTS (
+            SELECT 1
+            FROM properties p
+            LEFT JOIN agents a ON a.id = p.agent_id
+            WHERE p.id = inquiries.property_id
+            AND (a.user_id = $${valueIndex + 1}::uuid ${agentAssignedCheck})
+          )
+        `
+        : `
+          AND EXISTS (
+            SELECT 1
+            FROM properties p
+            WHERE p.id = inquiries.property_id
+            AND (p.seller_id = $${valueIndex + 1}::uuid ${sellerAssignedCheck})
+          )
+        `;
+
+  if (actor.role !== "admin") {
+    values.push(actor.userId);
+  }
+
   const { rows } = await db.query<{ id: string }>({
     text: `
       UPDATE inquiries
       SET ${setParts.join(", ")}
       WHERE id = $${valueIndex}::uuid
+      ${visibilitySql}
       RETURNING id
     `,
     values,

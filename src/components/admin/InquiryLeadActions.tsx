@@ -6,9 +6,11 @@ import { useRouter } from "next/navigation";
 const STATUS_OPTIONS = [
   { label: "New", value: "new" },
   { label: "Contacted", value: "contacted" },
+  { label: "Follow Up", value: "follow_up" },
   { label: "Interested", value: "interested" },
-  { label: "Viewing scheduled", value: "viewing_scheduled" },
+  { label: "Under Contract", value: "under_contract" },
   { label: "Closed", value: "closed" },
+  { label: "Lost", value: "lost" },
 ];
 
 type InquiryLeadActionsProps = {
@@ -95,6 +97,13 @@ export function InquiryLeadActions({
 
   return (
     <div className="mt-4 rounded-xl border border-navy-100 bg-white p-4">
+      {(!supportsNotes || !supportsFollowUp) && (
+        <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">
+          Notes and follow-up dates need the CRM database migration before they can be saved.
+          Run <span className="font-mono font-semibold">database/inquiry_light_crm.sql</span> in Supabase.
+        </div>
+      )}
+
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="text-xs font-semibold uppercase tracking-wide text-navy-500">
           Lead status
@@ -124,7 +133,7 @@ export function InquiryLeadActions({
       </div>
 
       <label className="mt-3 block text-xs font-semibold uppercase tracking-wide text-navy-500">
-        Internal notes
+        Internal notes {supportsNotes ? <span className="normal-case text-green-700">(private)</span> : <span className="normal-case text-amber-700">(setup needed)</span>}
         <textarea
           value={notes}
           onChange={(event) => setNotes(event.target.value)}

@@ -101,7 +101,7 @@ export interface Inquiry {
   phone: string;
   message: string;
   isRemoteBuyer: boolean;
-  status: "new" | "contacted" | "interested" | "viewing_scheduled" | "closed";
+  status: "new" | "contacted" | "follow_up" | "interested" | "under_contract" | "closed" | "lost";
   scheduledViewingAt: string | null;
 }
 
