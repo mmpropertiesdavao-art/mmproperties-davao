@@ -46,10 +46,22 @@ export default async function SellerPropertyManagePage({
         description
       FROM properties
       WHERE id = $1::uuid
-      AND seller_id = $2::uuid
+      AND (
+        $3::text = 'admin'
+        OR seller_id = $2::uuid
+        OR (
+          $3::text = 'agent'
+          AND EXISTS (
+            SELECT 1
+            FROM agents a
+            WHERE a.id = properties.agent_id
+              AND a.user_id = $2::uuid
+          )
+        )
+      )
       LIMIT 1
     `,
-    values: [id, actor.userId],
+    values: [id, actor.userId, actor.role],
   })
 
   const property = rows[0]

@@ -93,8 +93,10 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
   const lat = toNumber(body.lat ?? body.latitude);
   const lng = toNumber(body.lng ?? body.longitude);
   const listingIntent = String(body.listingIntent || "sale");
-  const availability = String(body.availability || "available");
-  const status = String(body.status || "active");
+  const requestedAvailability = String(body.availability || "available");
+  const requestedStatus = String(body.status || "active");
+  const status = requestedAvailability === "sold" ? "sold" : requestedAvailability === "inactive" ? "inactive" : requestedStatus;
+  const availability = status === "sold" ? "sold" : status === "inactive" ? "inactive" : requestedAvailability;
 
   if (!title) return NextResponse.json({ error: "Property title is required." }, { status: 400 });
   if (!address) return NextResponse.json({ error: "Address is required." }, { status: 400 });

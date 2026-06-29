@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { ListingStatusActions } from '@/components/admin/ListingStatusActions'
 
 type PropertyFormData = {
   id: string
@@ -28,6 +29,10 @@ export default function EditPropertyForm({
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [listingStatus, setListingStatus] = useState({
+    status: property.status || 'draft',
+    availability: property.availability || 'available',
+  })
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -87,7 +92,16 @@ export default function EditPropertyForm({
       )}
 
       <div className="mb-5 rounded-lg bg-gray-50 p-3 text-sm text-gray-600">
-        Current status: <strong>{property.status || 'draft'}</strong>
+        Current status: <strong>{listingStatus.status}</strong> / <strong>{listingStatus.availability}</strong>
+      </div>
+
+      <div className="mb-6">
+        <ListingStatusActions
+          propertyId={property.id}
+          status={listingStatus.status}
+          availability={listingStatus.availability}
+          onChange={setListingStatus}
+        />
       </div>
 
       <div className="grid gap-5">
@@ -140,7 +154,8 @@ export default function EditPropertyForm({
             <span className="text-sm font-medium text-gray-700">Availability</span>
             <select
               name="availability"
-              defaultValue={property.availability || 'available'}
+              value={listingStatus.availability}
+              onChange={(event) => setListingStatus((current) => ({ ...current, availability: event.target.value }))}
               className="rounded-lg border px-3 py-2"
             >
               <option value="available">Available</option>

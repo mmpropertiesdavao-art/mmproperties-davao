@@ -7,6 +7,7 @@ import { LocationPicker } from "@/components/map/LocationPicker";
 import { VideoManager } from "@/components/property/VideoManager";
 import { DeveloperField } from "@/components/admin/DeveloperField";
 import { PlaceFields } from "@/components/admin/PlaceFields";
+import { ListingStatusActions } from "@/components/admin/ListingStatusActions";
 
 interface EditableListing {
   id: string; slug: string; title: string; description: string | null;
@@ -83,6 +84,14 @@ export default function EditListingPage() {
   return (
     <div className="mx-auto max-w-4xl px-6 py-8">
       <div className="flex flex-wrap items-start justify-between gap-4"><div><h1 className="text-2xl font-semibold text-navy-900">Edit listing</h1><p className="mt-1 text-sm text-navy-400">The public URL stays unchanged when the title is edited.</p></div><div className="flex gap-3"><Link href={`/admin/photos?propertyId=${id}`} className="rounded-md border border-navy-200 px-3 py-2 text-sm">Manage photos</Link><Link href={`/property/${listing.slug}`} className="rounded-md border border-gold-400 px-3 py-2 text-sm">View public page</Link></div></div>
+      <div className="mt-6">
+        <ListingStatusActions
+          propertyId={id}
+          status={listing.status}
+          availability={listing.availability}
+          onChange={(next) => setListing((current) => current ? { ...current, ...next } : current)}
+        />
+      </div>
       <form onSubmit={save} className="mt-7 space-y-6">
         <div><label className={labelClass}>Listing title</label><input name="title" required defaultValue={listing.title} className={inputClass} /></div>
         <div><label className={labelClass}>Description</label><textarea name="description" rows={6} defaultValue={listing.description ?? ""} className={inputClass} /></div>

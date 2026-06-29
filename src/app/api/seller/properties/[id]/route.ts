@@ -23,36 +23,54 @@ export async function PATCH(
   }
 
   const title = String(body.title || '').trim()
+  const availability = String(body.availability || 'available')
 
   if (!title) {
     return NextResponse.json({ error: 'Property title is required.' }, { status: 400 })
   }
 
+  if (!['available', 'reserved', 'rented', 'sold', 'inactive'].includes(availability)) {
+    return NextResponse.json({ error: 'Invalid availability.' }, { status: 400 })
+  }
+
   const { rows } = await db.query<{ id: string }>({
     text: `
-      UPDATE properties
+      UPDATE properties p
       SET
         title = $1,
         description = $2,
         price = $3,
         listing_intent = $4,
         availability = $5,
+        status = CASE WHEN $5 = 'sold' THEN 'sold' WHEN $5 = 'inactive' THEN 'inactive' ELSE 'active' END,
         barangay = $6,
         bedrooms = $7,
         bathrooms = $8,
         lot_area_sqm = $9,
         floor_area_sqm = $10,
         updated_at = now()
-      WHERE id = $11::uuid
-      AND seller_id = $12::uuid
-      RETURNING id
+      WHERE p.id = $11::uuid
+      AND (
+        $13::text = 'admin'
+        OR p.seller_id = $12::uuid
+        OR (
+          $13::text = 'agent'
+          AND EXISTS (
+            SELECT 1
+            FROM agents a
+            WHERE a.id = p.agent_id
+              AND a.user_id = $12::uuid
+          )
+        )
+      )
+      RETURNING p.id
     `,
     values: [
       title,
       String(body.description || '').trim() || null,
       toNumber(body.price),
       String(body.listingIntent || 'sale'),
-      String(body.availability || 'available'),
+      availability,
       String(body.barangay || '').trim() || null,
       toNumber(body.bedrooms),
       toNumber(body.bathrooms),
@@ -60,6 +78,7 @@ export async function PATCH(
       toNumber(body.floorAreaSqm),
       id,
       actor.userId,
+      actor.role,
     ],
   })
 

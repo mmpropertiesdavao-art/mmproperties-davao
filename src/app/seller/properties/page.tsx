@@ -38,10 +38,20 @@ export default async function SellerPropertiesPage() {
         barangay,
         created_at
       FROM properties
-      WHERE seller_id = $1::uuid
+      WHERE $2::text = 'admin'
+        OR seller_id = $1::uuid
+        OR (
+          $2::text = 'agent'
+          AND EXISTS (
+            SELECT 1
+            FROM agents a
+            WHERE a.id = properties.agent_id
+              AND a.user_id = $1::uuid
+          )
+        )
       ORDER BY created_at DESC
     `,
-    values: [actor.userId],
+    values: [actor.userId, actor.role],
   })
 
   return (

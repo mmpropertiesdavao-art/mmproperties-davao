@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { ListingStatusActions } from '@/components/admin/ListingStatusActions'
 
 type AdminPropertyEditorProps = {
   property: Record<string, any>
@@ -76,11 +77,10 @@ const FIELD_CONFIGS: FieldConfig[] = [
     type: 'select',
     section: 'Status',
     options: [
-      { label: 'Draft', value: 'draft' },
       { label: 'Pending Review', value: 'pending' },
       { label: 'Active', value: 'active' },
       { label: 'Sold', value: 'sold' },
-      { label: 'Archived', value: 'archived' },
+      { label: 'Inactive / Archived', value: 'inactive' },
     ],
   },
   {
@@ -93,7 +93,7 @@ const FIELD_CONFIGS: FieldConfig[] = [
       { label: 'Reserved', value: 'reserved' },
       { label: 'Sold', value: 'sold' },
       { label: 'Rented', value: 'rented' },
-      { label: 'Unavailable', value: 'unavailable' },
+      { label: 'Inactive / Archived', value: 'inactive' },
     ],
   },
   {
@@ -254,50 +254,6 @@ export default function AdminPropertyEditor({
     }
   }
 
-  async function quickStatus(status: string, availability?: string) {
-    const nextForm = {
-      ...form,
-      ...(columnNames.includes('status') ? { status } : {}),
-      ...(availability && columnNames.includes('availability')
-        ? { availability }
-        : {}),
-    }
-
-    setForm(nextForm)
-    setSaving(true)
-    setMessage(null)
-    setError(null)
-
-    try {
-      const response = await fetch(`/api/admin/properties/${property.id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          updates: nextForm,
-        }),
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to update status.')
-      }
-
-      setMessage('Status updated successfully.')
-      router.refresh()
-    } catch (caughtError) {
-      setError(
-        caughtError instanceof Error
-          ? caughtError.message
-          : 'Failed to update status.'
-      )
-    } finally {
-      setSaving(false)
-    }
-  }
-
   if (availableFields.length === 0) {
     return (
       <section className="rounded-2xl border bg-white p-6 shadow-sm">
@@ -325,38 +281,20 @@ export default function AdminPropertyEditor({
           </p>
         </div>
 
-        <div className="flex flex-wrap gap-2">
-          {columnNames.includes('status') && (
-            <>
-              <button
-                type="button"
-                onClick={() => quickStatus('active', 'available')}
-                disabled={saving}
-                className="rounded-lg border px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
-              >
-                Mark Active
-              </button>
-
-              <button
-                type="button"
-                onClick={() => quickStatus('sold', 'sold')}
-                disabled={saving}
-                className="rounded-lg border px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
-              >
-                Mark Sold
-              </button>
-
-              <button
-                type="button"
-                onClick={() => quickStatus('archived', 'unavailable')}
-                disabled={saving}
-                className="rounded-lg border px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
-              >
-                Archive
-              </button>
-            </>
-          )}
-        </div>
+        <ListingStatusActions
+          propertyId={property.id}
+          status={form.status || property.status}
+          availability={form.availability || property.availability}
+          compact
+          onChange={(next) => {
+            setForm((current) => ({
+              ...current,
+              ...(columnNames.includes('status') ? { status: next.status } : {}),
+              ...(columnNames.includes('availability') ? { availability: next.availability } : {}),
+            }))
+            router.refresh()
+          }}
+        />
       </div>
 
       {message && (
