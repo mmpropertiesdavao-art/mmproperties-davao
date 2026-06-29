@@ -118,6 +118,43 @@ export async function POST(request: NextRequest) {
   if (type === "developer") {
     const name = String(body.name || "").trim();
     if (name.length < 2) return NextResponse.json({ error: "Developer name is required." }, { status: 400 });
+    const slug = slugify(name);
+
+    const { rows: existingDevelopers } = await db.query<{ id: string }>({
+      text: `SELECT id FROM developers WHERE lower(slug)=lower($1) OR lower(name)=lower($2) ORDER BY created_at ASC LIMIT 1`,
+      values: [slug, name],
+    });
+
+    if (existingDevelopers[0]) {
+      await db.query({
+        text: `
+          UPDATE developers
+          SET
+            logo_url=COALESCE($2, logo_url),
+            description=COALESCE($3, description),
+            website=COALESCE($4, website),
+            contact_number=COALESCE($5, contact_number),
+            email=COALESCE($6, email),
+            is_active=$7,
+            updated_at=now()
+          WHERE id=$1::uuid
+        `,
+        values: [
+          existingDevelopers[0].id,
+          body.logoUrl || null,
+          String(body.description || "").trim() || null,
+          String(body.website || "").trim() || null,
+          String(body.contactNumber || "").trim() || null,
+          String(body.email || "").trim() || null,
+          toBool(body.isActive),
+        ],
+      });
+      await db.query({
+        text: `UPDATE developers SET is_active=false, updated_at=now() WHERE id<>$1::uuid AND (lower(slug)=lower($2) OR lower(name)=lower($3))`,
+        values: [existingDevelopers[0].id, slug, name],
+      });
+      return NextResponse.json({ id: existingDevelopers[0].id, duplicateHandled: true }, { status: 200 });
+    }
 
     const { rows } = await db.query({
       text: `
@@ -127,7 +164,7 @@ export async function POST(request: NextRequest) {
       `,
       values: [
         name,
-        slugify(name),
+        slug,
         body.logoUrl || null,
         String(body.description || "").trim() || null,
         String(body.website || "").trim() || null,
@@ -241,13 +278,25 @@ export async function PATCH(request: NextRequest) {
   if (type === "developer") {
     const name = String(body.name || "").trim();
     if (name.length < 2) return NextResponse.json({ error: "Developer name is required." }, { status: 400 });
+    const slug = slugify(name);
+    const { rows: duplicates } = await db.query<{ id: string } >({
+      text: `SELECT id FROM developers WHERE id<>$1::uuid AND (lower(slug)=lower($2) OR lower(name)=lower($3)) ORDER BY created_at ASC LIMIT 1`,
+      values: [id, slug, name],
+    });
+    if (duplicates[0]) {
+      await db.query({
+        text: `UPDATE developers SET is_active=false, updated_at=now() WHERE id=$1::uuid`,
+        values: [id],
+      });
+      return NextResponse.json({ ok: true, archivedDuplicate: true, canonicalId: duplicates[0].id });
+    }
     await db.query({
       text: `
         UPDATE developers
         SET name=$1, slug=$2, logo_url=$3, description=$4, website=$5, contact_number=$6, email=$7, is_active=$8, updated_at=now()
         WHERE id=$9::uuid
       `,
-      values: [name, slugify(name), body.logoUrl || null, body.description || null, body.website || null, body.contactNumber || null, body.email || null, toBool(body.isActive), id],
+      values: [name, slug, body.logoUrl || null, body.description || null, body.website || null, body.contactNumber || null, body.email || null, toBool(body.isActive), id],
     });
     return NextResponse.json({ ok: true });
   }
@@ -319,8 +368,27 @@ export async function DELETE(request: NextRequest) {
 
   const type = String(body.type || "");
   const id = String(body.id || "");
-  if (type !== "developer" || !id) {
-    return NextResponse.json({ error: "Developer id is required." }, { status: 400 });
+  if (!id) {
+    return NextResponse.json({ error: "Record id is required." }, { status: 400 });
+  }
+
+  if (type === "project") {
+    const { rows } = await db.query<{ projectName: string }>({
+      text: `SELECT project_name AS "projectName" FROM developer_projects WHERE id=$1::uuid LIMIT 1`,
+      values: [id],
+    });
+
+    if (!rows[0]) return NextResponse.json({ error: "Project not found." }, { status: 404 });
+    if (String(body.confirmation || "") !== rows[0].projectName) {
+      return NextResponse.json({ error: "Confirmation text does not match the project name." }, { status: 400 });
+    }
+
+    await db.query({ text: `DELETE FROM developer_projects WHERE id=$1::uuid`, values: [id] });
+    return NextResponse.json({ ok: true, deleted: true });
+  }
+
+  if (type !== "developer") {
+    return NextResponse.json({ error: "Unsupported delete action." }, { status: 400 });
   }
 
   const { rows } = await db.query<{ name: string }>({

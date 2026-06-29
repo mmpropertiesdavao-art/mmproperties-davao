@@ -74,11 +74,37 @@ export default function DeveloperInventoryAdminPage() {
   const [saving, setSaving] = useState(false);
   const [selectedDeveloperId, setSelectedDeveloperId] = useState("");
   const [selectedProjectId, setSelectedProjectId] = useState("");
+  const [inventorySearch, setInventorySearch] = useState("");
 
   const projects = useMemo(
     () => developers.flatMap((developer) => developer.projects.map((project) => ({ ...project, developerName: developer.name }))),
     [developers],
   );
+
+  const normalizedSearch = inventorySearch.trim().toLowerCase();
+  const visibleDevelopers = useMemo(() => {
+    if (!normalizedSearch) return [];
+
+    function matches(...values: Array<string | number | null | undefined>) {
+      return values.some((value) => String(value ?? "").toLowerCase().includes(normalizedSearch));
+    }
+
+    return developers
+      .map((developer) => {
+        const developerMatches = matches(developer.name, developer.website, developer.email, developer.contactNumber, developer.description);
+        const filteredProjects = developer.projects
+          .map((project) => {
+            const projectMatches = matches(project.projectName, project.address, project.barangay, project.city, project.province, project.status, project.description);
+            const filteredModels = projectMatches
+              ? project.models
+              : project.models.filter((model) => matches(model.name, model.modelType, model.description, model.currentPrice, model.lotArea, model.floorArea));
+            return developerMatches || projectMatches || filteredModels.length ? { ...project, models: developerMatches || projectMatches ? project.models : filteredModels } : null;
+          })
+          .filter((project): project is Project => Boolean(project));
+        return developerMatches || filteredProjects.length ? { ...developer, projects: developerMatches ? developer.projects : filteredProjects } : null;
+      })
+      .filter((developer): developer is Developer => Boolean(developer));
+  }, [developers, normalizedSearch]);
 
   async function load() {
     const response = await fetch("/api/admin/developer-inventory", { cache: "no-store" });
@@ -107,7 +133,7 @@ export default function DeveloperInventoryAdminPage() {
       return;
     }
     form.reset();
-    setMessage("Saved.");
+    setMessage(data.duplicateHandled ? "Developer already existed, so I updated the original and archived duplicate entries." : "Saved.");
     await load();
   }
 
@@ -158,6 +184,32 @@ export default function DeveloperInventoryAdminPage() {
       </div>
 
       {message && <p className="mt-5 rounded-lg bg-navy-50 p-3 text-sm text-navy-700">{message}</p>}
+
+      <section className="mt-6 rounded-2xl border border-navy-100 bg-white p-5 shadow-sm">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+          <label className="w-full">
+            <span className={label}>Search before editing</span>
+            <input
+              value={inventorySearch}
+              onChange={(event) => setInventorySearch(event.target.value)}
+              className={input}
+              placeholder="Search developer, project, model, barangay, location, or price"
+            />
+          </label>
+          {inventorySearch && (
+            <button
+              type="button"
+              onClick={() => setInventorySearch("")}
+              className="min-h-11 rounded-lg border border-navy-200 px-4 py-2 text-sm font-bold text-navy-800"
+            >
+              Clear search
+            </button>
+          )}
+        </div>
+        <p className="mt-2 text-xs text-navy-500">
+          To keep this page clean, developer/project editors only appear after you search. Add forms stay available above the results.
+        </p>
+      </section>
 
       <section className="mt-6 grid gap-5 lg:grid-cols-3">
         <form
@@ -239,7 +291,23 @@ export default function DeveloperInventoryAdminPage() {
       </section>
 
       <section className="mt-8 space-y-5">
-        {developers.map((developer) => (
+        <div>
+          <h2 className="text-xl font-bold text-navy-950">Developer search results</h2>
+          <p className="text-sm text-navy-500">
+            {normalizedSearch ? `${visibleDevelopers.length} developer result${visibleDevelopers.length === 1 ? "" : "s"}` : "Search above to show developer/project editors."}
+          </p>
+        </div>
+        {!normalizedSearch && (
+          <div className="rounded-2xl border border-dashed border-navy-200 bg-white p-6 text-sm text-navy-500">
+            Start typing a developer, project, model, or location name. This hides the long developer list until you actually need it.
+          </div>
+        )}
+        {normalizedSearch && visibleDevelopers.length === 0 && (
+          <div className="rounded-2xl border border-dashed border-navy-200 bg-white p-6 text-sm text-navy-500">
+            No developer inventory matched “{inventorySearch}”.
+          </div>
+        )}
+        {visibleDevelopers.map((developer) => (
           <article key={developer.id} className="rounded-2xl border bg-white p-5 shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-3">
@@ -440,40 +508,82 @@ function ProjectEditor({ project, saving, upload, onSaved, setMessage }: { proje
     project.latitude && project.longitude ? { lat: Number(project.latitude), lng: Number(project.longitude) } : null,
   );
   const [showPin, setShowPin] = useState(false);
+  const [deleteText, setDeleteText] = useState("");
+
+  async function saveProject(formElement: HTMLFormElement, overrides: Record<string, unknown> = {}) {
+    const form = new FormData(formElement);
+    const response = await fetch("/api/admin/developer-inventory", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        type: "project",
+        id: project.id,
+        projectName: form.get("projectName") || project.projectName,
+        slug: project.slug,
+        status: form.get("status") || project.status,
+        active: form.get("active") === "on",
+        address: form.get("address") || "",
+        barangay: form.get("barangay") || "",
+        city: form.get("city") || "Davao City",
+        province: form.get("province") || "Davao del Sur",
+        description: form.get("description") || "",
+        amenities: form.get("amenities") || [],
+        gallery: form.get("gallery") || [],
+        heroImage: form.get("heroImage") || "",
+        latitude: pin?.lat || "",
+        longitude: pin?.lng || "",
+        ...overrides,
+      }),
+    });
+    const data = await readJson(response);
+    setMessage(response.ok ? (overrides.active === false ? "Project archived." : "Project updated.") : data.error || "Could not update project.");
+    if (response.ok) await onSaved();
+  }
+
+  async function deleteProject() {
+    if (deleteText !== project.projectName) {
+      setMessage("Type the project name exactly before permanent delete.");
+      return;
+    }
+    const response = await fetch("/api/admin/developer-inventory", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "project", id: project.id, confirmation: deleteText }),
+    });
+    const data = await readJson(response);
+    setMessage(response.ok ? "Project permanently deleted." : data.error || "Could not delete project.");
+    if (response.ok) await onSaved();
+  }
 
   return (
     <form
       className="mt-4 rounded-xl border border-navy-100 bg-white p-4"
       onSubmit={async (event) => {
         event.preventDefault();
-        const form = new FormData(event.currentTarget);
-        const response = await fetch("/api/admin/developer-inventory", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            type: "project",
-            id: project.id,
-            projectName: project.projectName,
-            slug: project.slug,
-            status: project.status,
-            active: project.active,
-            address: project.address || "",
-            barangay: project.barangay || "",
-            city: project.city || "Davao City",
-            province: project.province || "Davao del Sur",
-            description: project.description || "",
-            amenities: project.amenities || [],
-            gallery: project.gallery || [],
-            heroImage: form.get("heroImage") || "",
-            latitude: pin?.lat || "",
-            longitude: pin?.lng || "",
-          }),
-        });
-        const data = await readJson(response);
-        setMessage(response.ok ? "Project updated." : data.error || "Could not update project.");
-        if (response.ok) await onSaved();
+        await saveProject(event.currentTarget);
       }}
     >
+      <div className="mb-4 grid gap-3 md:grid-cols-2">
+        <Field name="projectName" label="Project name" defaultValue={project.projectName} required />
+        <div>
+          <span className={label}>Project status</span>
+          <select name="status" className={input} defaultValue={project.status}>
+            <option value="pre_selling">Pre-selling</option>
+            <option value="under_construction">Under Construction</option>
+            <option value="ready_for_occupancy">Ready for Occupancy</option>
+            <option value="completed">Completed</option>
+            <option value="inactive">Inactive</option>
+          </select>
+        </div>
+        <Field name="barangay" label="Barangay" defaultValue={project.barangay || ""} />
+        <Field name="address" label="Address" defaultValue={project.address || ""} />
+        <Field name="city" label="City" defaultValue={project.city || "Davao City"} />
+        <Field name="province" label="Province" defaultValue={project.province || "Davao del Sur"} />
+        <TextArea name="amenities" label="Amenities" defaultValue={(project.amenities || []).join("\n")} />
+        <UploadTextArea name="gallery" label="Project gallery URLs" defaultValue={(project.gallery || []).join("\n")} onUpload={(files, target) => upload(files, target, "project-gallery")} />
+        <TextArea name="description" label="Project description" defaultValue={project.description || ""} className="md:col-span-2" />
+        <label className="flex items-center gap-2 text-sm"><input name="active" type="checkbox" defaultChecked={project.active} /> Active / visible in search</label>
+      </div>
       <div className="grid gap-4 md:grid-cols-[160px_1fr]">
         <div>
           <p className={label}>Hero image</p>
@@ -502,7 +612,26 @@ function ProjectEditor({ project, saving, upload, onSaved, setMessage }: { proje
         </div>
       </div>
       {showPin && <div className="mt-4"><LocationPicker value={pin} onChange={setPin} /></div>}
-      <button disabled={saving} className="mt-4 min-h-11 rounded-lg bg-navy-900 px-4 py-2 text-sm font-bold text-white disabled:opacity-50">Save project hero / pin</button>
+      <div className="mt-4 flex flex-wrap gap-2">
+        <button disabled={saving} className="min-h-11 rounded-lg bg-navy-900 px-4 py-2 text-sm font-bold text-white disabled:opacity-50">Save project details / hero / pin</button>
+        <button
+          type="button"
+          disabled={saving}
+          onClick={(event) => void saveProject(event.currentTarget.closest("form") as HTMLFormElement, { active: false, status: "inactive" })}
+          className="min-h-11 rounded-lg border border-amber-300 bg-white px-4 py-2 text-sm font-bold text-amber-800 disabled:opacity-50"
+        >
+          Archive project
+        </button>
+      </div>
+      <div className="mt-4 rounded-lg border border-red-100 bg-red-50 p-3">
+        <p className="text-xs font-semibold text-red-700">Permanent delete removes this project and its house models. Type “{project.projectName}” to confirm.</p>
+        <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+          <input value={deleteText} onChange={(event) => setDeleteText(event.target.value)} className={input} placeholder={project.projectName} />
+          <button type="button" disabled={saving || deleteText !== project.projectName} onClick={() => void deleteProject()} className="min-h-11 rounded-lg bg-red-700 px-4 py-2 text-sm font-bold text-white disabled:opacity-50">
+            Delete project permanently
+          </button>
+        </div>
+      </div>
     </form>
   );
 }
