@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 
 import { FilterBar } from "@/components/search/FilterBar";
 import { PropertyCard } from "@/components/property/PropertyCard";
+import { DeveloperProjectCard } from "@/components/developer/DeveloperProjectCard";
 import type { Property, PropertySearchFilters } from "@/types/property";
 
 const MapView = dynamic(() => import("@/components/search/MapView").then((m) => m.MapView), { ssr: false });
@@ -15,6 +16,7 @@ export default function SearchPage() {
   const [filters, setFilters] = useState<PropertySearchFilters>({});
   const [error, setError] = useState<string | null>(null);
   const [totalCount, setTotalCount] = useState(0);
+  const [developerProjects, setDeveloperProjects] = useState<any[]>([]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -30,14 +32,19 @@ export default function SearchPage() {
     if (developerName) params.set("developerName", developerName);
 
     setError(null);
-    fetch(`/api/properties/search?${params.toString()}`, { signal: controller.signal })
-      .then((response) => {
+    Promise.all([
+      fetch(`/api/properties/search?${params.toString()}`, { signal: controller.signal }),
+      fetch("/api/developer-projects", { signal: controller.signal }),
+    ])
+      .then(async ([response, projectResponse]) => {
         if (!response.ok) throw new Error("Search failed");
-        return response.json();
+        if (!projectResponse.ok) throw new Error("Project search failed");
+        return { data: await response.json(), projectData: await projectResponse.json() };
       })
-      .then(async (data) => {
+      .then(async ({ data, projectData }) => {
         const count = Number(data.totalCount ?? 0);
         setResults(data.results ?? []);
+        setDeveloperProjects(projectData.results ?? []);
         setTotalCount(count);
 
         if (count === 0) {
@@ -58,6 +65,7 @@ export default function SearchPage() {
       .catch((requestError) => {
         if (requestError instanceof DOMException && requestError.name === "AbortError") return;
         setResults([]);
+        setDeveloperProjects([]);
         setMapResults([]);
         setError("We could not load listings right now. Please try again.");
       });
@@ -69,7 +77,7 @@ export default function SearchPage() {
       <FilterBar onChange={(next) => setFilters({ ...next, page: 1 })} />
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(440px,48vw)]">
         <div className="min-w-0 p-4">
-          <p className="mb-3 text-sm text-gray-500">{totalCount} properties found</p>
+          <p className="mb-3 text-sm text-gray-500">{totalCount} properties found · {developerProjects.length} new developments</p>
           {error && <p className="mb-3 rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</p>}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {results.map((property) => (
@@ -100,6 +108,30 @@ export default function SearchPage() {
                 daysListed={property.daysListed}
                 viewCount={property.viewCount}
                 saveCount={property.saveCount}
+              />
+            ))}
+            {developerProjects.map((project) => (
+              <DeveloperProjectCard
+                key={project.id}
+                slug={project.slug}
+                projectName={project.projectName}
+                developerName={project.developerName}
+                status={project.status}
+                barangay={project.barangay}
+                city={project.city}
+                province={project.province}
+                heroImage={project.heroImage}
+                startingPrice={project.startingPrice}
+                modelCount={project.modelCount}
+                availableUnits={project.availableUnits}
+                bedroomsMin={project.bedroomsMin}
+                bedroomsMax={project.bedroomsMax}
+                bathroomsMin={project.bathroomsMin}
+                bathroomsMax={project.bathroomsMax}
+                floorAreaMin={project.floorAreaMin}
+                floorAreaMax={project.floorAreaMax}
+                lotAreaMin={project.lotAreaMin}
+                lotAreaMax={project.lotAreaMax}
               />
             ))}
           </div>

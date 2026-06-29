@@ -1,0 +1,82 @@
+-- Developer inventory is additive. It does not alter brokerage listing behavior.
+
+ALTER TABLE public.developers ADD COLUMN IF NOT EXISTS contact_number TEXT;
+ALTER TABLE public.developers ADD COLUMN IF NOT EXISTS email TEXT;
+
+CREATE TABLE IF NOT EXISTS public.developer_projects (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  developer_id UUID NOT NULL REFERENCES public.developers(id) ON DELETE CASCADE,
+  project_name TEXT NOT NULL,
+  slug TEXT NOT NULL UNIQUE,
+  address TEXT,
+  barangay TEXT,
+  city TEXT NOT NULL DEFAULT 'Davao City',
+  province TEXT NOT NULL DEFAULT 'Davao del Sur',
+  latitude DOUBLE PRECISION,
+  longitude DOUBLE PRECISION,
+  description TEXT,
+  status TEXT NOT NULL DEFAULT 'pre_selling'
+    CHECK (status IN ('pre_selling','under_construction','ready_for_occupancy','completed','inactive')),
+  completion_date DATE,
+  amenities TEXT[] NOT NULL DEFAULT '{}',
+  hero_image TEXT,
+  gallery TEXT[] NOT NULL DEFAULT '{}',
+  seo_title TEXT,
+  seo_description TEXT,
+  active BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_developer_projects_developer ON public.developer_projects(developer_id);
+CREATE INDEX IF NOT EXISTS idx_developer_projects_active ON public.developer_projects(active, status);
+CREATE INDEX IF NOT EXISTS idx_developer_projects_location ON public.developer_projects(latitude, longitude);
+
+CREATE TABLE IF NOT EXISTS public.developer_house_models (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  project_id UUID NOT NULL REFERENCES public.developer_projects(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  bedrooms INTEGER,
+  bathrooms NUMERIC,
+  floor_area NUMERIC,
+  lot_area NUMERIC,
+  parking_slots INTEGER,
+  current_price NUMERIC,
+  description TEXT,
+  specifications JSONB NOT NULL DEFAULT '{}'::jsonb,
+  floor_plan_image TEXT,
+  gallery TEXT[] NOT NULL DEFAULT '{}',
+  active BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_developer_house_models_project ON public.developer_house_models(project_id, active);
+
+CREATE TABLE IF NOT EXISTS public.developer_model_price_history (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  model_id UUID NOT NULL REFERENCES public.developer_house_models(id) ON DELETE CASCADE,
+  previous_price NUMERIC,
+  new_price NUMERIC NOT NULL,
+  price_difference NUMERIC,
+  percentage_change NUMERIC,
+  effective_date DATE NOT NULL DEFAULT CURRENT_DATE,
+  created_by UUID REFERENCES public.users(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_developer_model_price_history_model ON public.developer_model_price_history(model_id, effective_date DESC);
+
+CREATE TABLE IF NOT EXISTS public.developer_model_inventory (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  model_id UUID NOT NULL REFERENCES public.developer_house_models(id) ON DELETE CASCADE,
+  available_units INTEGER NOT NULL DEFAULT 0,
+  reserved_units INTEGER NOT NULL DEFAULT 0,
+  sold_units INTEGER NOT NULL DEFAULT 0,
+  phase TEXT,
+  block TEXT,
+  last_updated TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE(model_id, phase, block)
+);
+
+CREATE INDEX IF NOT EXISTS idx_developer_model_inventory_model ON public.developer_model_inventory(model_id);

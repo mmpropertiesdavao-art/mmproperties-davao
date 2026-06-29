@@ -3,6 +3,7 @@ import "./globals.css";
 import "./interactive.css";
 import { CompareTray } from "@/components/compare/CompareTray";
 import { PropertyModalProvider } from "@/components/property/PropertyModalProvider";
+import { DeveloperProjectModalProvider } from "@/components/developer/DeveloperProjectModalProvider";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { MessengerButton } from "@/components/layout/MessengerButton";
@@ -77,11 +78,13 @@ export default function RootLayout({
         />
 
         <PropertyModalProvider>
+        <DeveloperProjectModalProvider>
         <SiteHeader />
         <main className="min-w-0 flex-1">{children}</main>
         <SiteFooter />
         <MessengerButton />
         <CompareTray />
+        </DeveloperProjectModalProvider>
         </PropertyModalProvider>
       </body>
     </html>

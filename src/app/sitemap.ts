@@ -2,13 +2,14 @@
 import type { MetadataRoute } from "next";
 import { getAllActiveProperties, getAllNeighborhoods } from "@/lib/data";
 import { getPublishedPosts } from "@/lib/blog";
+import { getActiveDeveloperProjects } from "@/lib/developer-inventory";
 
 export const dynamic = "force-dynamic";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://mmpropertiesdavao.com";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const [properties, neighborhoods, posts] = await Promise.all([getAllActiveProperties(), getAllNeighborhoods(), getPublishedPosts()]);
+  const [properties, neighborhoods, posts, projects] = await Promise.all([getAllActiveProperties(), getAllNeighborhoods(), getPublishedPosts(), getActiveDeveloperProjects(500)]);
 
   return [
     { url: SITE_URL, priority: 1, changeFrequency: "daily" },
@@ -31,6 +32,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.6,
       changeFrequency: "weekly" as const,
       lastModified: p.updatedAt,
+    })),
+    ...projects.map((project) => ({
+      url: `${SITE_URL}/projects/${project.slug}`,
+      priority: 0.7,
+      changeFrequency: "weekly" as const,
     })),
   ];
 }

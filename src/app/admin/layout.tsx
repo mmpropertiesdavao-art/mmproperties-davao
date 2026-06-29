@@ -11,6 +11,10 @@ const adminNav = [
     href: '/admin/listings',
   },
   {
+    label: 'Developer Inventory',
+    href: '/admin/developer-inventory',
+  },
+  {
     label: 'Leads',
     href: '/admin/inquiries',
   },
