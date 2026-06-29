@@ -9,7 +9,12 @@ export const dynamic = "force-dynamic";
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://mmpropertiesdavao.com";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const [properties, neighborhoods, posts, projects] = await Promise.all([getAllActiveProperties(), getAllNeighborhoods(), getPublishedPosts(), getActiveDeveloperProjects(500)]);
+  const [properties, neighborhoods, posts, projects] = await Promise.all([
+    getAllActiveProperties(),
+    getAllNeighborhoods(),
+    getPublishedPosts(),
+    getActiveDeveloperProjects(500).catch(() => []),
+  ]);
 
   return [
     { url: SITE_URL, priority: 1, changeFrequency: "daily" },

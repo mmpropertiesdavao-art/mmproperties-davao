@@ -32,20 +32,26 @@ export default function SearchPage() {
     if (developerName) params.set("developerName", developerName);
 
     setError(null);
-    Promise.all([
-      fetch(`/api/properties/search?${params.toString()}`, { signal: controller.signal }),
-      fetch("/api/developer-projects", { signal: controller.signal }),
-    ])
-      .then(async ([response, projectResponse]) => {
+    fetch(`/api/properties/search?${params.toString()}`, { signal: controller.signal })
+      .then(async (response) => {
         if (!response.ok) throw new Error("Search failed");
-        if (!projectResponse.ok) throw new Error("Project search failed");
-        return { data: await response.json(), projectData: await projectResponse.json() };
+        return response.json();
       })
-      .then(async ({ data, projectData }) => {
+      .then(async (data) => {
         const count = Number(data.totalCount ?? 0);
         setResults(data.results ?? []);
-        setDeveloperProjects(projectData.results ?? []);
         setTotalCount(count);
+
+        fetch("/api/developer-projects", { signal: controller.signal })
+          .then(async (projectResponse) => {
+            if (!projectResponse.ok) return { results: [] };
+            return projectResponse.json();
+          })
+          .then((projectData) => setDeveloperProjects(projectData.results ?? []))
+          .catch((projectError) => {
+            if (projectError instanceof DOMException && projectError.name === "AbortError") return;
+            setDeveloperProjects([]);
+          });
 
         if (count === 0) {
           setMapResults([]);
