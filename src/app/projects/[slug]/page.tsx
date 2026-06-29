@@ -26,7 +26,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     alternates: { canonical: `/projects/${project.slug}` },
     openGraph: {
       title: project.seoTitle || `${project.projectName} by ${project.developerName}`,
-      description: project.seoDescription || project.description || `Browse available house models and inventory.`,
+      description: project.seoDescription || project.description || "Browse available house models, lots, and inventory.",
       images: project.heroImage ? [project.heroImage] : undefined,
     },
   };
@@ -36,8 +36,11 @@ export default async function ProjectPage({ params }: PageProps) {
   const { slug } = await params;
   const payload = await getDeveloperProjectBySlug(slug);
   if (!payload) notFound();
+
   const project = payload.project as any;
   const models = payload.models as any[];
+  const isLotOnlyProject = models.length > 0 && models.every((model) => model.modelType === "lot_only");
+  const inventoryLabel = isLotOnlyProject ? "Available lots" : "Available house models";
   const startingPrice = models.reduce<number | null>((lowest, model) => {
     if (!model.currentPrice) return lowest;
     return lowest === null ? model.currentPrice : Math.min(lowest, model.currentPrice);
@@ -46,22 +49,27 @@ export default async function ProjectPage({ params }: PageProps) {
 
   return (
     <main className="bg-slate-50">
-      <section className="bg-navy-950 text-white">
-        <div className="mx-auto grid max-w-7xl gap-8 px-4 py-10 lg:grid-cols-[1.1fr_.9fr] lg:items-center">
-          <div>
-            <p className="text-sm font-bold uppercase tracking-wide text-gold-400">New Development</p>
-            <h1 className="mt-2 text-4xl font-bold">{project.projectName}</h1>
-            <p className="mt-2 text-lg text-gold-200">{project.developerName}</p>
-            <p className="mt-4 flex gap-2 text-sm leading-6 text-slate-200">
-              <MapPin size={18} className="mt-1 shrink-0 text-gold-400" />
-              {[project.address, project.barangay, project.city, project.province].filter(Boolean).join(", ")}
+      <section className="relative isolate overflow-hidden bg-navy-950 text-white">
+        <div className="absolute inset-0 -z-20">
+          <img src={project.heroImage || "/placeholder-property.png"} alt="" className="h-full w-full object-cover opacity-55" />
+        </div>
+        <div className="absolute inset-0 -z-10 bg-gradient-to-r from-navy-950 via-navy-950/82 to-navy-950/35" />
+        <div className="absolute inset-0 -z-10 bg-gradient-to-t from-navy-950/70 via-transparent to-navy-950/30" />
+        <div className="mx-auto grid max-w-7xl gap-8 px-4 py-12 sm:py-16 lg:grid-cols-[1.1fr_.9fr] lg:items-center">
+          <div className="rounded-3xl border border-white/10 bg-navy-950/58 p-5 shadow-2xl shadow-navy-950/35 backdrop-blur-[2px] sm:p-7">
+            <p className="text-sm font-extrabold uppercase tracking-[0.18em] text-gold-300 [text-shadow:0_2px_12px_rgba(0,0,0,0.65)]">New Development</p>
+            <h1 className="mt-2 text-4xl font-extrabold tracking-tight text-white drop-shadow-2xl [text-shadow:0_4px_22px_rgba(0,0,0,0.8)] sm:text-5xl">{project.projectName}</h1>
+            <p className="mt-3 text-lg font-semibold text-gold-100 [text-shadow:0_2px_14px_rgba(0,0,0,0.7)]">{project.developerName}</p>
+            <p className="mt-4 flex gap-2 text-sm font-medium leading-6 text-white [text-shadow:0_2px_12px_rgba(0,0,0,0.75)]">
+              <MapPin size={18} className="mt-1 shrink-0 text-gold-300" />
+              <span>{[project.address, project.barangay, project.city, project.province].filter(Boolean).join(", ")}</span>
             </p>
             <div className="mt-5 flex flex-wrap gap-2">
-              <span className="rounded-full bg-violet-600 px-3 py-1 text-xs font-bold uppercase">{statusLabel(project.status)}</span>
-              <span className="rounded-full bg-gold-500 px-3 py-1 text-xs font-bold uppercase text-navy-950">Starting from {formatPeso(startingPrice)}</span>
+              <span className="rounded-full bg-violet-600 px-3 py-1 text-xs font-extrabold uppercase text-white shadow-lg shadow-violet-950/35">{statusLabel(project.status)}</span>
+              <span className="rounded-full bg-gold-500 px-3 py-1 text-xs font-extrabold uppercase text-navy-950 shadow-lg shadow-navy-950/25">Starting from {formatPeso(startingPrice)}</span>
             </div>
           </div>
-          <div className="image-zoom-frame overflow-hidden rounded-3xl bg-slate-900 shadow-2xl">
+          <div className="image-zoom-frame hidden overflow-hidden rounded-3xl bg-slate-900 shadow-2xl shadow-navy-950/45 lg:block">
             <img src={project.heroImage || "/placeholder-property.png"} alt={project.projectName} className="zoomable-image aspect-[4/3] w-full object-cover" />
           </div>
         </div>
@@ -70,15 +78,49 @@ export default async function ProjectPage({ params }: PageProps) {
       <section className="mx-auto max-w-7xl px-4 py-8">
         <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
           <div className="space-y-6">
-            {project.description && <article className="rounded-2xl border bg-white p-6 shadow-sm"><h2 className="text-xl font-bold text-navy-950">Project overview</h2><p className="mt-3 whitespace-pre-line text-sm leading-7 text-navy-600">{project.description}</p></article>}
-            {project.videoUrl && <article className="rounded-2xl border bg-white p-6 shadow-sm"><h2 className="text-xl font-bold text-navy-950">Project video tour</h2><VideoEmbed url={project.videoUrl} title={`${project.projectName} video tour`} className="mt-4" /></article>}
-            {project.amenities?.length > 0 && <article className="rounded-2xl border bg-white p-6 shadow-sm"><h2 className="text-xl font-bold text-navy-950">Amenities</h2><div className="mt-3 flex flex-wrap gap-2">{project.amenities.map((amenity: string) => <span key={amenity} className="rounded-full bg-gold-50 px-3 py-1 text-sm font-semibold text-navy-800">{amenity}</span>)}</div></article>}
-            {gallery.length > 1 && <article className="rounded-2xl border bg-white p-6 shadow-sm"><h2 className="text-xl font-bold text-navy-950">Project gallery</h2><div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{gallery.map((image: string, index: number) => <div key={`${image}-${index}`} className="image-zoom-frame overflow-hidden rounded-xl bg-navy-50"><img src={image} alt={`${project.projectName} ${index + 1}`} className="zoomable-image aspect-[4/3] w-full object-cover" loading="lazy" /></div>)}</div></article>}
+            {project.description && (
+              <article className="rounded-2xl border bg-white p-6 shadow-sm">
+                <h2 className="text-xl font-bold text-navy-950">Project overview</h2>
+                <p className="mt-3 whitespace-pre-line text-sm leading-7 text-navy-600">{project.description}</p>
+              </article>
+            )}
+            {project.videoUrl && (
+              <article className="rounded-2xl border bg-white p-6 shadow-sm">
+                <h2 className="text-xl font-bold text-navy-950">Project video tour</h2>
+                <VideoEmbed url={project.videoUrl} title={`${project.projectName} video tour`} className="mt-4" />
+              </article>
+            )}
+            {project.amenities?.length > 0 && (
+              <article className="rounded-2xl border bg-white p-6 shadow-sm">
+                <h2 className="text-xl font-bold text-navy-950">Amenities</h2>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {project.amenities.map((amenity: string) => <span key={amenity} className="rounded-full bg-gold-50 px-3 py-1 text-sm font-semibold text-navy-800">{amenity}</span>)}
+                </div>
+              </article>
+            )}
+            {gallery.length > 1 && (
+              <article className="rounded-2xl border bg-white p-6 shadow-sm">
+                <h2 className="text-xl font-bold text-navy-950">Project gallery</h2>
+                <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {gallery.map((image: string, index: number) => (
+                    <div key={`${image}-${index}`} className="image-zoom-frame overflow-hidden rounded-xl bg-navy-50">
+                      <img src={image} alt={`${project.projectName} ${index + 1}`} className="zoomable-image aspect-[4/3] w-full object-cover" loading="lazy" />
+                    </div>
+                  ))}
+                </div>
+              </article>
+            )}
             <article className="rounded-2xl border bg-white p-6 shadow-sm">
-              <h2 className="text-xl font-bold text-navy-950">Available house models</h2>
-              <div className="mt-4 grid gap-4 md:grid-cols-2">
-                {models.map((model) => <ModelCard key={model.id} model={model} />)}
-              </div>
+              <h2 className="text-xl font-bold text-navy-950">{inventoryLabel}</h2>
+              {models.length > 0 ? (
+                <div className="mt-4 grid gap-4 md:grid-cols-2">
+                  {models.map((model) => <ModelCard key={model.id} model={model} />)}
+                </div>
+              ) : (
+                <p className="mt-3 rounded-xl bg-gold-50 p-4 text-sm font-semibold text-navy-700">
+                  No public model or lot inventory has been added yet. Add an active house model or lot-only inventory item in the developer inventory admin page.
+                </p>
+              )}
             </article>
           </div>
 
@@ -94,7 +136,7 @@ export default async function ProjectPage({ params }: PageProps) {
             <div className="rounded-2xl border bg-white p-5 shadow-sm">
               <h2 className="font-bold text-navy-950">Inventory summary</h2>
               <div className="mt-3 grid gap-2 text-sm">
-                <Info icon={<Building2 size={16} />} label="Models" value={String(models.length)} />
+                <Info icon={<Building2 size={16} />} label={isLotOnlyProject ? "Lots" : "Models"} value={String(models.length)} />
                 <Info icon={<Square size={16} />} label="Available units" value={String(models.reduce((sum, model) => sum + Number(model.availableUnits || 0), 0))} />
               </div>
             </div>
@@ -111,12 +153,20 @@ function Info({ icon, label, value }: { icon: React.ReactNode; label: string; va
 
 function ModelCard({ model }: { model: any }) {
   const image = model.gallery?.[0] || model.floorPlanImage || "/placeholder-property.png";
+  const isLotOnly = model.modelType === "lot_only";
+  const pricePerSqm = isLotOnly && model.lotArea && model.currentPrice ? Math.round(Number(model.currentPrice) / Number(model.lotArea)) : null;
+
   return (
     <article className="overflow-hidden rounded-xl border border-navy-100">
       <div className="image-zoom-frame h-48 overflow-hidden bg-navy-50"><img src={image} alt={model.name} className="zoomable-image h-full w-full object-cover" loading="lazy" /></div>
       <div className="p-4">
         <div className="flex items-start justify-between gap-3">
-          <div><h3 className="font-bold text-navy-950">{model.name}</h3><p className="text-lg font-bold text-navy-900">{formatPeso(model.currentPrice)}</p></div>
+          <div>
+            <p className="text-xs font-extrabold uppercase tracking-wide text-violet-700">{isLotOnly ? "Lot only" : "House model"}</p>
+            <h3 className="font-bold text-navy-950">{model.name}</h3>
+            <p className="text-lg font-bold text-navy-900">{formatPeso(model.currentPrice)}</p>
+            {pricePerSqm && <p className="text-xs font-semibold text-gold-700">{formatPeso(pricePerSqm)} / sqm</p>}
+          </div>
           <div className="flex flex-col items-end gap-2">
             <span className="rounded-full bg-green-50 px-2 py-1 text-xs font-bold text-green-800">{model.availableUnits} available</span>
             {model.videoUrl && <span className="rounded-full bg-red-50 px-2 py-1 text-xs font-bold text-red-700">Video tour</span>}
@@ -125,11 +175,12 @@ function ModelCard({ model }: { model: any }) {
         {model.description && <p className="mt-2 line-clamp-3 text-sm text-navy-500">{model.description}</p>}
         {model.videoUrl && <VideoEmbed url={model.videoUrl} title={`${model.name} video tour`} className="mt-3" />}
         <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-navy-600">
-          <span className="inline-flex items-center gap-1"><BedDouble size={14} />{model.bedrooms ?? "—"} bd</span>
-          <span className="inline-flex items-center gap-1"><Bath size={14} />{model.bathrooms ?? "—"} ba</span>
-          <span className="inline-flex items-center gap-1"><Ruler size={14} />{model.floorArea ?? "—"} sqm floor</span>
+          {!isLotOnly && <span className="inline-flex items-center gap-1"><BedDouble size={14} />{model.bedrooms ?? "—"} bd</span>}
+          {!isLotOnly && <span className="inline-flex items-center gap-1"><Bath size={14} />{model.bathrooms ?? "—"} ba</span>}
+          {!isLotOnly && <span className="inline-flex items-center gap-1"><Ruler size={14} />{model.floorArea ?? "—"} sqm floor</span>}
           <span className="inline-flex items-center gap-1"><Square size={14} />{model.lotArea ?? "—"} sqm lot</span>
-          <span className="inline-flex items-center gap-1"><Car size={14} />{model.parkingSlots ?? "—"} parking</span>
+          {pricePerSqm && <span className="inline-flex items-center gap-1"><Ruler size={14} />{formatPeso(pricePerSqm)} / sqm</span>}
+          {!isLotOnly && <span className="inline-flex items-center gap-1"><Car size={14} />{model.parkingSlots ?? "—"} parking</span>}
         </div>
       </div>
     </article>
