@@ -22,7 +22,7 @@ export default function SearchPage() {
     const controller = new AbortController();
     const params = new URLSearchParams();
     const urlParams = new URLSearchParams(window.location.search);
-    ["listingIntent","financingAvailable","assumeBalanceAvailable","isForeclosed","propertyType","minPrice","maxPrice"].forEach((key)=>{const value=urlParams.get(key);if(value)params.set(key,value)});
+    ["listingIntent","financingAvailable","assumeBalanceAvailable","isForeclosed","propertyType","minPrice","maxPrice","minBedrooms","barangay","neighborhoodId"].forEach((key)=>{const value=urlParams.get(key);if(value)params.set(key,value)});
     Object.entries(filters).forEach(([key, value]) => {
       if (value !== undefined && value !== null) params.set(key, String(value));
     });

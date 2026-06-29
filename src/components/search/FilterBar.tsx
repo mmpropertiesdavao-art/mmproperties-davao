@@ -1,6 +1,6 @@
 // src/components/search/FilterBar.tsx
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { PropertySearchFilters, PropertyTypeSlug } from "@/types/property";
 
 const PROPERTY_TYPES: { slug: PropertyTypeSlug; label: string }[] = [
@@ -26,16 +26,44 @@ interface FilterBarProps {
   onChange: (filters: PropertySearchFilters) => void;
 }
 
+type NeighborhoodOption = {
+  id: string | null;
+  name: string;
+  source: "neighborhood" | "barangay" | "place" | "developer_project";
+};
+
 export function FilterBar({ onChange }: FilterBarProps) {
   const [filters, setFilters] = useState<PropertySearchFilters>({});
   const [developers,setDevelopers]=useState<{id:string;name:string}[]>([]);
+  const [neighborhoods, setNeighborhoods] = useState<NeighborhoodOption[]>([]);
+  const [neighborhoodInput, setNeighborhoodInput] = useState("");
   const [open,setOpen]=useState(false);
   useEffect(()=>{fetch("/api/developers").then(r=>r.json()).then(setDevelopers).catch(()=>{})},[]);
+  useEffect(() => {
+    fetch("/api/neighborhood-options")
+      .then((response) => response.json())
+      .then((data) => setNeighborhoods(Array.isArray(data) ? data : []))
+      .catch(() => setNeighborhoods([]));
+  }, []);
+
+  const matchedNeighborhood = useMemo(
+    () => neighborhoods.find((option) => option.name.toLowerCase() === neighborhoodInput.trim().toLowerCase()),
+    [neighborhoodInput, neighborhoods],
+  );
 
   function update(partial: Partial<PropertySearchFilters>) {
     const next = { ...filters, ...partial };
     setFilters(next);
     onChange(next);
+  }
+
+  function updateNeighborhood(value: string) {
+    setNeighborhoodInput(value);
+    const exact = neighborhoods.find((option) => option.name.toLowerCase() === value.trim().toLowerCase());
+    update({
+      neighborhoodId: exact?.id || undefined,
+      barangay: value.trim() && !exact?.id ? value.trim() : undefined,
+    });
   }
 
   return (
@@ -79,10 +107,42 @@ export function FilterBar({ onChange }: FilterBarProps) {
         <option value="">Bedrooms</option>
         {[1, 2, 3, 4, 5].map((n) => (
           <option key={n} value={n}>
-            {n}+ bd
+            {n === 5 ? "5+" : n}
           </option>
         ))}
       </select>
+
+      <label className="relative w-full md:w-56">
+        <span className="sr-only">Neighborhood</span>
+        <input
+          value={neighborhoodInput}
+          onChange={(event) => updateNeighborhood(event.target.value)}
+          list="search-neighborhood-options"
+          className="w-full rounded-md border px-3 py-2 text-sm"
+          placeholder="Neighborhood"
+          autoComplete="off"
+        />
+        <datalist id="search-neighborhood-options">
+          {neighborhoods.map((option) => (
+            <option key={`${option.source}-${option.id || option.name}`} value={option.name} />
+          ))}
+        </datalist>
+        {neighborhoodInput && (
+          <button
+            type="button"
+            onClick={() => updateNeighborhood("")}
+            className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full px-2 text-xs font-bold text-navy-500 hover:bg-navy-50"
+            aria-label="Clear neighborhood"
+          >
+            ×
+          </button>
+        )}
+        {neighborhoodInput && matchedNeighborhood && (
+          <span className="mt-1 block text-[11px] font-medium text-navy-500">
+            Filtering by {matchedNeighborhood.id ? "neighborhood" : "location"}: {matchedNeighborhood.name}
+          </span>
+        )}
+      </label>
 
       <select
         className="w-full rounded-md border px-3 py-2 text-sm md:w-auto"
