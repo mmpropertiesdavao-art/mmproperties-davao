@@ -311,3 +311,28 @@ export async function PATCH(request: NextRequest) {
 
   return NextResponse.json({ error: "Unsupported developer inventory update." }, { status: 400 });
 }
+
+export async function DELETE(request: NextRequest) {
+  await requireRole(["admin"]);
+  const body = await request.json().catch(() => null);
+  if (!body || typeof body !== "object") return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
+
+  const type = String(body.type || "");
+  const id = String(body.id || "");
+  if (type !== "developer" || !id) {
+    return NextResponse.json({ error: "Developer id is required." }, { status: 400 });
+  }
+
+  const { rows } = await db.query<{ name: string }>({
+    text: `SELECT name FROM developers WHERE id=$1::uuid LIMIT 1`,
+    values: [id],
+  });
+
+  if (!rows[0]) return NextResponse.json({ error: "Developer not found." }, { status: 404 });
+  if (String(body.confirmation || "") !== rows[0].name) {
+    return NextResponse.json({ error: "Confirmation text does not match the developer name." }, { status: 400 });
+  }
+
+  await db.query({ text: `DELETE FROM developers WHERE id=$1::uuid`, values: [id] });
+  return NextResponse.json({ ok: true, deleted: true });
+}

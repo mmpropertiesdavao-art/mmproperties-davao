@@ -162,14 +162,16 @@ export function DeveloperProjectModalProvider({ children }: { children: React.Re
 
 function DeveloperProjectModalContent({ payload, openInquiryAfterLoad, initialModelId }: { payload: ProjectPayload; openInquiryAfterLoad?: boolean; initialModelId?: string | null }) {
   const { project, models } = payload;
-  const [selectedModelId, setSelectedModelId] = useState<string | null>(initialModelId || models[0]?.id || null);
+  const isLotOnlyProject = models.length > 0 && models.every((model) => model.modelType === "lot_only");
+  const [selectedModelId, setSelectedModelId] = useState<string | null>(initialModelId || (isLotOnlyProject ? models[0]?.id : null) || null);
   const [inquiryOpen, setInquiryOpen] = useState(Boolean(openInquiryAfterLoad));
   const [sent, setSent] = useState(false);
   const [expanded, setExpanded] = useState(false);
-  const selectedModel = models.find((model) => model.id === selectedModelId) || models[0] || null;
+  const selectedModel = models.find((model) => model.id === selectedModelId) || null;
   const projectImages = [project.heroImage, ...(project.gallery || [])].filter(Boolean) as string[];
   const modelImages = selectedModel ? [...(selectedModel.gallery || []), selectedModel.floorPlanImage].filter(Boolean) as string[] : [];
-  const gallery = (modelImages.length ? modelImages : projectImages).length ? (modelImages.length ? modelImages : projectImages) : ["/placeholder-property.png"];
+  const activeGallery = modelImages.length ? modelImages : projectImages;
+  const gallery = (selectedModel?.modelType === "lot_only" ? activeGallery.slice(0, 2) : activeGallery).length ? (selectedModel?.modelType === "lot_only" ? activeGallery.slice(0, 2) : activeGallery) : ["/placeholder-property.png"];
   const [activeIndex, setActiveIndex] = useState(0);
   const touchStartX = useRef<number | null>(null);
   const startingPrice = models.reduce<number | null>((lowest, model) => {
@@ -187,9 +189,10 @@ function DeveloperProjectModalContent({ payload, openInquiryAfterLoad, initialMo
     setActiveIndex((current) => (current + 1) % gallery.length);
   }
 
-  function chooseModel(model: Model) {
-    setSelectedModelId(model.id);
+  function chooseModel(modelId: string) {
+    setSelectedModelId(modelId || null);
     setActiveIndex(0);
+    setExpanded(false);
   }
 
   return (
@@ -210,9 +213,9 @@ function DeveloperProjectModalContent({ payload, openInquiryAfterLoad, initialMo
             {gallery.map((image, index) => <button key={`${image}-${index}`} type="button" onClick={() => setActiveIndex(index)} className={`image-zoom-frame h-16 w-24 shrink-0 overflow-hidden rounded-xl border-2 bg-white/10 ${index === activeIndex ? "border-gold-400" : "border-transparent"}`}><img src={image} alt="" className="zoomable-image h-full w-full object-cover" loading="lazy" /></button>)}
           </div>
         )}
-        {(selectedModel?.currentPrice || startingPrice) ? (
+        {selectedModel?.currentPrice ? (
           <PaymentCalculator
-            price={selectedModel?.currentPrice || startingPrice || 0}
+            price={selectedModel.currentPrice}
             className="mt-4 shrink-0 text-sm [&_*]:min-w-0 [&_h3]:mb-3 [&_h3]:text-base [&_label]:mb-2 [&_p]:break-words"
           />
         ) : null}
@@ -225,22 +228,47 @@ function DeveloperProjectModalContent({ payload, openInquiryAfterLoad, initialMo
         <h1 className="mt-4 text-2xl font-bold text-navy-950">{project.projectName}</h1>
         <p className="mt-1 font-semibold text-navy-700">{project.developerName}</p>
         <p className="mt-2 flex gap-2 text-sm leading-6 text-navy-500"><MapPin size={17} className="mt-1 shrink-0 text-gold-600" />{[project.address, project.barangay, project.city, project.province].filter(Boolean).join(", ")}</p>
-        <p className="mt-4 text-2xl font-bold text-navy-950">
-          {selectedModel ? formatPeso(selectedModel.currentPrice) : `Starting from ${formatPeso(startingPrice)}`}
-        </p>
+        <section className="mt-5 rounded-xl border border-navy-100 bg-navy-50 p-4">
+          <label className="text-sm font-bold text-navy-900" htmlFor="developer-model-select">
+            {isLotOnlyProject ? "Selected lot inventory" : "Choose a model to view"}
+          </label>
+          <select
+            id="developer-model-select"
+            value={selectedModelId || ""}
+            onChange={(event) => chooseModel(event.target.value)}
+            className="mt-2 w-full rounded-lg border border-navy-200 bg-white px-3 py-3 text-sm font-semibold text-navy-900"
+          >
+            {!isLotOnlyProject && <option value="">Select model</option>}
+            {models.map((model) => (
+              <option key={model.id} value={model.id}>
+                {model.name} — {model.modelType === "lot_only" ? "Lot only" : "House model"} — {formatPeso(model.currentPrice)}
+              </option>
+            ))}
+          </select>
+          {!selectedModel && (
+            <p className="mt-3 text-sm text-navy-500">
+              Select a model to view its photos, calculator, description, floor plan, availability, and inquiry form.
+            </p>
+          )}
+        </section>
+
         {selectedModel && (
-          <p className="mt-1 text-sm font-semibold text-violet-700">
-            Selected model: {selectedModel.name}
-          </p>
+          <>
+            <p className="mt-4 text-2xl font-bold text-navy-950">{formatPeso(selectedModel.currentPrice)}</p>
+            <p className="mt-1 text-sm font-semibold text-violet-700">
+              Selected {selectedModel.modelType === "lot_only" ? "lot" : "model"}: {selectedModel.name}
+            </p>
+            <div className="mt-5 grid gap-3 sm:grid-cols-2">
+              <Info icon={<Building2 size={18} />} label={selectedModel.modelType === "lot_only" ? "Lot type" : "Model"} value={selectedModel.name} />
+              {selectedModel.modelType !== "lot_only" && <Info icon={<BedDouble size={18} />} label="Bedrooms" value={selectedModel.bedrooms == null ? "Not provided" : String(selectedModel.bedrooms)} />}
+              {selectedModel.modelType !== "lot_only" && <Info icon={<Bath size={18} />} label="Bathrooms" value={selectedModel.bathrooms == null ? "Not provided" : String(selectedModel.bathrooms)} />}
+              {selectedModel.modelType === "lot_only" && <Info icon={<Ruler size={18} />} label="Price / sqm" value={selectedModel.lotArea && selectedModel.currentPrice ? formatPeso(selectedModel.currentPrice / selectedModel.lotArea) : "Not provided"} />}
+              <Info icon={<Square size={18} />} label="Inventory" value={`${selectedModel.availableUnits} available`} />
+            </div>
+          </>
         )}
-        <div className="mt-5 grid gap-3 sm:grid-cols-2">
-          <Info icon={<Building2 size={18} />} label="Models" value={`${models.length} available`} />
-          {selectedModel?.modelType !== "lot_only" && <Info icon={<BedDouble size={18} />} label="Bedrooms" value={range(models.map((m) => m.bedrooms))} />}
-          {selectedModel?.modelType !== "lot_only" && <Info icon={<Bath size={18} />} label="Bathrooms" value={range(models.map((m) => m.bathrooms))} />}
-          {selectedModel?.modelType === "lot_only" && <Info icon={<Ruler size={18} />} label="Price / sqm" value={selectedModel.lotArea && selectedModel.currentPrice ? formatPeso(selectedModel.currentPrice / selectedModel.lotArea) : "Not provided"} />}
-          <Info icon={<Square size={18} />} label="Inventory" value={`${selectedModel?.availableUnits ?? models.reduce((sum, model) => sum + model.availableUnits, 0)} available`} />
-        </div>
-        {descriptionText && (
+
+        {selectedModel && descriptionText && (
           <section className="mt-5">
             <h3 className="font-bold text-navy-900">{selectedModel?.modelType === "lot_only" ? "Lot description" : selectedModel ? "House description" : "Project description"}</h3>
             <p className="mt-2 whitespace-pre-line text-sm leading-7 text-navy-600">{displayedDescription}</p>
@@ -283,15 +311,9 @@ function DeveloperProjectModalContent({ payload, openInquiryAfterLoad, initialMo
           </section>
         )}
         {project.amenities?.length > 0 && <div className="mt-5"><h3 className="font-bold text-navy-900">Amenities</h3><div className="mt-3 flex flex-wrap gap-2">{project.amenities.map((amenity) => <span key={amenity} className="rounded-full bg-gold-50 px-3 py-1 text-sm font-semibold text-navy-800">{amenity}</span>)}</div></div>}
-        <section className="mt-6">
-          <h3 className="font-bold text-navy-900">House models</h3>
-          <div className="mt-3 space-y-3">
-            {models.map((model) => <ModelCard key={model.id} model={model} selected={model.id === selectedModel?.id} onSelect={() => chooseModel(model)} onInquire={() => { chooseModel(model); setInquiryOpen(true); }} />)}
-          </div>
-        </section>
-        <button type="button" onClick={() => setInquiryOpen(true)} className="mt-6 w-full rounded-xl bg-gold-500 px-5 py-3 font-bold text-navy-950 shadow-lg hover:bg-gold-400">
+        {selectedModel && <button type="button" onClick={() => setInquiryOpen(true)} className="mt-6 w-full rounded-xl bg-gold-500 px-5 py-3 font-bold text-navy-950 shadow-lg hover:bg-gold-400">
           Inquire about {selectedModel?.name || project.projectName}
-        </button>
+        </button>}
         <a href={`/projects/${project.slug}`} className="mt-6 inline-flex w-full justify-center rounded-xl border border-navy-200 px-5 py-3 font-bold text-navy-900 hover:border-gold-400">Open full project page</a>
       </aside>
       {inquiryOpen && (

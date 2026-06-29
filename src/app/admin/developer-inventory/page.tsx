@@ -46,7 +46,6 @@ type Project = {
 
 type Developer = {
   id: string;
-  modelType?: "house_model" | "lot_only";
   name: string;
   logoUrl: string | null;
   description: string | null;
@@ -251,6 +250,7 @@ export default function DeveloperInventoryAdminPage() {
                 </div>
               </div>
             </div>
+            <DeveloperEditor developer={developer} saving={saving} onSaved={load} setMessage={setMessage} />
 
             <div className="mt-5 grid gap-4">
               {developer.projects.map((project) => (
@@ -349,6 +349,89 @@ function UploadInput({ label: text, onUpload, ...rest }: React.InputHTMLAttribut
         event.currentTarget.value = "";
       }} className="mt-2 w-full text-xs" />
     </label>
+  );
+}
+
+function DeveloperEditor({ developer, saving, onSaved, setMessage }: { developer: Developer; saving: boolean; onSaved: () => Promise<void>; setMessage: (message: string | null) => void }) {
+  const [open, setOpen] = useState(false);
+  const [confirmation, setConfirmation] = useState("");
+
+  async function save(form: HTMLFormElement, forceInactive = false) {
+    const formData = new FormData(form);
+    const response = await fetch("/api/admin/developer-inventory", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        type: "developer",
+        id: developer.id,
+        name: formData.get("name"),
+        logoUrl: formData.get("logoUrl"),
+        website: formData.get("website"),
+        contactNumber: formData.get("contactNumber"),
+        email: formData.get("email"),
+        description: formData.get("description"),
+        isActive: forceInactive ? false : formData.get("isActive") === "on",
+      }),
+    });
+    const data = await readJson(response);
+    setMessage(response.ok ? (forceInactive ? "Developer archived." : "Developer updated.") : data.error || "Could not update developer.");
+    if (response.ok) await onSaved();
+  }
+
+  async function deleteDeveloper() {
+    if (confirmation !== developer.name) {
+      setMessage("Type the developer name exactly before permanent delete.");
+      return;
+    }
+    const response = await fetch("/api/admin/developer-inventory", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "developer", id: developer.id, confirmation }),
+    });
+    const data = await readJson(response);
+    setMessage(response.ok ? "Developer permanently deleted." : data.error || "Could not delete developer.");
+    if (response.ok) await onSaved();
+  }
+
+  return (
+    <section className="mt-4 rounded-xl border border-navy-100 bg-navy-50 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm font-semibold text-navy-800">
+          Developer status: <span className={developer.isActive ? "text-green-700" : "text-red-700"}>{developer.isActive ? "Active" : "Archived"}</span>
+        </p>
+        <button type="button" onClick={() => setOpen((value) => !value)} className="rounded-lg border border-navy-200 bg-white px-3 py-2 text-sm font-bold text-navy-800">
+          {open ? "Hide developer editor" : "Edit / archive developer"}
+        </button>
+      </div>
+      {open && (
+        <form
+          className="mt-4 grid gap-3 md:grid-cols-2"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void save(event.currentTarget);
+          }}
+        >
+          <Field name="name" label="Developer name" defaultValue={developer.name} required />
+          <Field name="logoUrl" label="Logo URL" defaultValue={developer.logoUrl || ""} />
+          <Field name="website" label="Website" defaultValue={developer.website || ""} />
+          <Field name="contactNumber" label="Contact number" defaultValue={developer.contactNumber || ""} />
+          <Field name="email" label="Email" defaultValue={developer.email || ""} />
+          <label className="flex items-center gap-2 text-sm"><input name="isActive" type="checkbox" defaultChecked={developer.isActive} /> Active</label>
+          <TextArea name="description" label="Description" defaultValue={developer.description || ""} className="md:col-span-2" />
+          <div className="flex flex-wrap gap-2 md:col-span-2">
+            <button disabled={saving} className="rounded-lg bg-navy-900 px-4 py-2 text-sm font-bold text-white disabled:opacity-50">Save developer</button>
+            <button type="button" disabled={saving} onClick={(event) => void save(event.currentTarget.closest("form") as HTMLFormElement, true)} className="rounded-lg border border-amber-300 bg-white px-4 py-2 text-sm font-bold text-amber-800 disabled:opacity-50">Archive developer</button>
+          </div>
+          <div className="border-t border-red-100 pt-3 md:col-span-2">
+            <p className="text-xs font-semibold text-red-700">Permanent delete also removes this developer's projects/models. Type “{developer.name}” to confirm.</p>
+            <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+              <input value={confirmation} onChange={(event) => setConfirmation(event.target.value)} className={input} placeholder={developer.name} />
+              <button type="button" disabled={saving || confirmation !== developer.name} onClick={() => void deleteDeveloper()} className="rounded-lg bg-red-700 px-4 py-2 text-sm font-bold text-white disabled:opacity-50">Delete permanently</button>
+            </div>
+          </div>
+        </form>
+      )}
+    </section>
   );
 }
 
