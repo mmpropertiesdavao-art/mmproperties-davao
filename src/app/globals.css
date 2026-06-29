@@ -39,6 +39,7 @@
 }
 
 body {
+  overflow-x: clip;
   font-family: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 
