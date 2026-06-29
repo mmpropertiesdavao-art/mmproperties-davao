@@ -35,6 +35,8 @@ CREATE INDEX IF NOT EXISTS idx_developer_projects_location ON public.developer_p
 CREATE TABLE IF NOT EXISTS public.developer_house_models (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   project_id UUID NOT NULL REFERENCES public.developer_projects(id) ON DELETE CASCADE,
+  model_type TEXT NOT NULL DEFAULT 'house_model'
+    CHECK (model_type IN ('house_model','lot_only')),
   name TEXT NOT NULL,
   bedrooms INTEGER,
   bathrooms NUMERIC,
@@ -52,6 +54,11 @@ CREATE TABLE IF NOT EXISTS public.developer_house_models (
 );
 
 CREATE INDEX IF NOT EXISTS idx_developer_house_models_project ON public.developer_house_models(project_id, active);
+
+ALTER TABLE public.developer_house_models ADD COLUMN IF NOT EXISTS model_type TEXT NOT NULL DEFAULT 'house_model';
+ALTER TABLE public.developer_house_models DROP CONSTRAINT IF EXISTS developer_house_models_model_type_check;
+ALTER TABLE public.developer_house_models ADD CONSTRAINT developer_house_models_model_type_check
+  CHECK (model_type IN ('house_model','lot_only'));
 
 CREATE TABLE IF NOT EXISTS public.developer_model_price_history (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -80,3 +87,18 @@ CREATE TABLE IF NOT EXISTS public.developer_model_inventory (
 );
 
 CREATE INDEX IF NOT EXISTS idx_developer_model_inventory_model ON public.developer_model_inventory(model_id);
+
+CREATE TABLE IF NOT EXISTS public.developer_project_inquiries (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  project_id UUID NOT NULL REFERENCES public.developer_projects(id) ON DELETE CASCADE,
+  model_id UUID REFERENCES public.developer_house_models(id) ON DELETE SET NULL,
+  name TEXT NOT NULL,
+  email TEXT NOT NULL,
+  phone TEXT,
+  message TEXT,
+  status TEXT NOT NULL DEFAULT 'new'
+    CHECK (status IN ('new','contacted','follow_up','interested','under_contract','closed','lost')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_developer_project_inquiries_project ON public.developer_project_inquiries(project_id, created_at DESC);

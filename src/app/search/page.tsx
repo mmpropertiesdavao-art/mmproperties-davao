@@ -130,6 +130,7 @@ export default function SearchPage() {
                 startingPrice={project.startingPrice}
                 modelCount={project.modelCount}
                 availableUnits={project.availableUnits}
+                hasLotOnly={project.hasLotOnly}
                 bedroomsMin={project.bedroomsMin}
                 bedroomsMax={project.bedroomsMax}
                 bathroomsMin={project.bathroomsMin}
@@ -147,7 +148,8 @@ export default function SearchPage() {
         <aside className="min-w-0 border-t lg:self-stretch lg:border-l lg:border-t-0">
           <div className="h-[420px] overflow-hidden lg:sticky lg:top-0 lg:h-screen">
             <MapView
-              properties={mapResults.map((property) => ({
+              properties={[
+                ...mapResults.map((property) => ({
                 id: property.id,
                 slug: property.slug,
                 title: property.title,
@@ -157,7 +159,21 @@ export default function SearchPage() {
                 neighborhoodName: property.neighborhoodName,
                 listingIntent: property.listingIntent,
                 rentPrice: property.rentPrice,
-              }))}
+                })),
+                ...developerProjects
+                  .filter((project) => Number.isFinite(Number(project.latitude)) && Number.isFinite(Number(project.longitude)) && project.startingPrice)
+                  .map((project) => ({
+                    id: `project-${project.id}`,
+                    slug: project.slug,
+                    title: project.projectName,
+                    price: Number(project.startingPrice),
+                    lat: Number(project.latitude),
+                    lng: Number(project.longitude),
+                    neighborhoodName: project.barangay || project.city,
+                    listingIntent: "new_development" as const,
+                    pinType: "developer_project" as const,
+                  })),
+              ]}
             />
           </div>
         </aside>

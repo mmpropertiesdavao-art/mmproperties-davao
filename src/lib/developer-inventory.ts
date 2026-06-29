@@ -15,6 +15,7 @@ export type DeveloperProjectSearchRow = {
   heroImage: string | null;
   startingPrice: number | null;
   modelCount: number;
+  hasLotOnly: boolean;
   availableUnits: number;
   bedroomsMin: number | null;
   bedroomsMax: number | null;
@@ -72,6 +73,7 @@ export async function getActiveDeveloperProjects(limit = 24, filters: DeveloperP
           p.hero_image AS "heroImage",
           MIN(m.current_price)::float AS "startingPrice",
           COUNT(DISTINCT m.id)::int AS "modelCount",
+          BOOL_OR(m.model_type = 'lot_only') AS "hasLotOnly",
           COALESCE(SUM(inv.available_units), 0)::int AS "availableUnits",
           MIN(m.bedrooms)::int AS "bedroomsMin",
           MAX(m.bedrooms)::int AS "bedroomsMax",
@@ -171,6 +173,7 @@ export async function getDeveloperProjectBySlug(slug: string) {
       text: `
         SELECT
           m.id,
+          m.model_type AS "modelType",
           m.name,
           m.bedrooms,
           m.bathrooms::float AS bathrooms,

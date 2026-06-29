@@ -6,6 +6,7 @@ import { PaymentCalculator } from "@/components/property/PaymentCalculator";
 
 type Model = {
   id: string;
+  modelType?: "house_model" | "lot_only";
   name: string;
   bedrooms: number | null;
   bathrooms: number | null;
@@ -17,6 +18,7 @@ type Model = {
   priceDifference: number | null;
   percentageChange: number | null;
   description: string | null;
+  specifications?: Record<string, unknown> | null;
   floorPlanImage: string | null;
   gallery: string[];
   availableUnits: number;
@@ -48,7 +50,7 @@ type ProjectPayload = {
 };
 
 type DeveloperProjectModalContextValue = {
-  openProject: (slug: string) => void;
+  openProject: (slug: string, options?: { inquiry?: boolean; modelId?: string | null }) => void;
 };
 
 const DeveloperProjectModalContext = createContext<DeveloperProjectModalContextValue | null>(null);
@@ -71,6 +73,8 @@ export function DeveloperProjectModalProvider({ children }: { children: React.Re
   const [payload, setPayload] = useState<ProjectPayload | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [openInquiryAfterLoad, setOpenInquiryAfterLoad] = useState(false);
+  const [initialModelId, setInitialModelId] = useState<string | null>(null);
 
   const close = useCallback(() => {
     setSlug(null);
@@ -79,10 +83,12 @@ export function DeveloperProjectModalProvider({ children }: { children: React.Re
     setLoading(false);
   }, []);
 
-  const openProject = useCallback((nextSlug: string) => {
+  const openProject = useCallback((nextSlug: string, options?: { inquiry?: boolean; modelId?: string | null }) => {
     setSlug(nextSlug);
     setPayload(null);
     setError(null);
+    setOpenInquiryAfterLoad(Boolean(options?.inquiry));
+    setInitialModelId(options?.modelId || null);
   }, []);
 
   useEffect(() => {
@@ -108,6 +114,15 @@ export function DeveloperProjectModalProvider({ children }: { children: React.Re
       cancelled = true;
     };
   }, [slug]);
+
+  useEffect(() => {
+    function onOpen(event: Event) {
+      const custom = event as CustomEvent<{ slug?: string; inquiry?: boolean; modelId?: string | null }>;
+      if (custom.detail?.slug) openProject(custom.detail.slug, { inquiry: custom.detail.inquiry, modelId: custom.detail.modelId });
+    }
+    window.addEventListener("mm:open-developer-project", onOpen);
+    return () => window.removeEventListener("mm:open-developer-project", onOpen);
+  }, [openProject]);
 
   useEffect(() => {
     if (!slug) return;
@@ -137,7 +152,7 @@ export function DeveloperProjectModalProvider({ children }: { children: React.Re
             </div>
             {loading && <div className="flex flex-1 items-center justify-center"><p className="rounded-full bg-navy-50 px-4 py-2 text-sm font-semibold text-navy-600">Loading project…</p></div>}
             {error && !loading && <div className="flex flex-1 items-center justify-center p-6 text-center"><p className="font-semibold text-red-700">{error}</p></div>}
-            {payload && !loading && !error && <DeveloperProjectModalContent payload={payload} />}
+            {payload && !loading && !error && <DeveloperProjectModalContent payload={payload} openInquiryAfterLoad={openInquiryAfterLoad} initialModelId={initialModelId} />}
           </div>
         </div>
       )}
@@ -145,9 +160,12 @@ export function DeveloperProjectModalProvider({ children }: { children: React.Re
   );
 }
 
-function DeveloperProjectModalContent({ payload }: { payload: ProjectPayload }) {
+function DeveloperProjectModalContent({ payload, openInquiryAfterLoad, initialModelId }: { payload: ProjectPayload; openInquiryAfterLoad?: boolean; initialModelId?: string | null }) {
   const { project, models } = payload;
-  const [selectedModelId, setSelectedModelId] = useState<string | null>(models[0]?.id ?? null);
+  const [selectedModelId, setSelectedModelId] = useState<string | null>(initialModelId || models[0]?.id || null);
+  const [inquiryOpen, setInquiryOpen] = useState(Boolean(openInquiryAfterLoad));
+  const [sent, setSent] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const selectedModel = models.find((model) => model.id === selectedModelId) || models[0] || null;
   const projectImages = [project.heroImage, ...(project.gallery || [])].filter(Boolean) as string[];
   const modelImages = selectedModel ? [...(selectedModel.gallery || []), selectedModel.floorPlanImage].filter(Boolean) as string[] : [];
@@ -158,6 +176,9 @@ function DeveloperProjectModalContent({ payload }: { payload: ProjectPayload }) 
     if (!model.currentPrice) return lowest;
     return lowest === null ? model.currentPrice : Math.min(lowest, model.currentPrice);
   }, null);
+  const descriptionText = selectedModel?.description || project.description || "";
+  const hasLongDescription = descriptionText.length > 260;
+  const displayedDescription = expanded || !hasLongDescription ? descriptionText : `${descriptionText.slice(0, 260).trim()}…`;
 
   function previous() {
     setActiveIndex((current) => (current - 1 + gallery.length) % gallery.length);
@@ -214,40 +235,109 @@ function DeveloperProjectModalContent({ payload }: { payload: ProjectPayload }) 
         )}
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
           <Info icon={<Building2 size={18} />} label="Models" value={`${models.length} available`} />
-          <Info icon={<BedDouble size={18} />} label="Bedrooms" value={range(models.map((m) => m.bedrooms))} />
-          <Info icon={<Bath size={18} />} label="Bathrooms" value={range(models.map((m) => m.bathrooms))} />
+          {selectedModel?.modelType !== "lot_only" && <Info icon={<BedDouble size={18} />} label="Bedrooms" value={range(models.map((m) => m.bedrooms))} />}
+          {selectedModel?.modelType !== "lot_only" && <Info icon={<Bath size={18} />} label="Bathrooms" value={range(models.map((m) => m.bathrooms))} />}
+          {selectedModel?.modelType === "lot_only" && <Info icon={<Ruler size={18} />} label="Price / sqm" value={selectedModel.lotArea && selectedModel.currentPrice ? formatPeso(selectedModel.currentPrice / selectedModel.lotArea) : "Not provided"} />}
           <Info icon={<Square size={18} />} label="Inventory" value={`${selectedModel?.availableUnits ?? models.reduce((sum, model) => sum + model.availableUnits, 0)} available`} />
         </div>
-        {(selectedModel?.description || project.description) && (
+        {descriptionText && (
           <section className="mt-5">
-            <h3 className="font-bold text-navy-900">{selectedModel ? "House description" : "Project description"}</h3>
-            <p className="mt-2 whitespace-pre-line text-sm leading-7 text-navy-600">{selectedModel?.description || project.description}</p>
+            <h3 className="font-bold text-navy-900">{selectedModel?.modelType === "lot_only" ? "Lot description" : selectedModel ? "House description" : "Project description"}</h3>
+            <p className="mt-2 whitespace-pre-line text-sm leading-7 text-navy-600">{displayedDescription}</p>
+            {hasLongDescription && <button type="button" onClick={() => setExpanded((value) => !value)} className="mt-2 text-sm font-bold text-gold-700">{expanded ? "See Less" : "See More"}</button>}
           </section>
         )}
         {selectedModel && (
           <section className="mt-5 rounded-xl border border-navy-100 bg-navy-50 p-4">
             <h3 className="font-bold text-navy-900">Model details</h3>
             <div className="mt-3 grid grid-cols-2 gap-2 text-sm text-navy-700">
-              <span>{selectedModel.bedrooms ?? "—"} bedrooms</span>
-              <span>{selectedModel.bathrooms ?? "—"} bathrooms</span>
+              {selectedModel.modelType !== "lot_only" && <span>{selectedModel.bedrooms ?? "—"} bedrooms</span>}
+              {selectedModel.modelType !== "lot_only" && <span>{selectedModel.bathrooms ?? "—"} bathrooms</span>}
               <span>{selectedModel.floorArea ?? "—"} sqm floor</span>
               <span>{selectedModel.lotArea ?? "—"} sqm lot</span>
-              <span>{selectedModel.parkingSlots ?? "—"} parking</span>
+              {selectedModel.modelType !== "lot_only" && <span>{selectedModel.parkingSlots ?? "—"} parking</span>}
+              {selectedModel.modelType === "lot_only" && <span>{selectedModel.lotArea && selectedModel.currentPrice ? formatPeso(selectedModel.currentPrice / selectedModel.lotArea) : "—"} / sqm</span>}
               <span>{selectedModel.availableUnits} available</span>
               <span>{selectedModel.reservedUnits} reserved</span>
               <span>{selectedModel.soldUnits} sold</span>
             </div>
           </section>
         )}
+        {selectedModel?.floorPlanImage && (
+          <section className="mt-5 rounded-xl border border-gold-100 bg-gold-50 p-4">
+            <h3 className="font-bold text-navy-900">Floor plan</h3>
+            <p className="mt-1 text-sm text-navy-600">Floor plan image is included in the photo gallery.</p>
+          </section>
+        )}
+        {selectedModel?.specifications && Object.keys(selectedModel.specifications).length > 0 && (
+          <section className="mt-5 rounded-xl border border-navy-100 bg-white p-4">
+            <h3 className="font-bold text-navy-900">Specifications</h3>
+            <dl className="mt-3 space-y-2 text-sm">
+              {Object.entries(selectedModel.specifications).map(([key, value]) => (
+                <div key={key} className="flex justify-between gap-3 border-b border-navy-50 pb-2">
+                  <dt className="font-semibold capitalize text-navy-500">{key.replace(/[_-]/g, " ")}</dt>
+                  <dd className="text-right text-navy-800">{String(value)}</dd>
+                </div>
+              ))}
+            </dl>
+          </section>
+        )}
         {project.amenities?.length > 0 && <div className="mt-5"><h3 className="font-bold text-navy-900">Amenities</h3><div className="mt-3 flex flex-wrap gap-2">{project.amenities.map((amenity) => <span key={amenity} className="rounded-full bg-gold-50 px-3 py-1 text-sm font-semibold text-navy-800">{amenity}</span>)}</div></div>}
         <section className="mt-6">
           <h3 className="font-bold text-navy-900">House models</h3>
           <div className="mt-3 space-y-3">
-            {models.map((model) => <ModelCard key={model.id} model={model} selected={model.id === selectedModel?.id} onSelect={() => chooseModel(model)} />)}
+            {models.map((model) => <ModelCard key={model.id} model={model} selected={model.id === selectedModel?.id} onSelect={() => chooseModel(model)} onInquire={() => { chooseModel(model); setInquiryOpen(true); }} />)}
           </div>
         </section>
+        <button type="button" onClick={() => setInquiryOpen(true)} className="mt-6 w-full rounded-xl bg-gold-500 px-5 py-3 font-bold text-navy-950 shadow-lg hover:bg-gold-400">
+          Inquire about {selectedModel?.name || project.projectName}
+        </button>
         <a href={`/projects/${project.slug}`} className="mt-6 inline-flex w-full justify-center rounded-xl border border-navy-200 px-5 py-3 font-bold text-navy-900 hover:border-gold-400">Open full project page</a>
       </aside>
+      {inquiryOpen && (
+        <div className="fixed inset-0 z-[9100] flex items-end justify-center overflow-y-auto bg-navy-950/75 p-0 sm:items-center sm:p-4" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && setInquiryOpen(false)}>
+          <form
+            role="dialog"
+            aria-modal="true"
+            aria-label="Developer project inquiry"
+            className="max-h-[100dvh] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-white p-4 shadow-2xl sm:max-h-[92dvh] sm:rounded-2xl"
+            onSubmit={async (event) => {
+              event.preventDefault();
+              const form = new FormData(event.currentTarget);
+              const response = await fetch("/api/developer-project-inquiries", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  projectId: project.id,
+                  modelId: selectedModel?.id || null,
+                  name: form.get("name"),
+                  email: form.get("email"),
+                  phone: form.get("phone"),
+                  message: form.get("message"),
+                }),
+              });
+              if (response.ok) setSent(true);
+            }}
+          >
+            <div className="mb-3 flex items-center justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-gold-700">Inquiry</p>
+                <h2 className="font-bold text-navy-900">{selectedModel?.name || project.projectName}</h2>
+              </div>
+              <button type="button" onClick={() => setInquiryOpen(false)} className="rounded-full border border-navy-200 p-2 text-navy-700 hover:bg-navy-50" aria-label="Close inquiry form"><X size={18} /></button>
+            </div>
+            {sent ? <p className="rounded-lg bg-green-50 p-3 text-sm font-semibold text-green-800">Inquiry sent. We’ll contact you soon.</p> : (
+              <div className="space-y-3">
+                <input name="name" required placeholder="Name" className="w-full rounded-lg border border-navy-200 px-3 py-2" />
+                <input name="email" required type="email" placeholder="Email" className="w-full rounded-lg border border-navy-200 px-3 py-2" />
+                <input name="phone" placeholder="Phone" className="w-full rounded-lg border border-navy-200 px-3 py-2" />
+                <textarea name="message" rows={4} defaultValue={`I'm interested in ${selectedModel?.name || project.projectName}.`} className="w-full rounded-lg border border-navy-200 px-3 py-2" />
+                <button className="w-full rounded-xl bg-navy-900 px-5 py-3 font-bold text-white">Submit inquiry</button>
+              </div>
+            )}
+          </form>
+        </div>
+      )}
     </div>
   );
 }
@@ -264,28 +354,35 @@ function Info({ icon, label, value }: { icon: React.ReactNode; label: string; va
   return <div className="rounded-xl border border-navy-100 bg-navy-50 p-3"><div className="flex items-center gap-2 text-navy-500">{icon}<span className="text-xs font-semibold uppercase tracking-wide">{label}</span></div><p className="mt-1 font-bold text-navy-900">{value}</p></div>;
 }
 
-function ModelCard({ model, selected, onSelect }: { model: Model; selected?: boolean; onSelect?: () => void }) {
+function ModelCard({ model, selected, onSelect, onInquire }: { model: Model; selected?: boolean; onSelect?: () => void; onInquire?: () => void }) {
   const image = model.gallery?.[0] || model.floorPlanImage || "/placeholder-property.png";
   return (
-    <button type="button" onClick={onSelect} className={`block w-full overflow-hidden rounded-xl border bg-white text-left transition hover:border-gold-400 ${selected ? "border-gold-400 ring-2 ring-gold-100" : "border-navy-100"}`}>
+    <div className={`block w-full overflow-hidden rounded-xl border bg-white text-left transition hover:border-gold-400 ${selected ? "border-gold-400 ring-2 ring-gold-100" : "border-navy-100"}`}>
+      <button type="button" onClick={onSelect} className="block w-full text-left">
       <div className="image-zoom-frame h-36 overflow-hidden bg-navy-50"><img src={image} alt={model.name} className="zoomable-image h-full w-full object-cover" loading="lazy" /></div>
       <div className="p-4">
         <div className="flex items-start justify-between gap-3">
           <div>
             <h4 className="font-bold text-navy-950">{model.name}</h4>
+            <p className="text-xs font-bold uppercase text-violet-700">{model.modelType === "lot_only" ? "Lot only" : "House model"}</p>
             <p className="text-lg font-bold text-navy-900">{formatPeso(model.currentPrice)}</p>
           </div>
           <span className="rounded-full bg-green-50 px-2 py-1 text-xs font-bold text-green-800">{model.availableUnits} available</span>
         </div>
         {model.priceDifference ? <p className={`mt-1 text-xs font-bold ${model.priceDifference > 0 ? "text-red-600" : "text-green-700"}`}>{model.priceDifference > 0 ? "+" : ""}{formatPeso(model.priceDifference)} ({model.percentageChange?.toFixed(2)}%)</p> : null}
         <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-navy-600">
-          <span className="inline-flex items-center gap-1"><BedDouble size={14} />{model.bedrooms ?? "—"} bd</span>
-          <span className="inline-flex items-center gap-1"><Bath size={14} />{model.bathrooms ?? "—"} ba</span>
-          <span className="inline-flex items-center gap-1"><Ruler size={14} />{model.floorArea ?? "—"} sqm floor</span>
+          {model.modelType !== "lot_only" && <span className="inline-flex items-center gap-1"><BedDouble size={14} />{model.bedrooms ?? "—"} bd</span>}
+          {model.modelType !== "lot_only" && <span className="inline-flex items-center gap-1"><Bath size={14} />{model.bathrooms ?? "—"} ba</span>}
+          {model.modelType !== "lot_only" && <span className="inline-flex items-center gap-1"><Ruler size={14} />{model.floorArea ?? "—"} sqm floor</span>}
           <span className="inline-flex items-center gap-1"><Square size={14} />{model.lotArea ?? "—"} sqm lot</span>
-          <span className="inline-flex items-center gap-1"><Car size={14} />{model.parkingSlots ?? "—"} parking</span>
+          {model.modelType !== "lot_only" && <span className="inline-flex items-center gap-1"><Car size={14} />{model.parkingSlots ?? "—"} parking</span>}
+          {model.modelType === "lot_only" && <span className="inline-flex items-center gap-1"><Ruler size={14} />{model.lotArea && model.currentPrice ? formatPeso(model.currentPrice / model.lotArea) : "—"} / sqm</span>}
         </div>
       </div>
-    </button>
+      </button>
+      <div className="border-t border-navy-100 p-3">
+        <button type="button" onClick={onInquire} className="w-full rounded-lg bg-gold-500 px-3 py-2 text-sm font-bold text-navy-950 hover:bg-gold-400">Inquire</button>
+      </div>
+    </div>
   );
 }

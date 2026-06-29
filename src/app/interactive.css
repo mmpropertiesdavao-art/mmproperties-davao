@@ -64,6 +64,7 @@ button:hover .zoomable-image,
 .property-price-marker__price--extra-long { font-size: 10.5px; }
 .property-price-marker--rent { background: #0284c7; color: #0284c7; }
 .property-price-marker--sale_or_rent { background: #7c3aed; color: #7c3aed; }
+.property-price-marker--new_development { background: #7c3aed; color: #7c3aed; }
 .property-price-marker--sale { background: #047857; color: #047857; }
 
 .property-price-marker:hover {

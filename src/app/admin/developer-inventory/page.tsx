@@ -2,9 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { LocationPicker } from "@/components/map/LocationPicker";
 
 type Model = {
   id: string;
+  modelType?: "house_model" | "lot_only";
   name: string;
   bedrooms: number | null;
   bathrooms: number | null;
@@ -29,6 +31,11 @@ type Project = {
   barangay: string | null;
   city: string;
   province: string;
+  latitude: number | null;
+  longitude: number | null;
+  gallery: string[];
+  description: string | null;
+  amenities: string[];
   status: string;
   heroImage: string | null;
   active: boolean;
@@ -39,6 +46,7 @@ type Project = {
 
 type Developer = {
   id: string;
+  modelType?: "house_model" | "lot_only";
   name: string;
   logoUrl: string | null;
   description: string | null;
@@ -213,7 +221,8 @@ export default function DeveloperInventoryAdminPage() {
           className="mt-4 grid gap-3 md:grid-cols-4"
         >
           <div className="md:col-span-2"><span className={label}>Project</span><select required value={selectedProjectId} onChange={(e) => setSelectedProjectId(e.target.value)} className={input}><option value="">Choose project</option>{projects.map((project) => <option key={project.id} value={project.id}>{project.developerName} — {project.projectName}</option>)}</select></div>
-          <Field name="name" label="Model name" required />
+          <div><span className={label}>Inventory type</span><select name="modelType" className={input} defaultValue="house_model"><option value="house_model">House model</option><option value="lot_only">Lot only</option></select></div>
+          <Field name="name" label="Model / lot name" required />
           <Field name="currentPrice" label="Current price" type="number" />
           <Field name="bedrooms" label="Bedrooms" type="number" />
           <Field name="bathrooms" label="Bathrooms" type="number" step="0.5" />
@@ -254,6 +263,7 @@ export default function DeveloperInventoryAdminPage() {
                     </div>
                     <Link href={`/projects/${project.slug}`} className="rounded-lg border border-navy-200 px-3 py-2 text-sm font-semibold">Public page</Link>
                   </div>
+                  <ProjectEditor project={project} saving={saving} upload={upload} onSaved={load} setMessage={setMessage} />
 
                   <div className="mt-4 grid gap-3 md:grid-cols-2">
                     {project.models.map((model) => (
@@ -272,6 +282,7 @@ export default function DeveloperInventoryAdminPage() {
                         </div>
                         <div className="mt-3 grid gap-2 sm:grid-cols-3">
                           <input name="name" defaultValue={model.name} className={input} aria-label="Model name" />
+                          <select name="modelType" defaultValue={model.modelType || "house_model"} className={input} aria-label="Inventory type"><option value="house_model">House model</option><option value="lot_only">Lot only</option></select>
                           <input name="currentPrice" type="number" defaultValue={model.currentPrice ?? ""} className={input} aria-label="Current price" />
                           <input name="bedrooms" type="number" defaultValue={model.bedrooms ?? ""} className={input} aria-label="Bedrooms" />
                           <input name="bathrooms" type="number" step="0.5" defaultValue={model.bathrooms ?? ""} className={input} aria-label="Bathrooms" />
@@ -338,6 +349,78 @@ function UploadInput({ label: text, onUpload, ...rest }: React.InputHTMLAttribut
         event.currentTarget.value = "";
       }} className="mt-2 w-full text-xs" />
     </label>
+  );
+}
+
+function ProjectEditor({ project, saving, upload, onSaved, setMessage }: { project: Project; saving: boolean; upload: (files: FileList | null, target: HTMLInputElement | HTMLTextAreaElement, folder: string) => Promise<void>; onSaved: () => Promise<void>; setMessage: (message: string | null) => void }) {
+  const [pin, setPin] = useState<{ lat: number; lng: number } | null>(
+    project.latitude && project.longitude ? { lat: Number(project.latitude), lng: Number(project.longitude) } : null,
+  );
+  const [showPin, setShowPin] = useState(false);
+
+  return (
+    <form
+      className="mt-4 rounded-xl border border-navy-100 bg-white p-4"
+      onSubmit={async (event) => {
+        event.preventDefault();
+        const form = new FormData(event.currentTarget);
+        const response = await fetch("/api/admin/developer-inventory", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            type: "project",
+            id: project.id,
+            projectName: project.projectName,
+            slug: project.slug,
+            status: project.status,
+            active: project.active,
+            address: project.address || "",
+            barangay: project.barangay || "",
+            city: project.city || "Davao City",
+            province: project.province || "Davao del Sur",
+            description: project.description || "",
+            amenities: project.amenities || [],
+            gallery: project.gallery || [],
+            heroImage: form.get("heroImage") || "",
+            latitude: pin?.lat || "",
+            longitude: pin?.lng || "",
+          }),
+        });
+        const data = await readJson(response);
+        setMessage(response.ok ? "Project updated." : data.error || "Could not update project.");
+        if (response.ok) await onSaved();
+      }}
+    >
+      <div className="grid gap-4 md:grid-cols-[160px_1fr]">
+        <div>
+          <p className={label}>Hero image</p>
+          <div className="image-zoom-frame h-28 overflow-hidden rounded-lg border bg-navy-50">
+            {project.heroImage ? <img src={project.heroImage} alt="" className="zoomable-image h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center text-xs text-navy-400">No hero</div>}
+          </div>
+        </div>
+        <div className="grid gap-3">
+          <label>
+            <span className={label}>Change / delete hero image</span>
+            <input name="heroImage" defaultValue={project.heroImage || ""} className={input} placeholder="Upload or paste hero image URL" />
+          </label>
+          <div className="flex flex-wrap gap-2">
+            <input type="file" accept="image/*" onChange={(event) => {
+              const target = event.currentTarget.closest("form")?.querySelector("input[name='heroImage']");
+              if (target instanceof HTMLInputElement) void upload(event.currentTarget.files, target, "project-hero");
+              event.currentTarget.value = "";
+            }} className="text-xs" />
+            <button type="button" onClick={(event) => {
+              const target = event.currentTarget.closest("form")?.querySelector("input[name='heroImage']");
+              if (target instanceof HTMLInputElement) target.value = "";
+            }} className="rounded-lg border border-red-200 px-3 py-2 text-xs font-bold text-red-700">Delete hero</button>
+            <button type="button" onClick={() => setShowPin((value) => !value)} className="rounded-lg border border-navy-200 px-3 py-2 text-xs font-bold text-navy-800">Manual map pin</button>
+          </div>
+          {pin && <p className="text-xs text-navy-500">Pin: {pin.lat.toFixed(6)}, {pin.lng.toFixed(6)}</p>}
+        </div>
+      </div>
+      {showPin && <div className="mt-4"><LocationPicker value={pin} onChange={setPin} /></div>}
+      <button disabled={saving} className="mt-4 min-h-11 rounded-lg bg-navy-900 px-4 py-2 text-sm font-bold text-white disabled:opacity-50">Save project hero / pin</button>
+    </form>
   );
 }
 

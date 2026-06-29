@@ -16,6 +16,7 @@ type DeveloperProjectCardProps = {
   startingPrice?: number | null;
   modelCount: number;
   availableUnits: number;
+  hasLotOnly?: boolean;
   bedroomsMin?: number | null;
   bedroomsMax?: number | null;
   bathroomsMin?: number | null;
@@ -50,6 +51,7 @@ export function DeveloperProjectCard({
   startingPrice,
   modelCount,
   availableUnits,
+  hasLotOnly,
   bedroomsMin,
   bedroomsMax,
   bathroomsMin,
@@ -78,6 +80,7 @@ export function DeveloperProjectCard({
         <img src={heroImage || "/placeholder-property.png"} alt={projectName} className="zoomable-image h-full w-full object-cover" loading="lazy" />
         <div className="absolute left-3 top-3 flex flex-col items-start gap-1">
           <span className="rounded-md bg-violet-600 px-2 py-1 text-xs font-bold uppercase text-white">New Development</span>
+          {hasLotOnly && <span className="rounded-md bg-emerald-700 px-2 py-1 text-xs font-bold uppercase text-white">Lot inventory</span>}
           <span className="rounded-md bg-gold-500 px-2 py-1 text-xs font-bold uppercase text-navy-950">{status.replace(/_/g, " ")}</span>
         </div>
       </div>
@@ -103,6 +106,17 @@ export function DeveloperProjectCard({
         <p className="mt-auto border-t border-navy-100 pt-3 text-xs font-semibold text-violet-700">
           Click photo/card to view inventory details
         </p>
+        <button
+          type="button"
+          onClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            modal?.openProject(slug, { inquiry: true });
+          }}
+          className="mt-3 min-h-11 rounded-lg bg-gold-500 px-4 py-2 text-sm font-bold text-navy-950 hover:bg-gold-400"
+        >
+          Inquire
+        </button>
       </div>
     </Link>
   );

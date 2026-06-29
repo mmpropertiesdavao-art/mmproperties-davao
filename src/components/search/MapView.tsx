@@ -12,8 +12,9 @@ interface MapPin {
   lat: number;
   price: number;
   neighborhoodName?: string | null;
-  listingIntent?: "sale" | "rent" | "sale_or_rent";
+  listingIntent?: "sale" | "rent" | "sale_or_rent" | "new_development";
   rentPrice?: number | null;
+  pinType?: "property" | "developer_project";
 }
 
 interface MapViewProps {
@@ -101,7 +102,7 @@ export function MapView({ properties }: MapViewProps) {
   return (
     <div className="relative h-full min-h-[360px] w-full">
       <div ref={containerRef} className="h-full min-h-[360px] w-full" />
-      {ready && validPins.length > 0 && <div className="absolute right-3 top-3 z-[500] rounded-lg border border-navy-100 bg-white/95 px-3 py-2 shadow-md backdrop-blur-sm" aria-label="Map pin color legend"><p className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-navy-500">Listing type</p><div className="space-y-1 text-xs font-semibold text-navy-800"><LegendItem color="#047857" label="For sale"/><LegendItem color="#0284c7" label="For rent"/><LegendItem color="#7c3aed" label="Sale or rent"/></div></div>}
+      {ready && validPins.length > 0 && <div className="absolute right-3 top-3 z-[500] rounded-lg border border-navy-100 bg-white/95 px-3 py-2 shadow-md backdrop-blur-sm" aria-label="Map pin color legend"><p className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-navy-500">Listing type</p><div className="space-y-1 text-xs font-semibold text-navy-800"><LegendItem color="#047857" label="For sale"/><LegendItem color="#0284c7" label="For rent"/><LegendItem color="#7c3aed" label="Sale or rent / Development"/></div></div>}
       {!ready && <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-navy-50 text-sm text-navy-500">Loading map…</div>}
       {ready && validPins.length === 0 && <div className="pointer-events-none absolute left-1/2 top-4 z-[500] -translate-x-1/2 rounded-md bg-white/95 px-3 py-2 text-sm text-navy-600 shadow">No listings have valid pins yet.</div>}
     </div>
@@ -148,12 +149,12 @@ function createPopup(property: MapPin) {
   }
   if (property.slug) {
     const link = document.createElement("a");
-    link.href = `/property/${encodeURIComponent(property.slug)}`;
+    link.href = property.pinType === "developer_project" ? `/projects/${encodeURIComponent(property.slug)}` : `/property/${encodeURIComponent(property.slug)}`;
     link.className = "text-sm font-medium text-gold-700 underline";
-    link.textContent = "View listing";
+    link.textContent = property.pinType === "developer_project" ? "View development" : "View listing";
     link.addEventListener("click", (event) => {
       event.preventDefault();
-      window.dispatchEvent(new CustomEvent("mm:open-property", { detail: { slug: property.slug } }));
+      window.dispatchEvent(new CustomEvent(property.pinType === "developer_project" ? "mm:open-developer-project" : "mm:open-property", { detail: { slug: property.slug } }));
     });
     popup.appendChild(link);
   }

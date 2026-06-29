@@ -59,6 +59,11 @@ export async function GET() {
               'barangay', p.barangay,
               'city', p.city,
               'province', p.province,
+              'latitude', p.latitude,
+              'longitude', p.longitude,
+              'gallery', p.gallery,
+              'description', p.description,
+              'amenities', p.amenities,
               'status', p.status,
               'heroImage', p.hero_image,
               'active', p.active,
@@ -68,6 +73,7 @@ export async function GET() {
                 SELECT jsonb_agg(
                   jsonb_build_object(
                     'id', m.id,
+                    'modelType', m.model_type,
                     'name', m.name,
                     'bedrooms', m.bedrooms,
                     'bathrooms', m.bathrooms,
@@ -181,14 +187,15 @@ export async function POST(request: NextRequest) {
     const { rows } = await db.query<{ id: string }>({
       text: `
         INSERT INTO developer_house_models(
-          project_id, name, bedrooms, bathrooms, floor_area, lot_area, parking_slots,
+          project_id, model_type, name, bedrooms, bathrooms, floor_area, lot_area, parking_slots,
           current_price, description, specifications, floor_plan_image, gallery, active
         )
-        VALUES($1::uuid,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11,$12,$13)
+        VALUES($1::uuid,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::jsonb,$12,$13,$14)
         RETURNING id
       `,
       values: [
         projectId,
+        String(body.modelType || "house_model") === "lot_only" ? "lot_only" : "house_model",
         name,
         toNumber(body.bedrooms),
         toNumber(body.bathrooms),
@@ -254,10 +261,10 @@ export async function PATCH(request: NextRequest) {
         UPDATE developer_projects
         SET project_name=$1, slug=$2, address=$3, barangay=$4, city=$5, province=$6, latitude=$7, longitude=$8,
             description=$9, status=$10, completion_date=$11, amenities=$12, hero_image=$13, gallery=$14,
-            seo_title=$15, seo_description=$16, active=$17, updated_at=now()
+            seo_title=COALESCE($15, seo_title), seo_description=COALESCE($16, seo_description), active=$17, updated_at=now()
         WHERE id=$18::uuid
       `,
-      values: [projectName, slug, body.address || null, body.barangay || null, body.city || "Davao City", body.province || "Davao del Sur", toNumber(body.latitude), toNumber(body.longitude), body.description || null, body.status || "pre_selling", body.completionDate || null, parseTextList(body.amenities), body.heroImage || null, parseTextList(body.gallery), body.seoTitle || null, body.seoDescription || null, toBool(body.active), id],
+      values: [projectName, slug, body.address || null, body.barangay || null, body.city || "Davao City", body.province || "Davao del Sur", toNumber(body.latitude), toNumber(body.longitude), body.description || null, body.status || "pre_selling", body.completionDate || null, parseTextList(body.amenities), body.heroImage || null, parseTextList(body.gallery), body.seoTitle === undefined ? null : body.seoTitle || null, body.seoDescription === undefined ? null : body.seoDescription || null, toBool(body.active), id],
     });
     return NextResponse.json({ ok: true, slug });
   }
@@ -274,11 +281,11 @@ export async function PATCH(request: NextRequest) {
     await db.query({
       text: `
         UPDATE developer_house_models
-        SET name=$1, bedrooms=$2, bathrooms=$3, floor_area=$4, lot_area=$5, parking_slots=$6,
-            current_price=$7, description=$8, specifications=$9::jsonb, floor_plan_image=$10, gallery=$11, active=$12, updated_at=now()
-        WHERE id=$13::uuid
+        SET model_type=$1, name=$2, bedrooms=$3, bathrooms=$4, floor_area=$5, lot_area=$6, parking_slots=$7,
+            current_price=$8, description=$9, specifications=$10::jsonb, floor_plan_image=$11, gallery=$12, active=$13, updated_at=now()
+        WHERE id=$14::uuid
       `,
-      values: [body.name || "Model", toNumber(body.bedrooms), toNumber(body.bathrooms), toNumber(body.floorArea), toNumber(body.lotArea), toNumber(body.parkingSlots), newPrice, body.description || null, JSON.stringify(body.specifications || {}), body.floorPlanImage || null, parseTextList(body.gallery), toBool(body.active), id],
+      values: [String(body.modelType || "house_model") === "lot_only" ? "lot_only" : "house_model", body.name || "Model", toNumber(body.bedrooms), toNumber(body.bathrooms), toNumber(body.floorArea), toNumber(body.lotArea), toNumber(body.parkingSlots), newPrice, body.description || null, JSON.stringify(body.specifications || {}), body.floorPlanImage || null, parseTextList(body.gallery), toBool(body.active), id],
     });
 
     if (newPrice !== null && oldPrice !== newPrice) {
