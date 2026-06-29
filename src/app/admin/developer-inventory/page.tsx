@@ -16,6 +16,7 @@ type Model = {
   currentPrice: number | null;
   description: string | null;
   floorPlanImage: string | null;
+  videoUrl: string | null;
   gallery: string[];
   active: boolean;
   availableUnits: number;
@@ -38,6 +39,7 @@ type Project = {
   amenities: string[];
   status: string;
   heroImage: string | null;
+  videoUrl: string | null;
   active: boolean;
   modelCount: number;
   availableUnits: number;
@@ -253,6 +255,7 @@ export default function DeveloperInventoryAdminPage() {
             <TextArea name="amenities" label="Amenities (comma or one per line)" />
             <UploadTextArea name="gallery" label="Gallery URLs" onUpload={(files, target) => upload(files, target, "project-gallery")} />
             <UploadInput name="heroImage" label="Hero image" onUpload={(files, target) => upload(files, target, "project-hero")} />
+            <Field name="videoUrl" label="Project video URL (YouTube)" placeholder="https://www.youtube.com/watch?v=..." />
             <TextArea name="description" label="Project description" className="md:col-span-2" />
             <Field name="seoTitle" label="SEO title" />
             <Field name="seoDescription" label="SEO description" />
@@ -284,6 +287,7 @@ export default function DeveloperInventoryAdminPage() {
           <Field name="reservedUnits" label="Reserved" type="number" />
           <Field name="soldUnits" label="Sold" type="number" />
           <UploadInput name="floorPlanImage" label="Floor plan" onUpload={(files, target) => upload(files, target, "model-floor-plan")} />
+          <Field name="videoUrl" label="Model / lot video URL (YouTube)" placeholder="https://youtu.be/..." />
           <UploadTextArea name="gallery" label="Model gallery URLs" onUpload={(files, target) => upload(files, target, "model-gallery")} />
           <TextArea name="description" label="Model description" className="md:col-span-2" />
           <button disabled={saving || !selectedProjectId} className="min-h-11 rounded-lg bg-gold-500 px-4 py-2 font-bold text-navy-950 disabled:opacity-50 md:col-span-4">Add model</button>
@@ -352,6 +356,7 @@ export default function DeveloperInventoryAdminPage() {
                           <input name="name" defaultValue={model.name} className={input} aria-label="Model name" />
                           <select name="modelType" defaultValue={model.modelType || "house_model"} className={input} aria-label="Inventory type"><option value="house_model">House model</option><option value="lot_only">Lot only</option></select>
                           <input name="currentPrice" type="number" defaultValue={model.currentPrice ?? ""} className={input} aria-label="Current price" />
+                          <input name="videoUrl" defaultValue={model.videoUrl ?? ""} className={`${input} sm:col-span-2`} aria-label="Model video URL" placeholder="YouTube video URL" />
                           <input name="bedrooms" type="number" defaultValue={model.bedrooms ?? ""} className={input} aria-label="Bedrooms" />
                           <input name="bathrooms" type="number" step="0.5" defaultValue={model.bathrooms ?? ""} className={input} aria-label="Bathrooms" />
                           <input name="floorArea" type="number" defaultValue={model.floorArea ?? ""} className={input} aria-label="Floor area" />
@@ -526,11 +531,12 @@ function ProjectEditor({ project, saving, upload, onSaved, setMessage }: { proje
         barangay: form.get("barangay") || "",
         city: form.get("city") || "Davao City",
         province: form.get("province") || "Davao del Sur",
-        description: form.get("description") || "",
-        amenities: form.get("amenities") || [],
-        gallery: form.get("gallery") || [],
-        heroImage: form.get("heroImage") || "",
-        latitude: pin?.lat || "",
+            description: form.get("description") || "",
+            amenities: form.get("amenities") || [],
+            gallery: form.get("gallery") || [],
+            heroImage: form.get("heroImage") || "",
+            videoUrl: form.get("videoUrl") || "",
+            latitude: pin?.lat || "",
         longitude: pin?.lng || "",
         ...overrides,
       }),
@@ -581,6 +587,7 @@ function ProjectEditor({ project, saving, upload, onSaved, setMessage }: { proje
         <Field name="province" label="Province" defaultValue={project.province || "Davao del Sur"} />
         <TextArea name="amenities" label="Amenities" defaultValue={(project.amenities || []).join("\n")} />
         <UploadTextArea name="gallery" label="Project gallery URLs" defaultValue={(project.gallery || []).join("\n")} onUpload={(files, target) => upload(files, target, "project-gallery")} />
+        <Field name="videoUrl" label="Project video URL (YouTube)" defaultValue={project.videoUrl || ""} placeholder="Paste YouTube URL, or clear this field to remove video" />
         <TextArea name="description" label="Project description" defaultValue={project.description || ""} className="md:col-span-2" />
         <label className="flex items-center gap-2 text-sm"><input name="active" type="checkbox" defaultChecked={project.active} /> Active / visible in search</label>
       </div>

@@ -19,6 +19,13 @@ function toBool(value: unknown, defaultValue = true) {
   return value === true || value === "true" || value === "on";
 }
 
+function cleanVideoUrl(value: unknown) {
+  const url = String(value || "").trim();
+  if (!url) return null;
+  if (!/^https?:\/\//i.test(url)) return null;
+  return url;
+}
+
 async function uniqueProjectSlug(name: string, id?: string) {
   const base = slugify(name) || `project-${Date.now().toString(36)}`;
   let slug = base;
@@ -66,6 +73,7 @@ export async function GET() {
               'amenities', p.amenities,
               'status', p.status,
               'heroImage', p.hero_image,
+              'videoUrl', p.video_url,
               'active', p.active,
               'modelCount', (SELECT COUNT(*)::int FROM developer_house_models m WHERE m.project_id=p.id),
               'availableUnits', COALESCE((SELECT SUM(inv.available_units)::int FROM developer_house_models m LEFT JOIN developer_model_inventory inv ON inv.model_id=m.id WHERE m.project_id=p.id),0),
@@ -83,6 +91,7 @@ export async function GET() {
                     'currentPrice', m.current_price,
                     'description', m.description,
                     'floorPlanImage', m.floor_plan_image,
+                    'videoUrl', m.video_url,
                     'gallery', m.gallery,
                     'active', m.active,
                     'availableUnits', COALESCE((SELECT SUM(inv.available_units)::int FROM developer_model_inventory inv WHERE inv.model_id=m.id),0),
@@ -186,9 +195,9 @@ export async function POST(request: NextRequest) {
       text: `
         INSERT INTO developer_projects(
           developer_id, project_name, slug, address, barangay, city, province, latitude, longitude,
-          description, status, completion_date, amenities, hero_image, gallery, seo_title, seo_description, active
+          description, status, completion_date, amenities, hero_image, video_url, gallery, seo_title, seo_description, active
         )
-        VALUES($1::uuid,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
+        VALUES($1::uuid,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
         RETURNING id, slug
       `,
       values: [
@@ -206,6 +215,7 @@ export async function POST(request: NextRequest) {
         body.completionDate || null,
         parseTextList(body.amenities),
         body.heroImage || null,
+        cleanVideoUrl(body.videoUrl),
         parseTextList(body.gallery),
         String(body.seoTitle || "").trim() || null,
         String(body.seoDescription || "").trim() || null,
@@ -225,9 +235,9 @@ export async function POST(request: NextRequest) {
       text: `
         INSERT INTO developer_house_models(
           project_id, model_type, name, bedrooms, bathrooms, floor_area, lot_area, parking_slots,
-          current_price, description, specifications, floor_plan_image, gallery, active
+          current_price, description, specifications, floor_plan_image, video_url, gallery, active
         )
-        VALUES($1::uuid,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::jsonb,$12,$13,$14)
+        VALUES($1::uuid,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::jsonb,$12,$13,$14,$15)
         RETURNING id
       `,
       values: [
@@ -243,6 +253,7 @@ export async function POST(request: NextRequest) {
         String(body.description || "").trim() || null,
         JSON.stringify(body.specifications || {}),
         body.floorPlanImage || null,
+        cleanVideoUrl(body.videoUrl),
         parseTextList(body.gallery),
         toBool(body.active),
       ],
@@ -309,11 +320,11 @@ export async function PATCH(request: NextRequest) {
       text: `
         UPDATE developer_projects
         SET project_name=$1, slug=$2, address=$3, barangay=$4, city=$5, province=$6, latitude=$7, longitude=$8,
-            description=$9, status=$10, completion_date=$11, amenities=$12, hero_image=$13, gallery=$14,
-            seo_title=COALESCE($15, seo_title), seo_description=COALESCE($16, seo_description), active=$17, updated_at=now()
-        WHERE id=$18::uuid
+            description=$9, status=$10, completion_date=$11, amenities=$12, hero_image=$13, video_url=$14, gallery=$15,
+            seo_title=COALESCE($16, seo_title), seo_description=COALESCE($17, seo_description), active=$18, updated_at=now()
+        WHERE id=$19::uuid
       `,
-      values: [projectName, slug, body.address || null, body.barangay || null, body.city || "Davao City", body.province || "Davao del Sur", toNumber(body.latitude), toNumber(body.longitude), body.description || null, body.status || "pre_selling", body.completionDate || null, parseTextList(body.amenities), body.heroImage || null, parseTextList(body.gallery), body.seoTitle === undefined ? null : body.seoTitle || null, body.seoDescription === undefined ? null : body.seoDescription || null, toBool(body.active), id],
+      values: [projectName, slug, body.address || null, body.barangay || null, body.city || "Davao City", body.province || "Davao del Sur", toNumber(body.latitude), toNumber(body.longitude), body.description || null, body.status || "pre_selling", body.completionDate || null, parseTextList(body.amenities), body.heroImage || null, cleanVideoUrl(body.videoUrl), parseTextList(body.gallery), body.seoTitle === undefined ? null : body.seoTitle || null, body.seoDescription === undefined ? null : body.seoDescription || null, toBool(body.active), id],
     });
     return NextResponse.json({ ok: true, slug });
   }
@@ -331,10 +342,10 @@ export async function PATCH(request: NextRequest) {
       text: `
         UPDATE developer_house_models
         SET model_type=$1, name=$2, bedrooms=$3, bathrooms=$4, floor_area=$5, lot_area=$6, parking_slots=$7,
-            current_price=$8, description=$9, specifications=$10::jsonb, floor_plan_image=$11, gallery=$12, active=$13, updated_at=now()
-        WHERE id=$14::uuid
+            current_price=$8, description=$9, specifications=$10::jsonb, floor_plan_image=$11, video_url=$12, gallery=$13, active=$14, updated_at=now()
+        WHERE id=$15::uuid
       `,
-      values: [String(body.modelType || "house_model") === "lot_only" ? "lot_only" : "house_model", body.name || "Model", toNumber(body.bedrooms), toNumber(body.bathrooms), toNumber(body.floorArea), toNumber(body.lotArea), toNumber(body.parkingSlots), newPrice, body.description || null, JSON.stringify(body.specifications || {}), body.floorPlanImage || null, parseTextList(body.gallery), toBool(body.active), id],
+      values: [String(body.modelType || "house_model") === "lot_only" ? "lot_only" : "house_model", body.name || "Model", toNumber(body.bedrooms), toNumber(body.bathrooms), toNumber(body.floorArea), toNumber(body.lotArea), toNumber(body.parkingSlots), newPrice, body.description || null, JSON.stringify(body.specifications || {}), body.floorPlanImage || null, cleanVideoUrl(body.videoUrl), parseTextList(body.gallery), toBool(body.active), id],
     });
 
     if (newPrice !== null && oldPrice !== newPrice) {

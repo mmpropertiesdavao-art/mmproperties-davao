@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { Bath, BedDouble, Building2, Car, ChevronLeft, ChevronRight, MapPin, Ruler, Square, X } from "lucide-react";
 import { PaymentCalculator } from "@/components/property/PaymentCalculator";
+import { VideoEmbed } from "@/components/video/VideoEmbed";
 
 type Model = {
   id: string;
@@ -20,6 +21,7 @@ type Model = {
   description: string | null;
   specifications?: Record<string, unknown> | null;
   floorPlanImage: string | null;
+  videoUrl: string | null;
   gallery: string[];
   availableUnits: number;
   reservedUnits: number;
@@ -39,6 +41,7 @@ type ProjectPayload = {
     status: string;
     amenities: string[];
     heroImage: string | null;
+    videoUrl: string | null;
     gallery: string[];
     developerName: string;
     developerLogo: string | null;
@@ -179,6 +182,7 @@ function DeveloperProjectModalContent({ payload, openInquiryAfterLoad, initialMo
     return lowest === null ? model.currentPrice : Math.min(lowest, model.currentPrice);
   }, null);
   const descriptionText = selectedModel?.description || project.description || "";
+  const activeVideoUrl = selectedModel?.videoUrl || project.videoUrl;
   const hasLongDescription = descriptionText.length > 260;
   const displayedDescription = expanded || !hasLongDescription ? descriptionText : `${descriptionText.slice(0, 260).trim()}…`;
 
@@ -266,6 +270,13 @@ function DeveloperProjectModalContent({ payload, openInquiryAfterLoad, initialMo
               <Info icon={<Square size={18} />} label="Inventory" value={`${selectedModel.availableUnits} available`} />
             </div>
           </>
+        )}
+
+        {activeVideoUrl && (
+          <section className="mt-5">
+            <h3 className="mb-3 font-bold text-navy-900">Video tour</h3>
+            <VideoEmbed url={activeVideoUrl} title={`${selectedModel?.name || project.projectName} video tour`} />
+          </section>
         )}
 
         {selectedModel && descriptionText && (

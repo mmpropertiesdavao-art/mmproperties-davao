@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS public.developer_projects (
   completion_date DATE,
   amenities TEXT[] NOT NULL DEFAULT '{}',
   hero_image TEXT,
+  video_url TEXT,
   gallery TEXT[] NOT NULL DEFAULT '{}',
   seo_title TEXT,
   seo_description TEXT,
@@ -47,6 +48,7 @@ CREATE TABLE IF NOT EXISTS public.developer_house_models (
   description TEXT,
   specifications JSONB NOT NULL DEFAULT '{}'::jsonb,
   floor_plan_image TEXT,
+  video_url TEXT,
   gallery TEXT[] NOT NULL DEFAULT '{}',
   active BOOLEAN NOT NULL DEFAULT true,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -55,6 +57,8 @@ CREATE TABLE IF NOT EXISTS public.developer_house_models (
 
 CREATE INDEX IF NOT EXISTS idx_developer_house_models_project ON public.developer_house_models(project_id, active);
 
+ALTER TABLE public.developer_projects ADD COLUMN IF NOT EXISTS video_url TEXT;
+ALTER TABLE public.developer_house_models ADD COLUMN IF NOT EXISTS video_url TEXT;
 ALTER TABLE public.developer_house_models ADD COLUMN IF NOT EXISTS model_type TEXT NOT NULL DEFAULT 'house_model';
 ALTER TABLE public.developer_house_models DROP CONSTRAINT IF EXISTS developer_house_models_model_type_check;
 ALTER TABLE public.developer_house_models ADD CONSTRAINT developer_house_models_model_type_check

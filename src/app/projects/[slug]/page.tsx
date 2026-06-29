@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Bath, BedDouble, Building2, Car, MapPin, Ruler, Square } from "lucide-react";
 import { getDeveloperProjectBySlug } from "@/lib/developer-inventory";
+import { VideoEmbed } from "@/components/video/VideoEmbed";
 
 type PageProps = { params: Promise<{ slug: string }> };
 
@@ -70,6 +71,7 @@ export default async function ProjectPage({ params }: PageProps) {
         <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
           <div className="space-y-6">
             {project.description && <article className="rounded-2xl border bg-white p-6 shadow-sm"><h2 className="text-xl font-bold text-navy-950">Project overview</h2><p className="mt-3 whitespace-pre-line text-sm leading-7 text-navy-600">{project.description}</p></article>}
+            {project.videoUrl && <article className="rounded-2xl border bg-white p-6 shadow-sm"><h2 className="text-xl font-bold text-navy-950">Project video tour</h2><VideoEmbed url={project.videoUrl} title={`${project.projectName} video tour`} className="mt-4" /></article>}
             {project.amenities?.length > 0 && <article className="rounded-2xl border bg-white p-6 shadow-sm"><h2 className="text-xl font-bold text-navy-950">Amenities</h2><div className="mt-3 flex flex-wrap gap-2">{project.amenities.map((amenity: string) => <span key={amenity} className="rounded-full bg-gold-50 px-3 py-1 text-sm font-semibold text-navy-800">{amenity}</span>)}</div></article>}
             {gallery.length > 1 && <article className="rounded-2xl border bg-white p-6 shadow-sm"><h2 className="text-xl font-bold text-navy-950">Project gallery</h2><div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{gallery.map((image: string, index: number) => <div key={`${image}-${index}`} className="image-zoom-frame overflow-hidden rounded-xl bg-navy-50"><img src={image} alt={`${project.projectName} ${index + 1}`} className="zoomable-image aspect-[4/3] w-full object-cover" loading="lazy" /></div>)}</div></article>}
             <article className="rounded-2xl border bg-white p-6 shadow-sm">
@@ -115,9 +117,13 @@ function ModelCard({ model }: { model: any }) {
       <div className="p-4">
         <div className="flex items-start justify-between gap-3">
           <div><h3 className="font-bold text-navy-950">{model.name}</h3><p className="text-lg font-bold text-navy-900">{formatPeso(model.currentPrice)}</p></div>
-          <span className="rounded-full bg-green-50 px-2 py-1 text-xs font-bold text-green-800">{model.availableUnits} available</span>
+          <div className="flex flex-col items-end gap-2">
+            <span className="rounded-full bg-green-50 px-2 py-1 text-xs font-bold text-green-800">{model.availableUnits} available</span>
+            {model.videoUrl && <span className="rounded-full bg-red-50 px-2 py-1 text-xs font-bold text-red-700">Video tour</span>}
+          </div>
         </div>
         {model.description && <p className="mt-2 line-clamp-3 text-sm text-navy-500">{model.description}</p>}
+        {model.videoUrl && <VideoEmbed url={model.videoUrl} title={`${model.name} video tour`} className="mt-3" />}
         <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-navy-600">
           <span className="inline-flex items-center gap-1"><BedDouble size={14} />{model.bedrooms ?? "—"} bd</span>
           <span className="inline-flex items-center gap-1"><Bath size={14} />{model.bathrooms ?? "—"} ba</span>
