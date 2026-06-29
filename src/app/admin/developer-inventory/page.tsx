@@ -77,6 +77,8 @@ export default function DeveloperInventoryAdminPage() {
   const [selectedDeveloperId, setSelectedDeveloperId] = useState("");
   const [selectedProjectId, setSelectedProjectId] = useState("");
   const [inventorySearch, setInventorySearch] = useState("");
+  const [newProjectPin, setNewProjectPin] = useState<{ lat: number; lng: number } | null>(null);
+  const [showNewProjectPin, setShowNewProjectPin] = useState(false);
 
   const projects = useMemo(
     () => developers.flatMap((developer) => developer.projects.map((project) => ({ ...project, developerName: developer.name }))),
@@ -135,6 +137,10 @@ export default function DeveloperInventoryAdminPage() {
       return;
     }
     form.reset();
+    if (type === "project") {
+      setNewProjectPin(null);
+      setShowNewProjectPin(false);
+    }
     setMessage(data.duplicateHandled ? "Developer already existed, so I updated the original and archived duplicate entries." : "Saved.");
     await load();
   }
@@ -236,7 +242,11 @@ export default function DeveloperInventoryAdminPage() {
         <form
           onSubmit={(event) => {
             event.preventDefault();
-            void submit("project", event.currentTarget, { developerId: selectedDeveloperId });
+            void submit("project", event.currentTarget, {
+              developerId: selectedDeveloperId,
+              latitude: newProjectPin?.lat || "",
+              longitude: newProjectPin?.lng || "",
+            });
           }}
           className="rounded-2xl border bg-white p-5 shadow-sm lg:col-span-2"
         >
@@ -248,8 +258,25 @@ export default function DeveloperInventoryAdminPage() {
             <Field name="address" label="Address" />
             <Field name="city" label="City" defaultValue="Davao City" />
             <Field name="province" label="Province" defaultValue="Davao del Sur" />
-            <Field name="latitude" label="Latitude" type="number" step="any" />
-            <Field name="longitude" label="Longitude" type="number" step="any" />
+            <div className="rounded-xl border border-gold-100 bg-gold-50 p-4 md:col-span-2">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm font-bold text-navy-900">Project map pin</p>
+                  <p className="text-xs text-navy-600">
+                    Use the map pin instead of typing coordinates. Coordinates are saved quietly in the background.
+                  </p>
+                  {newProjectPin && <p className="mt-1 text-xs font-semibold text-green-700">Pinned: {newProjectPin.lat.toFixed(6)}, {newProjectPin.lng.toFixed(6)}</p>}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowNewProjectPin((value) => !value)}
+                  className="min-h-11 rounded-lg bg-navy-900 px-4 py-2 text-sm font-bold text-white"
+                >
+                  {newProjectPin ? "Change pin" : "Pin project on map"}
+                </button>
+              </div>
+              {showNewProjectPin && <div className="mt-4"><LocationPicker value={newProjectPin} onChange={setNewProjectPin} /></div>}
+            </div>
             <div><span className={label}>Project status</span><select name="status" className={input} defaultValue="pre_selling"><option value="pre_selling">Pre-selling</option><option value="under_construction">Under Construction</option><option value="ready_for_occupancy">Ready for Occupancy</option><option value="completed">Completed</option><option value="inactive">Inactive</option></select></div>
             <Field name="completionDate" label="Completion date" type="date" />
             <TextArea name="amenities" label="Amenities (comma or one per line)" />

@@ -1,5 +1,6 @@
 // src/components/search/FilterBar.tsx
 "use client";
+
 import { useEffect, useMemo, useState } from "react";
 import type { PropertySearchFilters, PropertyTypeSlug } from "@/types/property";
 
@@ -13,14 +14,16 @@ const PROPERTY_TYPES: { slug: PropertyTypeSlug; label: string }[] = [
 ];
 
 const PRICE_BANDS = [
-  { label: "₱1M – ₱3M", min: 1_000_000, max: 3_000_000 },
-  { label: "₱3M – ₱5M", min: 3_000_000, max: 5_000_000 },
-  { label: "₱5M – ₱10M", min: 5_000_000, max: 10_000_000 },
-  { label: "₱10M+", min: 10_000_000, max: undefined },
+  { label: "PHP 1M - 3M", min: 1_000_000, max: 3_000_000 },
+  { label: "PHP 3M - 5M", min: 3_000_000, max: 5_000_000 },
+  { label: "PHP 5M - 10M", min: 5_000_000, max: 10_000_000 },
+  { label: "PHP 10M+", min: 10_000_000, max: undefined },
 ];
 
 const AMORTIZATION_TIERS = [10_000, 20_000, 30_000, 50_000];
 const DOWNPAYMENT_TIERS = [10, 20, 30];
+const filterSelect =
+  "min-h-11 w-full rounded-xl border border-navy-200 bg-white px-3 py-2 text-sm font-semibold text-navy-800 shadow-sm focus:border-gold-500 focus:outline-none focus:ring-2 focus:ring-gold-100 md:w-auto";
 
 interface FilterBarProps {
   onChange: (filters: PropertySearchFilters) => void;
@@ -34,11 +37,17 @@ type NeighborhoodOption = {
 
 export function FilterBar({ onChange }: FilterBarProps) {
   const [filters, setFilters] = useState<PropertySearchFilters>({});
-  const [developers,setDevelopers]=useState<{id:string;name:string}[]>([]);
+  const [developers, setDevelopers] = useState<{ id: string; name: string }[]>([]);
   const [neighborhoods, setNeighborhoods] = useState<NeighborhoodOption[]>([]);
-  const [neighborhoodInput, setNeighborhoodInput] = useState("");
-  const [open,setOpen]=useState(false);
-  useEffect(()=>{fetch("/api/developers").then(r=>r.json()).then(setDevelopers).catch(()=>{})},[]);
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/developers")
+      .then((response) => response.json())
+      .then((data) => setDevelopers(Array.isArray(data) ? data : []))
+      .catch(() => setDevelopers([]));
+  }, []);
+
   useEffect(() => {
     fetch("/api/neighborhood-options")
       .then((response) => response.json())
@@ -46,20 +55,14 @@ export function FilterBar({ onChange }: FilterBarProps) {
       .catch(() => setNeighborhoods([]));
   }, []);
 
-  const matchedNeighborhood = useMemo(
-    () => neighborhoods.find((option) => option.name.toLowerCase() === neighborhoodInput.trim().toLowerCase()),
-    [neighborhoodInput, neighborhoods],
-  );
-
   function update(partial: Partial<PropertySearchFilters>) {
     const next = { ...filters, ...partial };
     setFilters(next);
     onChange(next);
   }
 
-  function updateNeighborhood(value: string) {
-    setNeighborhoodInput(value);
-    const exact = neighborhoods.find((option) => option.name.toLowerCase() === value.trim().toLowerCase());
+  function updateNeighborhood(value: string, option?: NeighborhoodOption | null) {
+    const exact = option || neighborhoods.find((item) => item.name.toLowerCase() === value.trim().toLowerCase());
     update({
       neighborhoodId: exact?.id || undefined,
       barangay: value.trim() && !exact?.id ? value.trim() : undefined,
@@ -67,132 +70,198 @@ export function FilterBar({ onChange }: FilterBarProps) {
   }
 
   return (
-    <div className="border-b bg-white p-4">
-      <button type="button" onClick={()=>setOpen(value=>!value)} className="mb-3 flex w-full items-center justify-between rounded-lg border border-navy-200 px-4 py-3 text-sm font-semibold text-navy-900 md:hidden" aria-expanded={open}>
+    <div className="border-b bg-white p-3 shadow-sm md:p-4">
+      <button
+        type="button"
+        onClick={() => setOpen((value) => !value)}
+        className="mb-3 flex min-h-11 w-full items-center justify-between rounded-xl border border-navy-800 bg-navy-950 px-4 py-3 text-sm font-bold text-white md:hidden"
+        aria-expanded={open}
+      >
         Filters
-        <span>{open ? "Hide" : "Show"}</span>
+        <span className="rounded-full bg-gold-500 px-3 py-1 text-xs text-navy-950">{open ? "Hide" : "Show"}</span>
       </button>
-      <div className={`${open ? "grid" : "hidden"} gap-3 md:flex md:flex-wrap`}>
-      <select className="w-full rounded-md border px-3 py-2 text-sm md:w-auto" onChange={(e) => update({ listingIntent: (e.target.value || undefined) as PropertySearchFilters["listingIntent"] })}>
-        <option value="">For sale or rent</option><option value="sale">For sale</option><option value="rent">For rent</option><option value="sale_or_rent">Sale or rent</option>
-      </select>
-      <select
-        className="w-full rounded-md border px-3 py-2 text-sm md:w-auto"
-        onChange={(e) => {
-          const band = PRICE_BANDS[Number(e.target.value)];
-          update({ minPrice: band?.min, maxPrice: band?.max });
-        }}
-      >
-        <option value="">Price range</option>
-        {PRICE_BANDS.map((band, i) => (
-          <option key={band.label} value={i}>
-            {band.label}
-          </option>
-        ))}
-      </select>
 
-      <select
-        className="w-full rounded-md border px-3 py-2 text-sm md:w-auto"
-        onChange={(e) => update({ propertyType: (e.target.value || undefined) as PropertyTypeSlug | undefined })}
-      >
-        <option value="">Property type</option>
-        {PROPERTY_TYPES.map((t) => (
-          <option key={t.slug} value={t.slug}>
-            {t.label}
-          </option>
-        ))}
-      </select>
+      <div className={`${open ? "grid" : "hidden"} gap-2.5 md:flex md:flex-wrap md:items-start`}>
+        <select className={filterSelect} onChange={(event) => update({ listingIntent: (event.target.value || undefined) as PropertySearchFilters["listingIntent"] })}>
+          <option value="">For sale or rent</option>
+          <option value="sale">For sale</option>
+          <option value="rent">For rent</option>
+          <option value="sale_or_rent">Sale or rent</option>
+        </select>
 
-      <select className="w-full rounded-md border px-3 py-2 text-sm md:w-auto" onChange={(e) => update({ minBedrooms: e.target.value ? Number(e.target.value) : undefined })}>
-        <option value="">Bedrooms</option>
-        {[1, 2, 3, 4, 5].map((n) => (
-          <option key={n} value={n}>
-            {n === 5 ? "5+" : n}
-          </option>
-        ))}
-      </select>
-
-      <label className="relative w-full md:w-56">
-        <span className="sr-only">Neighborhood</span>
-        <input
-          value={neighborhoodInput}
-          onChange={(event) => updateNeighborhood(event.target.value)}
-          list="search-neighborhood-options"
-          className="w-full rounded-md border px-3 py-2 text-sm"
-          placeholder="Neighborhood"
-          autoComplete="off"
-        />
-        <datalist id="search-neighborhood-options">
-          {neighborhoods.map((option) => (
-            <option key={`${option.source}-${option.id || option.name}`} value={option.name} />
+        <select
+          className={filterSelect}
+          onChange={(event) => {
+            const band = PRICE_BANDS[Number(event.target.value)];
+            update({ minPrice: band?.min, maxPrice: band?.max });
+          }}
+        >
+          <option value="">Price range</option>
+          {PRICE_BANDS.map((band, index) => (
+            <option key={band.label} value={index}>
+              {band.label}
+            </option>
           ))}
-        </datalist>
-        {neighborhoodInput && (
-          <button
-            type="button"
-            onClick={() => updateNeighborhood("")}
-            className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full px-2 text-xs font-bold text-navy-500 hover:bg-navy-50"
-            aria-label="Clear neighborhood"
-          >
-            ×
-          </button>
+        </select>
+
+        <select className={filterSelect} onChange={(event) => update({ propertyType: (event.target.value || undefined) as PropertyTypeSlug | undefined })}>
+          <option value="">Property type</option>
+          {PROPERTY_TYPES.map((type) => (
+            <option key={type.slug} value={type.slug}>
+              {type.label}
+            </option>
+          ))}
+        </select>
+
+        <NeighborhoodCombobox options={neighborhoods} onChange={updateNeighborhood} />
+
+        <select className={filterSelect} onChange={(event) => update({ minBedrooms: event.target.value ? Number(event.target.value) : undefined })}>
+          <option value="">Bedrooms</option>
+          {[1, 2, 3, 4, 5].map((value) => (
+            <option key={value} value={value}>
+              {value === 5 ? "5+" : value}
+            </option>
+          ))}
+        </select>
+
+        <select className={filterSelect} onChange={(event) => update({ maxMonthlyAmortization: event.target.value ? Number(event.target.value) : undefined })}>
+          <option value="">Monthly amortization</option>
+          {AMORTIZATION_TIERS.map((value) => (
+            <option key={value} value={value}>
+              up to PHP {value.toLocaleString("en-PH")}
+            </option>
+          ))}
+        </select>
+
+        <select className={filterSelect} onChange={(event) => update({ minDownpaymentPercent: event.target.value ? Number(event.target.value) : undefined })}>
+          <option value="">Downpayment</option>
+          {DOWNPAYMENT_TIERS.map((value) => (
+            <option key={value} value={value}>
+              {value}%
+            </option>
+          ))}
+        </select>
+
+        <select className={filterSelect} onChange={(event) => update({ developerName: event.target.value || undefined })}>
+          <option value="">Developer</option>
+          {developers.map((developer) => (
+            <option key={developer.id} value={developer.name}>
+              {developer.name}
+            </option>
+          ))}
+        </select>
+
+        <div className="grid gap-2 rounded-xl bg-navy-50 p-3 md:flex md:flex-row md:items-center md:bg-transparent md:p-0">
+          <label className="flex min-h-11 items-center gap-2 text-sm md:min-h-0">
+            <input type="checkbox" checked={Boolean(filters.financingAvailable)} onChange={(event) => update({ financingAvailable: event.target.checked || undefined })} />
+            Financing available
+          </label>
+          <label className="flex min-h-11 items-center gap-2 text-sm md:min-h-0">
+            <input type="checkbox" checked={Boolean(filters.assumeBalanceAvailable)} onChange={(event) => update({ assumeBalanceAvailable: event.target.checked || undefined })} />
+            Assume balance
+          </label>
+          <label className="flex min-h-11 items-center gap-2 text-sm md:min-h-0">
+            <input type="checkbox" checked={Boolean(filters.isForeclosed)} onChange={(event) => update({ isForeclosed: event.target.checked || undefined })} />
+            Foreclosed only
+          </label>
+        </div>
+
+        {(filters.financingAvailable || filters.assumeBalanceAvailable || filters.isForeclosed) && (
+          <div className="flex flex-wrap items-center gap-1.5 text-xs">
+            <span className="font-medium text-navy-500">Active:</span>
+            {filters.financingAvailable && <span className="rounded-full bg-cyan-100 px-2 py-1 font-semibold text-cyan-800">Financing</span>}
+            {filters.assumeBalanceAvailable && <span className="rounded-full bg-orange-100 px-2 py-1 font-semibold text-orange-800">Assume balance</span>}
+            {filters.isForeclosed && <span className="rounded-full bg-gold-100 px-2 py-1 font-semibold text-gold-800">Foreclosed</span>}
+          </div>
         )}
-        {neighborhoodInput && matchedNeighborhood && (
-          <span className="mt-1 block text-[11px] font-medium text-navy-500">
-            Filtering by {matchedNeighborhood.id ? "neighborhood" : "location"}: {matchedNeighborhood.name}
-          </span>
-        )}
-      </label>
-
-      <select
-        className="w-full rounded-md border px-3 py-2 text-sm md:w-auto"
-        onChange={(e) => update({ maxMonthlyAmortization: e.target.value ? Number(e.target.value) : undefined })}
-      >
-        <option value="">Monthly amortization</option>
-        {AMORTIZATION_TIERS.map((v) => (
-          <option key={v} value={v}>
-            up to ₱{v.toLocaleString()}
-          </option>
-        ))}
-      </select>
-
-      <select
-        className="w-full rounded-md border px-3 py-2 text-sm md:w-auto"
-        onChange={(e) => update({ minDownpaymentPercent: e.target.value ? Number(e.target.value) : undefined })}
-      >
-        <option value="">Downpayment</option>
-        {DOWNPAYMENT_TIERS.map((v) => (
-          <option key={v} value={v}>
-            {v}%
-          </option>
-        ))}
-      </select>
-
-      <select className="w-full rounded-md border px-3 py-2 text-sm md:w-auto" onChange={(e) => update({ developerName: e.target.value || undefined })}>
-        <option value="">Developer</option>
-        {developers.map((d) => (
-          <option key={d.id} value={d.name}>
-            {d.name}
-          </option>
-        ))}
-      </select>
-
-      <div className="flex flex-col gap-2 rounded-lg bg-navy-50 p-3 md:bg-transparent md:p-0">
-      <label className="flex min-h-11 items-center gap-2 text-sm md:min-h-0">
-        <input type="checkbox" checked={Boolean(filters.financingAvailable)} onChange={(e) => update({ financingAvailable: e.target.checked || undefined })} />
-        Financing available
-      </label>
-      <label className="flex min-h-11 items-center gap-2 text-sm md:min-h-0">
-        <input type="checkbox" checked={Boolean(filters.assumeBalanceAvailable)} onChange={(e) => update({ assumeBalanceAvailable: e.target.checked || undefined })} />
-        Assume balance
-      </label>
-      <label className="flex min-h-11 items-center gap-2 text-sm md:min-h-0">
-        <input type="checkbox" onChange={(e) => update({ isForeclosed: e.target.checked || undefined })} />
-        Foreclosed only
-      </label>
-      </div>
-      {(filters.financingAvailable || filters.assumeBalanceAvailable || filters.isForeclosed) && <div className="flex flex-wrap items-center gap-1.5 text-xs"><span className="font-medium text-navy-500">Active:</span>{filters.financingAvailable&&<span className="rounded-full bg-cyan-100 px-2 py-1 font-semibold text-cyan-800">Financing</span>}{filters.assumeBalanceAvailable&&<span className="rounded-full bg-orange-100 px-2 py-1 font-semibold text-orange-800">Assume balance</span>}{filters.isForeclosed&&<span className="rounded-full bg-gold-100 px-2 py-1 font-semibold text-gold-800">Foreclosed</span>}</div>}
       </div>
     </div>
   );
+}
+
+function NeighborhoodCombobox({ options, onChange }: { options: NeighborhoodOption[]; onChange: (value: string, option?: NeighborhoodOption | null) => void }) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+
+  const results = useMemo(() => {
+    const term = query.trim().toLowerCase();
+    const filtered = term ? options.filter((option) => option.name.toLowerCase().includes(term)) : options;
+    return filtered.slice(0, 12);
+  }, [options, query]);
+
+  function select(option: NeighborhoodOption) {
+    setQuery(option.name);
+    setOpen(false);
+    onChange(option.name, option);
+  }
+
+  function clear() {
+    setQuery("");
+    setOpen(false);
+    onChange("", null);
+  }
+
+  return (
+    <div
+      className="relative w-full md:w-60"
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setOpen(false);
+      }}
+    >
+      <div className="relative">
+        <input
+          value={query}
+          onFocus={() => setOpen(true)}
+          onChange={(event) => {
+            setQuery(event.target.value);
+            setOpen(true);
+            onChange(event.target.value);
+          }}
+          className={`${filterSelect} pr-16 md:w-full`}
+          placeholder="Neighborhood"
+          autoComplete="off"
+          role="combobox"
+          aria-expanded={open}
+          aria-controls="neighborhood-filter-options"
+        />
+        <button
+          type="button"
+          onClick={() => (query ? clear() : setOpen((value) => !value))}
+          className="absolute right-2 top-1/2 min-h-8 -translate-y-1/2 rounded-full bg-navy-50 px-2.5 text-xs font-bold text-navy-600 hover:bg-gold-100"
+          aria-label={query ? "Clear neighborhood" : "Open neighborhood options"}
+        >
+          {query ? "×" : "⌄"}
+        </button>
+      </div>
+      {open && (
+        <div id="neighborhood-filter-options" className="absolute left-0 right-0 top-[calc(100%+6px)] z-40 overflow-hidden rounded-xl border border-navy-200 bg-white shadow-xl">
+          <div className="max-h-72 overflow-y-auto py-1">
+            {results.length > 0 ? (
+              results.map((option) => (
+                <button
+                  key={`${option.source}-${option.id || option.name}`}
+                  type="button"
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => select(option)}
+                  className="flex min-h-11 w-full items-center justify-between gap-3 px-3 py-2 text-left text-xs font-semibold text-navy-800 hover:bg-gold-50"
+                >
+                  <span className="truncate">{option.name}</span>
+                  <span className="shrink-0 rounded-full bg-navy-50 px-2 py-0.5 text-[10px] uppercase tracking-wide text-navy-500">{sourceLabel(option.source)}</span>
+                </button>
+              ))
+            ) : (
+              <div className="px-3 py-3 text-xs text-navy-500">No matching neighborhood yet. We will still search what you typed.</div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function sourceLabel(source: NeighborhoodOption["source"]) {
+  if (source === "developer_project") return "Project";
+  if (source === "neighborhood") return "Area";
+  if (source === "barangay") return "Brgy";
+  return "Place";
 }
