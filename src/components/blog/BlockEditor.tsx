@@ -31,10 +31,16 @@ async function optimize(file: File) {
 const buttons: { type: BlogBlockType; label: string }[] = [
   { type: "paragraph", label: "Text" },
   { type: "heading", label: "Heading" },
+  { type: "toc", label: "Table of contents" },
   { type: "list", label: "List" },
+  { type: "checklist", label: "Checklist" },
   { type: "quote", label: "Quote" },
+  { type: "callout", label: "MM Insight" },
+  { type: "table", label: "Table" },
+  { type: "faq", label: "FAQ" },
   { type: "image", label: "Image" },
   { type: "button", label: "Button" },
+  { type: "internal_link", label: "Internal link" },
   { type: "partner_cta", label: "Invite brokers/appraisers" },
   { type: "divider", label: "Divider" },
 ];
@@ -42,7 +48,9 @@ const buttons: { type: BlogBlockType; label: string }[] = [
 const fresh = (type: BlogBlockType): BlogBlock => ({
   id: crypto.randomUUID(),
   type,
-  text: type === "button" ? "Learn more" : type === "partner_cta" ? "Are you a broker or property appraiser?" : "",
+  text: type === "button" ? "Learn more" : type === "partner_cta" ? "Are you a broker or property appraiser?" : type === "callout" ? "" : type === "table" ? "Column 1 | Column 2\nValue 1 | Value 2" : type === "faq" ? "Question?" : "",
+  caption: type === "faq" ? "Answer." : undefined,
+  label: type === "callout" ? "MM Insight" : undefined,
   level: type === "heading" ? 2 : undefined,
   partnerType: type === "partner_cta" ? "both" : undefined,
 });
@@ -112,6 +120,10 @@ export function BlockEditor({ value, onChange }: { value: BlogBlock[]; onChange:
               <textarea value={block.text || ""} onChange={(event) => update(index, { text: event.target.value })} rows={4} className="w-full rounded border p-2" />
             )}
 
+            {block.type === "toc" && (
+              <p className="rounded-lg bg-navy-50 p-3 text-sm text-navy-500">This automatically lists the H2 and H3 headings in the article.</p>
+            )}
+
             {block.type === "list" && (
               <>
                 <label className="text-xs">
@@ -119,6 +131,31 @@ export function BlockEditor({ value, onChange }: { value: BlogBlock[]; onChange:
                 </label>
                 <textarea value={block.text || ""} onChange={(event) => update(index, { text: event.target.value })} rows={4} placeholder="One item per line" className="mt-2 w-full rounded border p-2" />
               </>
+            )}
+
+            {block.type === "checklist" && (
+              <textarea value={block.text || ""} onChange={(event) => update(index, { text: event.target.value })} rows={5} placeholder="One checklist item per line" className="w-full rounded border p-2" />
+            )}
+
+            {block.type === "callout" && (
+              <div className="space-y-2">
+                <input value={block.label || ""} onChange={(event) => update(index, { label: event.target.value })} placeholder="Label, e.g. MM Insight" className="w-full rounded border p-2" />
+                <textarea value={block.text || ""} onChange={(event) => update(index, { text: event.target.value })} rows={4} placeholder="Callout text" className="w-full rounded border p-2" />
+              </div>
+            )}
+
+            {block.type === "table" && (
+              <div>
+                <p className="mb-2 text-xs text-navy-500">Use one row per line and separate columns with <code>|</code>. First row becomes the table header.</p>
+                <textarea value={block.text || ""} onChange={(event) => update(index, { text: event.target.value })} rows={5} className="w-full rounded border p-2" />
+              </div>
+            )}
+
+            {block.type === "faq" && (
+              <div className="space-y-2">
+                <input value={block.text || ""} onChange={(event) => update(index, { text: event.target.value })} placeholder="Question" className="w-full rounded border p-2" />
+                <textarea value={block.caption || ""} onChange={(event) => update(index, { caption: event.target.value })} rows={4} placeholder="Answer" className="w-full rounded border p-2" />
+              </div>
             )}
 
             {block.type === "image" && (
@@ -134,6 +171,13 @@ export function BlockEditor({ value, onChange }: { value: BlogBlock[]; onChange:
               <div className="grid gap-2 sm:grid-cols-2">
                 <input value={block.text || ""} onChange={(event) => update(index, { text: event.target.value })} placeholder="Label" className="rounded border p-2" />
                 <input value={block.url || ""} onChange={(event) => update(index, { url: event.target.value })} placeholder="URL" className="rounded border p-2" />
+              </div>
+            )}
+
+            {block.type === "internal_link" && (
+              <div className="grid gap-2 sm:grid-cols-2">
+                <input value={block.text || ""} onChange={(event) => update(index, { text: event.target.value })} placeholder="Anchor text" className="rounded border p-2" />
+                <input value={block.url || ""} onChange={(event) => update(index, { url: event.target.value })} placeholder="/guides/example-slug" className="rounded border p-2" />
               </div>
             )}
 
