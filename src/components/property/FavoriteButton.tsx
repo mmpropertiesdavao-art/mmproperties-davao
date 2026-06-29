@@ -3,7 +3,7 @@
 import { Heart } from "lucide-react";
 import { useEffect, useState } from "react";
 
-export function FavoriteButton({ propertyId,className="absolute right-3 top-3",onAction }: { propertyId: string;className?:string;onAction?:()=>void }) {
+export function FavoriteButton({ propertyId,className="absolute right-3 top-3 z-30",onAction }: { propertyId: string;className?:string;onAction?:()=>void }) {
   const [favorited, setFavorited] = useState(false);
   const [working, setWorking] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -34,5 +34,5 @@ export function FavoriteButton({ propertyId,className="absolute right-3 top-3",o
     }
   }
 
-  return <button type="button" onClick={toggle} disabled={working} title={error || (favorited ? "Remove saved property" : "Save property")} className={`${className} rounded-full bg-white/95 p-2 shadow disabled:opacity-60`} aria-label={favorited ? "Remove saved property" : "Save property"}><Heart className={favorited ? "fill-gold-500 text-gold-500" : "text-navy-700"} size={18} /></button>;
+  return <button type="button" onPointerDown={(event)=>event.stopPropagation()} onMouseDown={(event)=>event.stopPropagation()} onTouchStart={(event)=>event.stopPropagation()} onClick={toggle} disabled={working} title={error || (favorited ? "Remove saved property" : "Save property")} aria-pressed={favorited} className={`${className} inline-flex min-h-11 min-w-11 items-center justify-center rounded-full border-2 shadow-lg transition active:scale-95 disabled:opacity-60 ${favorited ? "border-red-600 bg-red-600 text-white" : "border-red-200 bg-white/95 text-red-600 hover:border-red-500 hover:bg-red-50"}`} aria-label={favorited ? "Remove saved property" : "Save property"}><Heart className={favorited ? "fill-white text-white" : "text-red-600"} size={21} /></button>;
 }

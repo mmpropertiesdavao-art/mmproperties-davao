@@ -7,10 +7,15 @@ import { db } from "@/lib/supabase/server";
 const ALL_ROLES = ["buyer", "seller", "agent", "admin"] as const;
 
 async function getFavoriteActor() {
-  const auth = await getCurrentUserWithRole();
-  if (!auth.user || !auth.userId || !auth.role || !ALL_ROLES.includes(auth.role)) return null;
-  if (auth.accountStatus === "frozen" || auth.accountStatus === "deactivated") return null;
-  return auth;
+  try {
+    const auth = await getCurrentUserWithRole();
+    if (!auth.user || !auth.userId || !auth.role || !ALL_ROLES.includes(auth.role)) return null;
+    if (auth.accountStatus === "frozen" || auth.accountStatus === "deactivated") return null;
+    return auth;
+  } catch (error) {
+    console.error("Could not read favorite auth state", error);
+    return null;
+  }
 }
 
 async function ensureFavoritesTable() {
