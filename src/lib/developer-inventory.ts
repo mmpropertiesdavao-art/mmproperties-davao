@@ -26,6 +26,16 @@ export type DeveloperProjectSearchRow = {
   lotAreaMax: number | null;
 };
 
+type DeveloperProjectFilters = {
+  query?: string | null;
+  developerName?: string | null;
+  barangay?: string | null;
+  minPrice?: number | null;
+  maxPrice?: number | null;
+  minBedrooms?: number | null;
+  minBathrooms?: number | null;
+};
+
 export function slugify(value: string) {
   return value
     .toLowerCase()
@@ -43,44 +53,75 @@ export function parseTextList(value: unknown) {
     .filter(Boolean);
 }
 
-export async function getActiveDeveloperProjects(limit = 24) {
+export async function getActiveDeveloperProjects(limit = 24, filters: DeveloperProjectFilters = {}) {
   const { rows } = await db.query<DeveloperProjectSearchRow>({
     text: `
-      SELECT
-        p.id,
-        p.slug,
-        p.project_name AS "projectName",
-        d.name AS "developerName",
-        p.status,
-        p.address,
-        p.barangay,
-        p.city,
-        p.province,
-        p.latitude,
-        p.longitude,
-        p.hero_image AS "heroImage",
-        MIN(m.current_price)::float AS "startingPrice",
-        COUNT(DISTINCT m.id)::int AS "modelCount",
-        COALESCE(SUM(inv.available_units), 0)::int AS "availableUnits",
-        MIN(m.bedrooms)::int AS "bedroomsMin",
-        MAX(m.bedrooms)::int AS "bedroomsMax",
-        MIN(m.bathrooms)::float AS "bathroomsMin",
-        MAX(m.bathrooms)::float AS "bathroomsMax",
-        MIN(m.floor_area)::float AS "floorAreaMin",
-        MAX(m.floor_area)::float AS "floorAreaMax",
-        MIN(m.lot_area)::float AS "lotAreaMin",
-        MAX(m.lot_area)::float AS "lotAreaMax"
-      FROM developer_projects p
-      JOIN developers d ON d.id = p.developer_id
-      LEFT JOIN developer_house_models m ON m.project_id = p.id AND m.active = true
-      LEFT JOIN developer_model_inventory inv ON inv.model_id = m.id
-      WHERE p.active = true
-        AND p.status <> 'inactive'
-      GROUP BY p.id, d.name
-      ORDER BY p.updated_at DESC
+      WITH project_rollup AS (
+        SELECT
+          p.id,
+          p.slug,
+          p.project_name AS "projectName",
+          d.name AS "developerName",
+          p.status,
+          p.address,
+          p.barangay,
+          p.city,
+          p.province,
+          p.latitude,
+          p.longitude,
+          p.hero_image AS "heroImage",
+          MIN(m.current_price)::float AS "startingPrice",
+          COUNT(DISTINCT m.id)::int AS "modelCount",
+          COALESCE(SUM(inv.available_units), 0)::int AS "availableUnits",
+          MIN(m.bedrooms)::int AS "bedroomsMin",
+          MAX(m.bedrooms)::int AS "bedroomsMax",
+          MIN(m.bathrooms)::float AS "bathroomsMin",
+          MAX(m.bathrooms)::float AS "bathroomsMax",
+          MIN(m.floor_area)::float AS "floorAreaMin",
+          MAX(m.floor_area)::float AS "floorAreaMax",
+          MIN(m.lot_area)::float AS "lotAreaMin",
+          MAX(m.lot_area)::float AS "lotAreaMax",
+          p.updated_at
+        FROM developer_projects p
+        JOIN developers d ON d.id = p.developer_id
+        LEFT JOIN developer_house_models m ON m.project_id = p.id AND m.active = true
+        LEFT JOIN developer_model_inventory inv ON inv.model_id = m.id
+        WHERE p.active = true
+          AND p.status <> 'inactive'
+          AND ($2::text IS NULL OR d.name ILIKE '%' || $2 || '%')
+          AND ($3::text IS NULL OR p.barangay ILIKE '%' || $3 || '%' OR p.address ILIKE '%' || $3 || '%' OR p.city ILIKE '%' || $3 || '%')
+          AND (
+            $4::text IS NULL
+            OR d.name ILIKE '%' || $4 || '%'
+            OR p.project_name ILIKE '%' || $4 || '%'
+            OR p.barangay ILIKE '%' || $4 || '%'
+            OR p.address ILIKE '%' || $4 || '%'
+            OR EXISTS (
+              SELECT 1 FROM developer_house_models qm
+              WHERE qm.project_id = p.id AND qm.name ILIKE '%' || $4 || '%'
+            )
+          )
+        GROUP BY p.id, d.name
+      )
+      SELECT *
+      FROM project_rollup
+      WHERE ($5::numeric IS NULL OR "startingPrice" >= $5)
+        AND ($6::numeric IS NULL OR "startingPrice" <= $6)
+        AND ($7::int IS NULL OR "bedroomsMax" >= $7)
+        AND ($8::numeric IS NULL OR "bathroomsMax" >= $8)
+      ORDER BY updated_at DESC
       LIMIT $1
     `,
-    values: [limit],
+    values: [
+      limit,
+      filters.developerName || null,
+      filters.barangay || null,
+      filters.query || null,
+      filters.minPrice ?? null,
+      filters.maxPrice ?? null,
+      filters.minBedrooms ?? null,
+      filters.minBathrooms ?? null,
+    ],
   });
 
   return rows;

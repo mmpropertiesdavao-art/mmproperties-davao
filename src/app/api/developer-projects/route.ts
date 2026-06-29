@@ -1,9 +1,24 @@
 import { NextResponse } from "next/server";
 import { getActiveDeveloperProjects } from "@/lib/developer-inventory";
 
-export async function GET() {
+function numberOrNull(value: string | null) {
+  if (!value) return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+export async function GET(request: Request) {
   try {
-    const projects = await getActiveDeveloperProjects(48);
+    const params = new URL(request.url).searchParams;
+    const projects = await getActiveDeveloperProjects(48, {
+      query: params.get("q"),
+      developerName: params.get("developerName"),
+      barangay: params.get("barangay"),
+      minPrice: numberOrNull(params.get("minPrice")),
+      maxPrice: numberOrNull(params.get("maxPrice")),
+      minBedrooms: numberOrNull(params.get("minBedrooms")),
+      minBathrooms: numberOrNull(params.get("minBathrooms")),
+    });
     return NextResponse.json({ results: projects });
   } catch (error) {
     console.warn("Developer projects unavailable", error);

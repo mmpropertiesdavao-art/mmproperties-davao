@@ -42,7 +42,7 @@ export default function SearchPage() {
         setResults(data.results ?? []);
         setTotalCount(count);
 
-        fetch("/api/developer-projects", { signal: controller.signal })
+        fetch(`/api/developer-projects?${params.toString()}`, { signal: controller.signal })
           .then(async (projectResponse) => {
             if (!projectResponse.ok) return { results: [] };
             return projectResponse.json();

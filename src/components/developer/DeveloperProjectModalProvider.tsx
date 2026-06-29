@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { Bath, BedDouble, Building2, Car, ChevronLeft, ChevronRight, MapPin, Ruler, Square, X } from "lucide-react";
+import { PaymentCalculator } from "@/components/property/PaymentCalculator";
 
 type Model = {
   id: string;
@@ -146,8 +147,11 @@ export function DeveloperProjectModalProvider({ children }: { children: React.Re
 
 function DeveloperProjectModalContent({ payload }: { payload: ProjectPayload }) {
   const { project, models } = payload;
-  const images = [project.heroImage, ...(project.gallery || [])].filter(Boolean) as string[];
-  const gallery = images.length ? images : ["/placeholder-property.png"];
+  const [selectedModelId, setSelectedModelId] = useState<string | null>(models[0]?.id ?? null);
+  const selectedModel = models.find((model) => model.id === selectedModelId) || models[0] || null;
+  const projectImages = [project.heroImage, ...(project.gallery || [])].filter(Boolean) as string[];
+  const modelImages = selectedModel ? [...(selectedModel.gallery || []), selectedModel.floorPlanImage].filter(Boolean) as string[] : [];
+  const gallery = (modelImages.length ? modelImages : projectImages).length ? (modelImages.length ? modelImages : projectImages) : ["/placeholder-property.png"];
   const [activeIndex, setActiveIndex] = useState(0);
   const touchStartX = useRef<number | null>(null);
   const startingPrice = models.reduce<number | null>((lowest, model) => {
@@ -160,6 +164,11 @@ function DeveloperProjectModalContent({ payload }: { payload: ProjectPayload }) 
   }
   function next() {
     setActiveIndex((current) => (current + 1) % gallery.length);
+  }
+
+  function chooseModel(model: Model) {
+    setSelectedModelId(model.id);
+    setActiveIndex(0);
   }
 
   return (
@@ -180,6 +189,12 @@ function DeveloperProjectModalContent({ payload }: { payload: ProjectPayload }) 
             {gallery.map((image, index) => <button key={`${image}-${index}`} type="button" onClick={() => setActiveIndex(index)} className={`image-zoom-frame h-16 w-24 shrink-0 overflow-hidden rounded-xl border-2 bg-white/10 ${index === activeIndex ? "border-gold-400" : "border-transparent"}`}><img src={image} alt="" className="zoomable-image h-full w-full object-cover" loading="lazy" /></button>)}
           </div>
         )}
+        {(selectedModel?.currentPrice || startingPrice) ? (
+          <PaymentCalculator
+            price={selectedModel?.currentPrice || startingPrice || 0}
+            className="mt-4 shrink-0 text-sm [&_*]:min-w-0 [&_h3]:mb-3 [&_h3]:text-base [&_label]:mb-2 [&_p]:break-words"
+          />
+        ) : null}
       </section>
       <aside className="min-w-0 bg-white p-5 pb-24 md:p-7 xl:h-full xl:overflow-y-auto xl:pb-7">
         <div className="flex flex-wrap items-center gap-2">
@@ -189,19 +204,46 @@ function DeveloperProjectModalContent({ payload }: { payload: ProjectPayload }) 
         <h1 className="mt-4 text-2xl font-bold text-navy-950">{project.projectName}</h1>
         <p className="mt-1 font-semibold text-navy-700">{project.developerName}</p>
         <p className="mt-2 flex gap-2 text-sm leading-6 text-navy-500"><MapPin size={17} className="mt-1 shrink-0 text-gold-600" />{[project.address, project.barangay, project.city, project.province].filter(Boolean).join(", ")}</p>
-        <p className="mt-4 text-2xl font-bold text-navy-950">Starting from {formatPeso(startingPrice)}</p>
+        <p className="mt-4 text-2xl font-bold text-navy-950">
+          {selectedModel ? formatPeso(selectedModel.currentPrice) : `Starting from ${formatPeso(startingPrice)}`}
+        </p>
+        {selectedModel && (
+          <p className="mt-1 text-sm font-semibold text-violet-700">
+            Selected model: {selectedModel.name}
+          </p>
+        )}
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
           <Info icon={<Building2 size={18} />} label="Models" value={`${models.length} available`} />
           <Info icon={<BedDouble size={18} />} label="Bedrooms" value={range(models.map((m) => m.bedrooms))} />
           <Info icon={<Bath size={18} />} label="Bathrooms" value={range(models.map((m) => m.bathrooms))} />
-          <Info icon={<Square size={18} />} label="Inventory" value={`${models.reduce((sum, model) => sum + model.availableUnits, 0)} units`} />
+          <Info icon={<Square size={18} />} label="Inventory" value={`${selectedModel?.availableUnits ?? models.reduce((sum, model) => sum + model.availableUnits, 0)} available`} />
         </div>
-        {project.description && <p className="mt-5 whitespace-pre-line text-sm leading-7 text-navy-600">{project.description}</p>}
+        {(selectedModel?.description || project.description) && (
+          <section className="mt-5">
+            <h3 className="font-bold text-navy-900">{selectedModel ? "House description" : "Project description"}</h3>
+            <p className="mt-2 whitespace-pre-line text-sm leading-7 text-navy-600">{selectedModel?.description || project.description}</p>
+          </section>
+        )}
+        {selectedModel && (
+          <section className="mt-5 rounded-xl border border-navy-100 bg-navy-50 p-4">
+            <h3 className="font-bold text-navy-900">Model details</h3>
+            <div className="mt-3 grid grid-cols-2 gap-2 text-sm text-navy-700">
+              <span>{selectedModel.bedrooms ?? "—"} bedrooms</span>
+              <span>{selectedModel.bathrooms ?? "—"} bathrooms</span>
+              <span>{selectedModel.floorArea ?? "—"} sqm floor</span>
+              <span>{selectedModel.lotArea ?? "—"} sqm lot</span>
+              <span>{selectedModel.parkingSlots ?? "—"} parking</span>
+              <span>{selectedModel.availableUnits} available</span>
+              <span>{selectedModel.reservedUnits} reserved</span>
+              <span>{selectedModel.soldUnits} sold</span>
+            </div>
+          </section>
+        )}
         {project.amenities?.length > 0 && <div className="mt-5"><h3 className="font-bold text-navy-900">Amenities</h3><div className="mt-3 flex flex-wrap gap-2">{project.amenities.map((amenity) => <span key={amenity} className="rounded-full bg-gold-50 px-3 py-1 text-sm font-semibold text-navy-800">{amenity}</span>)}</div></div>}
         <section className="mt-6">
           <h3 className="font-bold text-navy-900">House models</h3>
           <div className="mt-3 space-y-3">
-            {models.map((model) => <ModelCard key={model.id} model={model} />)}
+            {models.map((model) => <ModelCard key={model.id} model={model} selected={model.id === selectedModel?.id} onSelect={() => chooseModel(model)} />)}
           </div>
         </section>
         <a href={`/projects/${project.slug}`} className="mt-6 inline-flex w-full justify-center rounded-xl border border-navy-200 px-5 py-3 font-bold text-navy-900 hover:border-gold-400">Open full project page</a>
@@ -222,10 +264,10 @@ function Info({ icon, label, value }: { icon: React.ReactNode; label: string; va
   return <div className="rounded-xl border border-navy-100 bg-navy-50 p-3"><div className="flex items-center gap-2 text-navy-500">{icon}<span className="text-xs font-semibold uppercase tracking-wide">{label}</span></div><p className="mt-1 font-bold text-navy-900">{value}</p></div>;
 }
 
-function ModelCard({ model }: { model: Model }) {
+function ModelCard({ model, selected, onSelect }: { model: Model; selected?: boolean; onSelect?: () => void }) {
   const image = model.gallery?.[0] || model.floorPlanImage || "/placeholder-property.png";
   return (
-    <article className="overflow-hidden rounded-xl border border-navy-100 bg-white">
+    <button type="button" onClick={onSelect} className={`block w-full overflow-hidden rounded-xl border bg-white text-left transition hover:border-gold-400 ${selected ? "border-gold-400 ring-2 ring-gold-100" : "border-navy-100"}`}>
       <div className="image-zoom-frame h-36 overflow-hidden bg-navy-50"><img src={image} alt={model.name} className="zoomable-image h-full w-full object-cover" loading="lazy" /></div>
       <div className="p-4">
         <div className="flex items-start justify-between gap-3">
@@ -244,6 +286,6 @@ function ModelCard({ model }: { model: Model }) {
           <span className="inline-flex items-center gap-1"><Car size={14} />{model.parkingSlots ?? "—"} parking</span>
         </div>
       </div>
-    </article>
+    </button>
   );
 }

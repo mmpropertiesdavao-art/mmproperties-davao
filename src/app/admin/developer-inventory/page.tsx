@@ -193,7 +193,7 @@ export default function DeveloperInventoryAdminPage() {
             <Field name="completionDate" label="Completion date" type="date" />
             <TextArea name="amenities" label="Amenities (comma or one per line)" />
             <UploadTextArea name="gallery" label="Gallery URLs" onUpload={(files, target) => upload(files, target, "project-gallery")} />
-            <Field name="heroImage" label="Hero image URL" />
+            <UploadInput name="heroImage" label="Hero image" onUpload={(files, target) => upload(files, target, "project-hero")} />
             <TextArea name="description" label="Project description" className="md:col-span-2" />
             <Field name="seoTitle" label="SEO title" />
             <Field name="seoDescription" label="SEO description" />
@@ -223,7 +223,7 @@ export default function DeveloperInventoryAdminPage() {
           <Field name="availableUnits" label="Available" type="number" />
           <Field name="reservedUnits" label="Reserved" type="number" />
           <Field name="soldUnits" label="Sold" type="number" />
-          <Field name="floorPlanImage" label="Floor plan URL" />
+          <UploadInput name="floorPlanImage" label="Floor plan" onUpload={(files, target) => upload(files, target, "model-floor-plan")} />
           <UploadTextArea name="gallery" label="Model gallery URLs" onUpload={(files, target) => upload(files, target, "model-gallery")} />
           <TextArea name="description" label="Model description" className="md:col-span-2" />
           <button disabled={saving || !selectedProjectId} className="min-h-11 rounded-lg bg-gold-500 px-4 py-2 font-bold text-navy-950 disabled:opacity-50 md:col-span-4">Add model</button>
@@ -260,6 +260,11 @@ export default function DeveloperInventoryAdminPage() {
                       <form key={model.id} onSubmit={(event) => { event.preventDefault(); void updateModel(model, event.currentTarget); }} className="rounded-xl bg-navy-50 p-4">
                         <div className="flex items-start justify-between gap-3">
                           <div>
+                            {(model.gallery?.[0] || model.floorPlanImage) && (
+                              <div className="image-zoom-frame mb-3 h-20 w-28 overflow-hidden rounded-lg border bg-white">
+                                <img src={model.gallery?.[0] || model.floorPlanImage || ""} alt="" className="zoomable-image h-full w-full object-cover" />
+                              </div>
+                            )}
                             <h4 className="font-bold text-navy-900">{model.name}</h4>
                             <p className="text-sm text-navy-500">{formatPeso(model.currentPrice)} · {model.availableUnits} available</p>
                           </div>
@@ -276,8 +281,24 @@ export default function DeveloperInventoryAdminPage() {
                           <input name="availableUnits" type="number" defaultValue={model.availableUnits ?? 0} className={input} aria-label="Available units" />
                           <input name="reservedUnits" type="number" defaultValue={model.reservedUnits ?? 0} className={input} aria-label="Reserved units" />
                           <input name="soldUnits" type="number" defaultValue={model.soldUnits ?? 0} className={input} aria-label="Sold units" />
-                          <input name="floorPlanImage" defaultValue={model.floorPlanImage ?? ""} className={`${input} sm:col-span-3`} aria-label="Floor plan image" />
-                          <textarea name="gallery" defaultValue={(model.gallery || []).join("\n")} className={`${input} sm:col-span-3`} rows={2} aria-label="Gallery URLs" />
+                          <label className="sm:col-span-3">
+                            <span className={label}>Floor plan</span>
+                            <input name="floorPlanImage" defaultValue={model.floorPlanImage ?? ""} className={input} aria-label="Floor plan image" />
+                            <input type="file" accept="image/*" onChange={(event) => {
+                              const target = event.currentTarget.parentElement?.querySelector("input[name='floorPlanImage']");
+                              if (target instanceof HTMLInputElement) void upload(event.currentTarget.files, target, "model-floor-plan");
+                              event.currentTarget.value = "";
+                            }} className="mt-2 w-full text-xs" />
+                          </label>
+                          <label className="sm:col-span-3">
+                            <span className={label}>Gallery photos</span>
+                            <textarea name="gallery" defaultValue={(model.gallery || []).join("\n")} className={input} rows={2} aria-label="Gallery URLs" />
+                            <input type="file" accept="image/*" multiple onChange={(event) => {
+                              const target = event.currentTarget.parentElement?.querySelector("textarea[name='gallery']");
+                              if (target instanceof HTMLTextAreaElement) void upload(event.currentTarget.files, target, "model-gallery");
+                              event.currentTarget.value = "";
+                            }} className="mt-2 w-full text-xs" />
+                          </label>
                           <textarea name="description" defaultValue={model.description ?? ""} className={`${input} sm:col-span-3`} rows={2} aria-label="Description" />
                         </div>
                         <button disabled={saving} className="mt-3 min-h-11 rounded-lg bg-navy-900 px-4 py-2 text-sm font-bold text-white disabled:opacity-50">Save model / inventory</button>
@@ -304,6 +325,20 @@ function Field(props: React.InputHTMLAttributes<HTMLInputElement> & { label: str
 function TextArea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement> & { label: string }) {
   const { label: text, className, ...rest } = props;
   return <label className={className}><span className={label}>{text}</span><textarea {...rest} className={input} rows={3} /></label>;
+}
+
+function UploadInput({ label: text, onUpload, ...rest }: React.InputHTMLAttributes<HTMLInputElement> & { label: string; onUpload: (files: FileList | null, target: HTMLInputElement) => void }) {
+  return (
+    <label>
+      <span className={label}>{text}</span>
+      <input {...rest} className={input} placeholder="Upload or paste image URL" />
+      <input type="file" accept="image/*" onChange={(event) => {
+        const target = event.currentTarget.parentElement?.querySelector("input[type='text'],input:not([type])");
+        if (target instanceof HTMLInputElement) void onUpload(event.currentTarget.files, target);
+        event.currentTarget.value = "";
+      }} className="mt-2 w-full text-xs" />
+    </label>
+  );
 }
 
 function UploadTextArea({ label: text, onUpload, ...rest }: React.TextareaHTMLAttributes<HTMLTextAreaElement> & { label: string; onUpload: (files: FileList | null, target: HTMLTextAreaElement) => void }) {
