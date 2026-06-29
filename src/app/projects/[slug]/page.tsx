@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Bath, BedDouble, Building2, Car, MapPin, Ruler, Square } from "lucide-react";
 import { getDeveloperProjectBySlug } from "@/lib/developer-inventory";
 import { VideoEmbed } from "@/components/video/VideoEmbed";
+import { DeveloperProjectGalleryCarousel, DeveloperProjectPhotoButton } from "@/components/developer/DeveloperProjectPhotoActions";
 
 type PageProps = { params: Promise<{ slug: string }> };
 
@@ -49,18 +50,13 @@ export default async function ProjectPage({ params }: PageProps) {
 
   return (
     <main className="bg-slate-50">
-      <section className="relative isolate overflow-hidden bg-navy-950 text-white">
-        <div className="absolute inset-0 -z-20">
-          <img src={project.heroImage || "/placeholder-property.png"} alt="" className="h-full w-full object-cover opacity-55" />
-        </div>
-        <div className="absolute inset-0 -z-10 bg-gradient-to-r from-navy-950 via-navy-950/82 to-navy-950/35" />
-        <div className="absolute inset-0 -z-10 bg-gradient-to-t from-navy-950/70 via-transparent to-navy-950/30" />
+      <section className="relative isolate overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(211,169,62,0.18),transparent_34%),linear-gradient(135deg,#061124,#0b1e3a_58%,#061124)] text-white">
         <div className="mx-auto grid max-w-7xl gap-8 px-4 py-12 sm:py-16 lg:grid-cols-[1.1fr_.9fr] lg:items-center">
-          <div className="rounded-3xl border border-white/10 bg-navy-950/58 p-5 shadow-2xl shadow-navy-950/35 backdrop-blur-[2px] sm:p-7">
-            <p className="text-sm font-extrabold uppercase tracking-[0.18em] text-gold-300 [text-shadow:0_2px_12px_rgba(0,0,0,0.65)]">New Development</p>
-            <h1 className="mt-2 text-4xl font-extrabold tracking-tight text-white drop-shadow-2xl [text-shadow:0_4px_22px_rgba(0,0,0,0.8)] sm:text-5xl">{project.projectName}</h1>
-            <p className="mt-3 text-lg font-semibold text-gold-100 [text-shadow:0_2px_14px_rgba(0,0,0,0.7)]">{project.developerName}</p>
-            <p className="mt-4 flex gap-2 text-sm font-medium leading-6 text-white [text-shadow:0_2px_12px_rgba(0,0,0,0.75)]">
+          <div className="rounded-3xl border border-white/10 bg-white/[0.06] p-5 shadow-2xl shadow-navy-950/35 ring-1 ring-white/5 sm:p-7">
+            <p className="text-sm font-extrabold uppercase tracking-[0.18em] text-gold-300">New Development</p>
+            <h1 className="mt-2 text-4xl font-extrabold tracking-tight text-white drop-shadow-lg sm:text-5xl">{project.projectName}</h1>
+            <p className="mt-3 text-lg font-semibold text-gold-100">{project.developerName}</p>
+            <p className="mt-4 flex gap-2 text-sm font-medium leading-6 text-white/90">
               <MapPin size={18} className="mt-1 shrink-0 text-gold-300" />
               <span>{[project.address, project.barangay, project.city, project.province].filter(Boolean).join(", ")}</span>
             </p>
@@ -69,9 +65,7 @@ export default async function ProjectPage({ params }: PageProps) {
               <span className="rounded-full bg-gold-500 px-3 py-1 text-xs font-extrabold uppercase text-navy-950 shadow-lg shadow-navy-950/25">Starting from {formatPeso(startingPrice)}</span>
             </div>
           </div>
-          <div className="image-zoom-frame hidden overflow-hidden rounded-3xl bg-slate-900 shadow-2xl shadow-navy-950/45 lg:block">
-            <img src={project.heroImage || "/placeholder-property.png"} alt={project.projectName} className="zoomable-image aspect-[4/3] w-full object-cover" />
-          </div>
+          <DeveloperProjectGalleryCarousel slug={project.slug} projectName={project.projectName} images={gallery} />
         </div>
       </section>
 
@@ -103,9 +97,11 @@ export default async function ProjectPage({ params }: PageProps) {
                 <h2 className="text-xl font-bold text-navy-950">Project gallery</h2>
                 <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   {gallery.map((image: string, index: number) => (
-                    <div key={`${image}-${index}`} className="image-zoom-frame overflow-hidden rounded-xl bg-navy-50">
-                      <img src={image} alt={`${project.projectName} ${index + 1}`} className="zoomable-image aspect-[4/3] w-full object-cover" loading="lazy" />
-                    </div>
+                    <DeveloperProjectPhotoButton key={`${image}-${index}`} slug={project.slug} label={`Open ${project.projectName} project details`}>
+                      <div className="image-zoom-frame overflow-hidden rounded-xl bg-navy-50">
+                        <img src={image} alt={`${project.projectName} ${index + 1}`} className="zoomable-image aspect-[4/3] w-full object-cover" loading="lazy" />
+                      </div>
+                    </DeveloperProjectPhotoButton>
                   ))}
                 </div>
               </article>
@@ -114,7 +110,7 @@ export default async function ProjectPage({ params }: PageProps) {
               <h2 className="text-xl font-bold text-navy-950">{inventoryLabel}</h2>
               {models.length > 0 ? (
                 <div className="mt-4 grid gap-4 md:grid-cols-2">
-                  {models.map((model) => <ModelCard key={model.id} model={model} />)}
+                  {models.map((model) => <ModelCard key={model.id} model={model} projectSlug={project.slug} />)}
                 </div>
               ) : (
                 <p className="mt-3 rounded-xl bg-gold-50 p-4 text-sm font-semibold text-navy-700">
@@ -151,14 +147,16 @@ function Info({ icon, label, value }: { icon: React.ReactNode; label: string; va
   return <div className="flex items-center justify-between rounded-lg bg-navy-50 px-3 py-2"><span className="flex items-center gap-2 text-navy-500">{icon}{label}</span><strong>{value}</strong></div>;
 }
 
-function ModelCard({ model }: { model: any }) {
+function ModelCard({ model, projectSlug }: { model: any; projectSlug: string }) {
   const image = model.gallery?.[0] || model.floorPlanImage || "/placeholder-property.png";
   const isLotOnly = model.modelType === "lot_only";
   const pricePerSqm = isLotOnly && model.lotArea && model.currentPrice ? Math.round(Number(model.currentPrice) / Number(model.lotArea)) : null;
 
   return (
     <article className="overflow-hidden rounded-xl border border-navy-100">
-      <div className="image-zoom-frame h-48 overflow-hidden bg-navy-50"><img src={image} alt={model.name} className="zoomable-image h-full w-full object-cover" loading="lazy" /></div>
+      <DeveloperProjectPhotoButton slug={projectSlug} modelId={model.id} label={`Open ${model.name} details`}>
+        <div className="image-zoom-frame h-48 overflow-hidden bg-navy-50"><img src={image} alt={model.name} className="zoomable-image h-full w-full object-cover" loading="lazy" /></div>
+      </DeveloperProjectPhotoButton>
       <div className="p-4">
         <div className="flex items-start justify-between gap-3">
           <div>

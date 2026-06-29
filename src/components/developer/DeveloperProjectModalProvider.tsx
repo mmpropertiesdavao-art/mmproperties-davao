@@ -166,6 +166,8 @@ export function DeveloperProjectModalProvider({ children }: { children: React.Re
 function DeveloperProjectModalContent({ payload, openInquiryAfterLoad, initialModelId }: { payload: ProjectPayload; openInquiryAfterLoad?: boolean; initialModelId?: string | null }) {
   const { project, models } = payload;
   const isLotOnlyProject = models.length > 0 && models.every((model) => model.modelType === "lot_only");
+  const hasMixedInventory = models.some((model) => model.modelType === "lot_only") && models.some((model) => model.modelType !== "lot_only");
+  const inventoryPrompt = models.length === 0 ? "Project details" : isLotOnlyProject ? "Choose a lot to view" : hasMixedInventory ? "Choose inventory to view" : "Choose a model to view";
   const [selectedModelId, setSelectedModelId] = useState<string | null>(initialModelId || (isLotOnlyProject ? models[0]?.id : null) || null);
   const [inquiryOpen, setInquiryOpen] = useState(Boolean(openInquiryAfterLoad));
   const [sent, setSent] = useState(false);
@@ -234,24 +236,30 @@ function DeveloperProjectModalContent({ payload, openInquiryAfterLoad, initialMo
         <p className="mt-2 flex gap-2 text-sm leading-6 text-navy-500"><MapPin size={17} className="mt-1 shrink-0 text-gold-600" />{[project.address, project.barangay, project.city, project.province].filter(Boolean).join(", ")}</p>
         <section className="mt-5 rounded-xl border border-navy-100 bg-navy-50 p-4">
           <label className="text-sm font-bold text-navy-900" htmlFor="developer-model-select">
-            {isLotOnlyProject ? "Selected lot inventory" : "Choose a model to view"}
+            {inventoryPrompt}
           </label>
-          <select
-            id="developer-model-select"
-            value={selectedModelId || ""}
-            onChange={(event) => chooseModel(event.target.value)}
-            className="mt-2 w-full rounded-lg border border-navy-200 bg-white px-3 py-3 text-sm font-semibold text-navy-900"
-          >
-            {!isLotOnlyProject && <option value="">Select model</option>}
-            {models.map((model) => (
-              <option key={model.id} value={model.id}>
-                {model.name} — {model.modelType === "lot_only" ? "Lot only" : "House model"} — {formatPeso(model.currentPrice)}
-              </option>
-            ))}
-          </select>
-          {!selectedModel && (
+          {models.length > 0 ? (
+            <select
+              id="developer-model-select"
+              value={selectedModelId || ""}
+              onChange={(event) => chooseModel(event.target.value)}
+              className="mt-2 w-full rounded-lg border border-navy-200 bg-white px-3 py-3 text-sm font-semibold text-navy-900"
+            >
+              {!isLotOnlyProject && <option value="">Select inventory</option>}
+              {models.map((model) => (
+                <option key={model.id} value={model.id}>
+                  {model.name} - {model.modelType === "lot_only" ? "Lot only" : "House model"} - {formatPeso(model.currentPrice)}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <p className="mt-3 rounded-lg bg-white p-3 text-sm text-navy-600">
+              No house model or lot inventory has been added yet. You can still review the project photos and send an inquiry.
+            </p>
+          )}
+          {!selectedModel && models.length > 0 && (
             <p className="mt-3 text-sm text-navy-500">
-              Select a model to view its photos, calculator, description, floor plan, availability, and inquiry form.
+              Select an item to view its photos, calculator, description, floor plan, availability, and inquiry form.
             </p>
           )}
         </section>
@@ -279,7 +287,7 @@ function DeveloperProjectModalContent({ payload, openInquiryAfterLoad, initialMo
           </section>
         )}
 
-        {selectedModel && descriptionText && (
+        {(selectedModel || models.length === 0) && descriptionText && (
           <section className="mt-5">
             <h3 className="font-bold text-navy-900">{selectedModel?.modelType === "lot_only" ? "Lot description" : selectedModel ? "House description" : "Project description"}</h3>
             <p className="mt-2 whitespace-pre-line text-sm leading-7 text-navy-600">{displayedDescription}</p>
@@ -322,7 +330,7 @@ function DeveloperProjectModalContent({ payload, openInquiryAfterLoad, initialMo
           </section>
         )}
         {project.amenities?.length > 0 && <div className="mt-5"><h3 className="font-bold text-navy-900">Amenities</h3><div className="mt-3 flex flex-wrap gap-2">{project.amenities.map((amenity) => <span key={amenity} className="rounded-full bg-gold-50 px-3 py-1 text-sm font-semibold text-navy-800">{amenity}</span>)}</div></div>}
-        {selectedModel && <button type="button" onClick={() => setInquiryOpen(true)} className="mt-6 w-full rounded-xl bg-gold-500 px-5 py-3 font-bold text-navy-950 shadow-lg hover:bg-gold-400">
+        {(selectedModel || models.length === 0) && <button type="button" onClick={() => setInquiryOpen(true)} className="mt-6 w-full rounded-xl bg-gold-500 px-5 py-3 font-bold text-navy-950 shadow-lg hover:bg-gold-400">
           Inquire about {selectedModel?.name || project.projectName}
         </button>}
         <a href={`/projects/${project.slug}`} className="mt-6 inline-flex w-full justify-center rounded-xl border border-navy-200 px-5 py-3 font-bold text-navy-900 hover:border-gold-400">Open full project page</a>
