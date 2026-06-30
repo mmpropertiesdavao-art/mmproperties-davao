@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { requireRole } from '@/lib/auth/requireRole'
 import { db } from '@/lib/supabase/server'
+import { getLeadPipelineData } from '@/lib/leads/pipeline'
 
 type SellerProperty = {
   id: string
@@ -25,6 +26,9 @@ function formatPrice(price: number | null) {
 
 export default async function SellerDashboardPage() {
   const actor = await requireRole(['seller', 'agent'])
+  const viewerRole = actor.role === 'agent' ? 'agent' : 'seller'
+  const leadData = await getLeadPipelineData({ role: viewerRole, userId: actor.userId })
+  const newLeadCount = leadData.leads.filter((lead) => lead.status === 'new').length
 
   const { rows: properties } = await db.query<SellerProperty>({
     text: `
@@ -48,6 +52,16 @@ export default async function SellerDashboardPage() {
   return (
     <main className="min-h-screen bg-gray-50 px-4 py-8">
       <div className="mx-auto max-w-6xl">
+        {newLeadCount > 0 && (
+          <Link
+            href="/seller/leads"
+            className="fixed bottom-24 right-5 z-40 flex min-h-14 items-center gap-3 rounded-full bg-red-600 px-5 py-3 text-sm font-extrabold text-white shadow-2xl shadow-red-950/30 ring-4 ring-white transition hover:bg-red-700"
+          >
+            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-red-700">{newLeadCount}</span>
+            New leads
+          </Link>
+        )}
+
         <div className="mb-8 rounded-2xl bg-white border shadow-sm p-6">
           <h1 className="text-2xl font-bold text-gray-900">
             Seller Dashboard
@@ -60,6 +74,12 @@ export default async function SellerDashboardPage() {
           <p className="mt-1 text-sm text-gray-600">
             Role: {actor.role}
           </p>
+          {newLeadCount > 0 && (
+            <div className="mt-5 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+              <p className="font-bold">You have {newLeadCount} new lead{newLeadCount === 1 ? '' : 's'}.</p>
+              <p className="mt-1">Open the leads dashboard to contact buyers and move them to contacted or follow-up.</p>
+            </div>
+          )}
         </div>
 
         <div className="grid gap-4 md:grid-cols-3">

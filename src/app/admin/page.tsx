@@ -1,5 +1,7 @@
 import Link from 'next/link'
 import { requireRole } from '@/lib/auth/requireRole'
+import { db } from '@/lib/supabase/server'
+import { getLeadPipelineData } from '@/lib/leads/pipeline'
 
 const adminSections = [
   {
@@ -36,10 +38,27 @@ const adminSections = [
 
 export default async function AdminDashboardPage() {
   const actor = await requireRole(['admin'])
+  const leadData = await getLeadPipelineData({ role: 'admin', userId: actor.userId })
+  const newPropertyLeadCount = leadData.leads.filter((lead) => lead.status === 'new').length
+  const { rows: developerInquiryRows } = await db.query<{ count: string }>({
+    text: `SELECT COUNT(*)::text AS count FROM developer_project_inquiries WHERE status='new'`,
+  })
+  const newDeveloperLeadCount = Number(developerInquiryRows[0]?.count || 0)
+  const newLeadCount = newPropertyLeadCount + newDeveloperLeadCount
 
   return (
     <main className="min-h-screen bg-gray-50 px-4 py-8">
       <div className="mx-auto max-w-6xl">
+        {newLeadCount > 0 && (
+          <Link
+            href="/admin/inquiries"
+            className="fixed bottom-24 right-5 z-40 flex min-h-14 items-center gap-3 rounded-full bg-red-600 px-5 py-3 text-sm font-extrabold text-white shadow-2xl shadow-red-950/30 ring-4 ring-white transition hover:bg-red-700"
+          >
+            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-red-700">{newLeadCount}</span>
+            New inquiries
+          </Link>
+        )}
+
         <section className="mb-8 rounded-2xl border bg-white p-6 shadow-sm">
           <p className="text-sm font-semibold uppercase tracking-wide text-gray-500">
             Admin Control Center
@@ -52,6 +71,15 @@ export default async function AdminDashboardPage() {
           <p className="mt-2 text-sm text-gray-600">
             Logged in as {actor.email}. Manage listings, users, inquiries, applications, and site data from one place.
           </p>
+          {newLeadCount > 0 && (
+            <div className="mt-5 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+              <p className="font-bold">You have {newLeadCount} new inquiry{newLeadCount === 1 ? '' : 'ies'}.</p>
+              <p className="mt-1">
+                {newPropertyLeadCount} property lead{newPropertyLeadCount === 1 ? '' : 's'}
+                {newDeveloperLeadCount > 0 ? ` and ${newDeveloperLeadCount} developer project lead${newDeveloperLeadCount === 1 ? '' : 's'}` : ''} need review.
+              </p>
+            </div>
+          )}
         </section>
 
         <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
