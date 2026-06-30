@@ -37,6 +37,7 @@ type DeveloperProjectFilters = {
   maxPrice?: number | null;
   minBedrooms?: number | null;
   minBathrooms?: number | null;
+  propertyType?: string | null;
 };
 
 export function slugify(value: string) {
@@ -129,6 +130,12 @@ export async function getActiveDeveloperProjects(limit = 24, filters: DeveloperP
           AND p.status <> 'inactive'
           AND ($2::text IS NULL OR d.name ILIKE '%' || $2 || '%')
           AND (
+            $10::text IS NULL
+            OR $10::text = 'new-development'
+            OR ($10::text = 'lot-only' AND EXISTS (SELECT 1 FROM developer_house_models tm WHERE tm.project_id=p.id AND tm.active=true AND tm.model_type='lot_only'))
+            OR ($10::text IN ('house-and-lot','townhouse') AND EXISTS (SELECT 1 FROM developer_house_models tm WHERE tm.project_id=p.id AND tm.active=true AND tm.model_type='house_model'))
+          )
+          AND (
             ($3::text IS NULL AND $9::uuid IS NULL)
             OR p.barangay ILIKE '%' || $3 || '%'
             OR p.address ILIKE '%' || $3 || '%'
@@ -184,6 +191,7 @@ export async function getActiveDeveloperProjects(limit = 24, filters: DeveloperP
         filters.minBedrooms ?? null,
         filters.minBathrooms ?? null,
         filters.neighborhoodId || null,
+        filters.propertyType || null,
       ],
   });
 

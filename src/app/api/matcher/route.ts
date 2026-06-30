@@ -3,7 +3,8 @@ export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { combinedFilterSearchQuery } from "@/lib/postgis/queries";
 import { db } from "@/lib/supabase/server";
-import type { MatcherInput, MatchedProperty } from "@/types/property";
+import { getActiveDeveloperProjects, type DeveloperProjectSearchRow } from "@/lib/developer-inventory";
+import type { MatcherInput, MatchedProperty, PropertyTypeSlug } from "@/types/property";
 
 type Center = {
   name: string;
@@ -21,7 +22,15 @@ type Amenity = {
   hospitalDistance: number | null;
 };
 
+type MatchedDeveloperProject = DeveloperProjectSearchRow & {
+  matchScore: number;
+  matchReason: string;
+  distanceKm: number;
+  outsidePreferredArea: boolean;
+};
+
 const clean = (value: string | null | undefined) => (value || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+const listingTypes = new Set<PropertyTypeSlug>(["house-and-lot", "condominium", "lot-only", "commercial", "townhouse", "foreclosed"]);
 
 export async function POST(req: NextRequest) {
   try {
@@ -31,16 +40,6 @@ export async function POST(req: NextRequest) {
     }
 
     const minBedrooms = Math.ceil(input.familySize / 2);
-    const { rows } = await db.query(
-      combinedFilterSearchQuery({
-        minPrice: input.budget * 0.7,
-        maxPrice: input.budget * 1.3,
-        minBedrooms,
-        pageSize: 120,
-      }),
-    );
-    const available = (rows as MatchedProperty[]).filter((property) => property.availability === "available" && property.status === "active");
-
     const { rows: centers } = await db.query<Center>({
       text: `
         SELECT name, barangay, slug, ST_Y(centroid::geometry) AS lat, ST_X(centroid::geometry) AS lng, 'neighborhood'::text AS source
@@ -64,6 +63,24 @@ export async function POST(req: NextRequest) {
       .filter((center) => wanted.some((area) => [center.name, center.barangay, center.slug].some((value) => clean(value) === area)))
       .filter((center) => center.lat != null && center.lng != null);
 
+    const propertyType = input.propertyType || "";
+    const listingPropertyType = listingTypes.has(propertyType as PropertyTypeSlug) ? (propertyType as PropertyTypeSlug) : undefined;
+    const shouldReturnListings = propertyType !== "new-development";
+    const shouldReturnProjects = !propertyType || ["new-development", "lot-only", "house-and-lot", "townhouse"].includes(propertyType);
+
+    const { rows } = shouldReturnListings
+      ? await db.query(
+          combinedFilterSearchQuery({
+            minPrice: input.budget * 0.7,
+            maxPrice: input.budget * 1.3,
+            minBedrooms,
+            propertyType: listingPropertyType,
+            pageSize: 120,
+          }),
+        )
+      : { rows: [] as MatchedProperty[] };
+    const available = (rows as MatchedProperty[]).filter((property) => property.availability === "available" && property.status === "active");
+
     const ids = available.map((property) => property.id);
     const { rows: amenities } = ids.length
       ? await db.query<Amenity>({
@@ -86,11 +103,81 @@ export async function POST(req: NextRequest) {
       .sort((a, b) => b.matchScore - a.matchScore || a.distanceKm - b.distanceKm)
       .slice(0, 24);
 
-    return NextResponse.json({ results: ranked, weights: { location: 50, budget: 25, bedrooms: 10, lifestyle: 15 } });
+    const projectCandidates = shouldReturnProjects
+      ? await getActiveDeveloperProjects(80, {
+          query: input.preferredAreas[0] || null,
+          minPrice: input.budget * 0.7,
+          maxPrice: input.budget * 1.3,
+          minBedrooms,
+          propertyType,
+        })
+      : [];
+    const projectMatches = projectCandidates
+      .map((project) => scoreDeveloperProject(project, input, minBedrooms, wanted, selectedCenters))
+      .filter((project) => project.matchScore >= 35 || !project.outsidePreferredArea)
+      .sort((a, b) => b.matchScore - a.matchScore || a.distanceKm - b.distanceKm)
+      .slice(0, 8);
+
+    return NextResponse.json({ results: ranked, developerProjects: projectMatches, weights: { location: 50, budget: 25, bedrooms: 10, lifestyle: 15 } });
   } catch (error) {
     console.error("Matcher failed", error);
     return NextResponse.json({ error: "Could not calculate matches." }, { status: 500 });
   }
+}
+
+function scoreDeveloperProject(project: DeveloperProjectSearchRow, input: MatcherInput, minBedrooms: number, wanted: string[], centers: Center[]): MatchedDeveloperProject {
+  const distanceKm = centers.length && project.latitude != null && project.longitude != null
+    ? Math.min(...centers.map((center) => haversine(Number(project.latitude), Number(project.longitude), Number(center.lat), Number(center.lng))))
+    : Infinity;
+  const text = clean(`${project.projectName} ${project.developerName} ${project.barangay || ""} ${project.address || ""}`);
+  const textExact = Boolean(wanted.length && wanted.some((area) => text.includes(area)));
+  const exact = centers.length ? distanceKm <= 0.75 : textExact;
+  const locationPoints = wanted.length
+    ? centers.length
+      ? distanceKm <= 0.75
+        ? 50
+        : distanceKm <= 2
+          ? 45
+          : distanceKm <= 5
+            ? 35
+            : distanceKm <= 8
+              ? 22
+              : 0
+      : textExact
+        ? 40
+        : 0
+    : 50;
+  const price = project.startingPrice || input.budget;
+  const budgetGap = Math.abs(price - input.budget) / input.budget;
+  const budgetPoints = Math.max(0, 25 * (1 - budgetGap / 0.35));
+  const bedroomPoints = project.hasLotOnly ? 8 : Math.min(10, 10 * ((project.bedroomsMax || 0) / minBedrooms));
+  const typePoints = input.propertyType
+    ? input.propertyType === "new-development"
+      ? 15
+      : input.propertyType === "lot-only" && project.hasLotOnly
+        ? 15
+        : ["house-and-lot", "townhouse"].includes(input.propertyType) && !project.hasLotOnly
+          ? 12
+          : 0
+    : 12;
+  const score = Math.round(Math.min(100, locationPoints + budgetPoints + bedroomPoints + typePoints));
+  const locationReason = !wanted.length
+    ? "no preferred location selected"
+    : exact
+      ? "project is inside or very close to your pinned chosen area"
+      : Number.isFinite(distanceKm) && distanceKm <= 8
+        ? `project is ${distanceKm.toFixed(1)} km from your pinned chosen area`
+        : `project is outside your preferred area${Number.isFinite(distanceKm) ? ` (${distanceKm.toFixed(1)} km away)` : ""}`;
+  const inventoryReason = project.hasLotOnly ? "lot-only inventory available" : `${project.modelCount} house model${project.modelCount === 1 ? "" : "s"} available`;
+  const priceReason = project.startingPrice ? `${Math.round(budgetGap * 100)}% from your budget` : "price on request";
+
+  return {
+    ...project,
+    matchScore: score,
+    distanceKm: Number.isFinite(distanceKm) ? Math.round(distanceKm * 10) / 10 : 0,
+    outsidePreferredArea: Boolean(wanted.length && !exact && distanceKm > 8),
+    matchReason: `${locationReason} · ${priceReason} · ${inventoryReason}.`,
+  };
 }
 
 function scoreProperty(property: MatchedProperty, input: MatcherInput, minBedrooms: number, wanted: string[], centers: Center[], amenity?: Amenity) {

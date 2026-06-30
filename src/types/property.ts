@@ -109,6 +109,7 @@ export interface MatcherInput {
   budget: number;
   familySize: number;
   preferredAreas: string[]; // neighborhood slugs
+  propertyType?: PropertyTypeSlug | "new-development" | "";
   lifestyle: string[]; // e.g. ["near_schools", "quiet", "near_malls"]
 }
 

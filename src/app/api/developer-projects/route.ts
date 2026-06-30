@@ -19,6 +19,7 @@ export async function GET(request: Request) {
       maxPrice: numberOrNull(params.get("maxPrice")),
       minBedrooms: numberOrNull(params.get("minBedrooms")),
       minBathrooms: numberOrNull(params.get("minBathrooms")),
+      propertyType: params.get("propertyType"),
     });
     return NextResponse.json({ results: projects });
   } catch (error) {
