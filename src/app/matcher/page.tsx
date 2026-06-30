@@ -279,7 +279,7 @@ function RecommendationOutline({ score, details, fallback, project = false }: { 
     ["Budget", details.budget],
     [project ? "Inventory" : "Property fit", details.fit],
     details.lifestyle ? ["Lifestyle", details.lifestyle] : null,
-    ["MM Pulse take", details.take],
+    ["Our take", details.take],
   ].filter(Boolean) as [string, { tone: MatchDetailTone; label: string; text: string }][];
   const expandedText = rows.map(([title, detail]) => `${title}: ${detail.text}`).join(" ");
 
@@ -288,7 +288,7 @@ function RecommendationOutline({ score, details, fallback, project = false }: { 
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className={`font-extrabold ${headingColor}`}>{score}% {project ? "project" : "property"} match</p>
       </div>
-      <div className="mt-3 grid gap-2">
+      <div className="mt-3 grid gap-2 sm:grid-cols-2">
         {rows.map(([title, detail]) => (
           <div key={title} className="flex flex-wrap items-center gap-2 rounded-lg bg-white/80 px-2.5 py-2 shadow-sm">
             <span className="text-[11px] font-black uppercase tracking-wide text-navy-500">{title}:</span>
