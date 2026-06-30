@@ -13,6 +13,7 @@ export async function GET(request: Request) {
     const projects = await getActiveDeveloperProjects(48, {
       query: params.get("q"),
       developerName: params.get("developerName"),
+      neighborhoodId: params.get("neighborhoodId"),
       barangay: params.get("barangay"),
       minPrice: numberOrNull(params.get("minPrice")),
       maxPrice: numberOrNull(params.get("maxPrice")),

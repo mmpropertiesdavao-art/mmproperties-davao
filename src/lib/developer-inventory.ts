@@ -25,11 +25,13 @@ export type DeveloperProjectSearchRow = {
   floorAreaMax: number | null;
   lotAreaMin: number | null;
   lotAreaMax: number | null;
+  distanceKm?: number | null;
 };
 
 type DeveloperProjectFilters = {
   query?: string | null;
   developerName?: string | null;
+  neighborhoodId?: string | null;
   barangay?: string | null;
   minPrice?: number | null;
   maxPrice?: number | null;
@@ -57,7 +59,35 @@ export function parseTextList(value: unknown) {
 export async function getActiveDeveloperProjects(limit = 24, filters: DeveloperProjectFilters = {}) {
   const { rows } = await db.query<DeveloperProjectSearchRow>({
     text: `
-      WITH project_rollup AS (
+      WITH target_centers AS (
+        SELECT n.centroid AS center
+        FROM neighborhoods n
+        WHERE ($9::uuid IS NOT NULL AND n.id = $9::uuid)
+          OR (
+            $9::uuid IS NULL
+            AND ($3::text IS NOT NULL OR $4::text IS NOT NULL)
+            AND (
+              n.name ILIKE '%' || COALESCE($3::text, $4::text) || '%'
+              OR n.barangay ILIKE '%' || COALESCE($3::text, $4::text) || '%'
+              OR n.slug ILIKE '%' || COALESCE($3::text, $4::text) || '%'
+            )
+          )
+        UNION ALL
+        SELECT pl.location AS center
+        FROM places pl
+        LEFT JOIN place_aliases pa ON pa.place_id = pl.id
+        WHERE pl.status = 'active'
+          AND pl.location IS NOT NULL
+          AND $9::uuid IS NULL
+          AND ($3::text IS NOT NULL OR $4::text IS NOT NULL)
+          AND (
+            pl.name ILIKE '%' || COALESCE($3::text, $4::text) || '%'
+            OR pl.slug ILIKE '%' || COALESCE($3::text, $4::text) || '%'
+            OR pa.alias ILIKE '%' || COALESCE($3::text, $4::text) || '%'
+          )
+        LIMIT 8
+      ),
+      project_rollup AS (
         SELECT
           p.id,
           p.slug,
@@ -83,6 +113,13 @@ export async function getActiveDeveloperProjects(limit = 24, filters: DeveloperP
           MAX(m.floor_area)::float AS "floorAreaMax",
           MIN(m.lot_area)::float AS "lotAreaMin",
           MAX(m.lot_area)::float AS "lotAreaMax",
+          CASE
+            WHEN p.latitude IS NULL OR p.longitude IS NULL OR NOT EXISTS (SELECT 1 FROM target_centers) THEN NULL
+            ELSE (
+              SELECT MIN(ST_Distance(ST_MakePoint(p.longitude, p.latitude)::geography, tc.center) / 1000)::float
+              FROM target_centers tc
+            )
+          END AS "distanceKm",
           p.updated_at
         FROM developer_projects p
         JOIN developers d ON d.id = p.developer_id
@@ -91,13 +128,36 @@ export async function getActiveDeveloperProjects(limit = 24, filters: DeveloperP
         WHERE p.active = true
           AND p.status <> 'inactive'
           AND ($2::text IS NULL OR d.name ILIKE '%' || $2 || '%')
-          AND ($3::text IS NULL OR p.barangay ILIKE '%' || $3 || '%' OR p.address ILIKE '%' || $3 || '%' OR p.city ILIKE '%' || $3 || '%')
+          AND (
+            ($3::text IS NULL AND $9::uuid IS NULL)
+            OR p.barangay ILIKE '%' || $3 || '%'
+            OR p.address ILIKE '%' || $3 || '%'
+            OR p.city ILIKE '%' || $3 || '%'
+            OR (
+              p.latitude IS NOT NULL
+              AND p.longitude IS NOT NULL
+              AND EXISTS (
+                SELECT 1
+                FROM target_centers tc
+                WHERE ST_DWithin(ST_MakePoint(p.longitude, p.latitude)::geography, tc.center, 7000)
+              )
+            )
+          )
           AND (
             $4::text IS NULL
             OR d.name ILIKE '%' || $4 || '%'
             OR p.project_name ILIKE '%' || $4 || '%'
             OR p.barangay ILIKE '%' || $4 || '%'
             OR p.address ILIKE '%' || $4 || '%'
+            OR (
+              p.latitude IS NOT NULL
+              AND p.longitude IS NOT NULL
+              AND EXISTS (
+                SELECT 1
+                FROM target_centers tc
+                WHERE ST_DWithin(ST_MakePoint(p.longitude, p.latitude)::geography, tc.center, 7000)
+              )
+            )
             OR EXISTS (
               SELECT 1 FROM developer_house_models qm
               WHERE qm.project_id = p.id AND qm.name ILIKE '%' || $4 || '%'
@@ -111,19 +171,20 @@ export async function getActiveDeveloperProjects(limit = 24, filters: DeveloperP
         AND ($6::numeric IS NULL OR "startingPrice" <= $6)
         AND ($7::int IS NULL OR "bedroomsMax" >= $7)
         AND ($8::numeric IS NULL OR "bathroomsMax" >= $8)
-      ORDER BY updated_at DESC
+      ORDER BY "distanceKm" NULLS LAST, updated_at DESC
       LIMIT $1
     `,
     values: [
       limit,
       filters.developerName || null,
       filters.barangay || null,
-      filters.query || null,
-      filters.minPrice ?? null,
-      filters.maxPrice ?? null,
-      filters.minBedrooms ?? null,
-      filters.minBathrooms ?? null,
-    ],
+        filters.query || null,
+        filters.minPrice ?? null,
+        filters.maxPrice ?? null,
+        filters.minBedrooms ?? null,
+        filters.minBathrooms ?? null,
+        filters.neighborhoodId || null,
+      ],
   });
 
   return rows;
