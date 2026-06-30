@@ -284,15 +284,15 @@ function RecommendationOutline({ score, details, fallback, project = false }: { 
   const expandedText = rows.map(([title, detail]) => `${title}: ${detail.text}`).join(" ");
 
   return (
-    <div className={`mt-5 rounded-xl border p-3 text-sm ${frame}`}>
+    <div className={`mt-5 rounded-xl border p-2.5 text-sm ${frame}`}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className={`font-extrabold ${headingColor}`}>{score}% {project ? "project" : "property"} match</p>
       </div>
-      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+      <div className="mt-2 grid grid-cols-2 gap-1.5">
         {rows.map(([title, detail]) => (
-          <div key={title} className="flex flex-wrap items-center gap-2 rounded-lg bg-white/80 px-2.5 py-2 shadow-sm">
-            <span className="text-[11px] font-black uppercase tracking-wide text-navy-500">{title}:</span>
-            <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${toneClass(detail.tone)}`}>{detail.label}</span>
+          <div key={title} className="flex min-w-0 items-center gap-1.5 rounded-lg bg-white/80 px-2 py-1.5 shadow-sm">
+            <span className="shrink-0 text-[10px] font-black uppercase tracking-tight text-navy-500">{title}:</span>
+            <span className={`min-w-0 truncate rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-4 ${toneClass(detail.tone)}`}>{detail.label}</span>
           </div>
         ))}
       </div>
