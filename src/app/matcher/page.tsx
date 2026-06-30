@@ -297,7 +297,14 @@ function RecommendationOutline({ score, details, fallback, project = false }: { 
         ))}
       </div>
       {expanded && <p className="mt-3 rounded-lg bg-white/85 p-3 text-[13px] leading-5 text-navy-800 shadow-sm">{expandedText}</p>}
-      <button type="button" onClick={() => setExpanded((value) => !value)} className="mt-3 text-sm font-bold text-navy-800 underline decoration-gold-400 underline-offset-4">
+      <button
+        type="button"
+        onClick={(event) => {
+          event.stopPropagation();
+          setExpanded((value) => !value);
+        }}
+        className="mt-3 text-sm font-bold text-navy-800 underline decoration-gold-400 underline-offset-4"
+      >
         {expanded ? "See less" : "See more"}
       </button>
     </div>
