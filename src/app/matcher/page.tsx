@@ -7,6 +7,7 @@ import { CompareButton } from "@/components/compare/CompareButton";
 import { FavoriteButton } from "@/components/property/FavoriteButton";
 import { ValueEstimator } from "@/components/pulse/ValueEstimator";
 import { DeveloperProjectCard } from "@/components/developer/DeveloperProjectCard";
+import { usePropertyModal } from "@/components/property/PropertyModalProvider";
 
 const TAGS = ["near_schools", "near_malls", "near_hospitals", "financing", "parking"];
 const PROPERTY_TYPES: { value: "" | PropertyTypeSlug | "new-development"; label: string; hint: string }[] = [
@@ -218,9 +219,15 @@ function DeveloperProjectSection({ title, description, projects }: { title: stri
 }
 
 function PropertyMatch({ property: p }: { property: MatchedProperty }) {
+  const propertyModal = usePropertyModal();
+  const openProperty = () => {
+    track("listing_click", [p.id]);
+    propertyModal?.openProperty(p.slug);
+  };
+
   return (
     <article className="flex h-full flex-col overflow-hidden rounded-xl border bg-white shadow-sm">
-      <Link href={`/property/${p.slug}`} onClick={() => track("listing_click", [p.id])} className="flex flex-1 flex-col">
+      <button type="button" onClick={openProperty} className="flex flex-1 flex-col text-left">
         <div className="image-zoom-frame relative h-56 overflow-hidden bg-navy-50">
           <img src={p.coverImageUrl || "/placeholder-property.png"} alt={p.title} className="zoomable-image h-full w-full object-cover" />
           <span className="absolute left-3 top-3 rounded-full bg-white/95 px-3 py-1 text-xs font-bold">{p.matchScore}% match</span>
@@ -239,7 +246,7 @@ function PropertyMatch({ property: p }: { property: MatchedProperty }) {
           </dl>
           <RecommendationOutline score={p.matchScore} details={p.matchDetails} fallback={p.matchReason} />
         </div>
-      </Link>
+      </button>
       <div className="mt-auto flex min-h-16 items-center justify-between gap-3 border-t bg-white px-4 py-3">
         <div className="flex items-center gap-2">
           <div onClick={() => track("compare_click", [p.id])}>
@@ -247,15 +254,16 @@ function PropertyMatch({ property: p }: { property: MatchedProperty }) {
           </div>
           <FavoriteButton propertyId={p.id} className="relative" onAction={() => track("save_click", [p.id])} />
         </div>
-        <Link href={`/property/${p.slug}#contact`} onClick={() => track("contact_click", [p.id])} className="inline-flex h-10 items-center justify-center rounded-md bg-navy-900 px-5 text-sm font-semibold text-white">
+        <button type="button" onClick={() => { track("contact_click", [p.id]); propertyModal?.openProperty(p.slug); }} className="inline-flex h-10 items-center justify-center rounded-md bg-navy-900 px-5 text-sm font-semibold text-white">
           Contact
-        </Link>
+        </button>
       </div>
     </article>
   );
 }
 
 function RecommendationOutline({ score, details, fallback, project = false }: { score: number; details?: MatchDetails; fallback: string; project?: boolean }) {
+  const [expanded, setExpanded] = useState(false);
   const frame = score >= 80 ? "border-green-200 bg-green-50/70" : score >= 55 ? "border-yellow-200 bg-yellow-50/80" : "border-red-200 bg-red-50/80";
   const headingColor = score >= 80 ? "text-green-950" : score >= 55 ? "text-yellow-950" : "text-red-950";
   if (!details) {
@@ -273,23 +281,25 @@ function RecommendationOutline({ score, details, fallback, project = false }: { 
     details.lifestyle ? ["Lifestyle", details.lifestyle] : null,
     ["MM Pulse take", details.take],
   ].filter(Boolean) as [string, { tone: MatchDetailTone; label: string; text: string }][];
+  const expandedText = rows.map(([title, detail]) => `${title}: ${detail.text}`).join(" ");
+
   return (
     <div className={`mt-5 rounded-xl border p-3 text-sm ${frame}`}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className={`font-extrabold ${headingColor}`}>{score}% {project ? "project" : "property"} match</p>
-        <span className="rounded-full bg-white/80 px-2 py-1 text-[11px] font-bold uppercase text-navy-600">Recommendation outline</span>
       </div>
-      <div className="mt-3 space-y-2">
+      <div className="mt-3 grid gap-2">
         {rows.map(([title, detail]) => (
-          <div key={title} className="rounded-lg bg-white/85 p-2.5 shadow-sm">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[11px] font-black uppercase tracking-wide text-navy-500">{title}:</span>
-              <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${toneClass(detail.tone)}`}>{detail.label}</span>
-            </div>
-            <p className="mt-1 text-[13px] leading-5 text-navy-800">{detail.text}</p>
+          <div key={title} className="flex flex-wrap items-center gap-2 rounded-lg bg-white/80 px-2.5 py-2 shadow-sm">
+            <span className="text-[11px] font-black uppercase tracking-wide text-navy-500">{title}:</span>
+            <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${toneClass(detail.tone)}`}>{detail.label}</span>
           </div>
         ))}
       </div>
+      {expanded && <p className="mt-3 rounded-lg bg-white/85 p-3 text-[13px] leading-5 text-navy-800 shadow-sm">{expandedText}</p>}
+      <button type="button" onClick={() => setExpanded((value) => !value)} className="mt-3 text-sm font-bold text-navy-800 underline decoration-gold-400 underline-offset-4">
+        {expanded ? "See less" : "See more"}
+      </button>
     </div>
   );
 }
