@@ -36,7 +36,7 @@ const buttons: { type: BlogBlockType; label: string }[] = [
   { type: "checklist", label: "Checklist" },
   { type: "quote", label: "Quote" },
   { type: "callout", label: "MM Insight" },
-  { type: "pros_cons", label: "Pros / Trade-offs" },
+  { type: "pros_cons", label: "Pros & Cons" },
   { type: "table", label: "Table" },
   { type: "faq", label: "FAQ" },
   { type: "image", label: "Image" },
@@ -82,13 +82,29 @@ function FormatButtons({ onInsert }: { onInsert: (kind: "bold" | "italic" | "lin
 
 export function BlockEditor({ value, onChange }: { value: BlogBlock[]; onChange: (blocks: BlogBlock[]) => void }) {
   const [uploading, setUploading] = useState<string | null>(null);
+  const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
+  const [insertIndex, setInsertIndex] = useState<number | null>(null);
   const update = (index: number, patch: Partial<BlogBlock>) => onChange(value.map((block, itemIndex) => (index === itemIndex ? { ...block, ...patch } : block)));
-  const move = (index: number, direction: number) => {
-    const nextIndex = index + direction;
-    if (nextIndex < 0 || nextIndex >= value.length) return;
+
+  const insert = (type: BlogBlockType, index = value.length) => {
     const next = [...value];
-    [next[index], next[nextIndex]] = [next[nextIndex], next[index]];
+    next.splice(index, 0, fresh(type));
     onChange(next);
+    setInsertIndex(null);
+  };
+
+  const reorder = (from: number, to: number) => {
+    if (from === to || from < 0 || to < 0 || from >= value.length || to >= value.length) return;
+    const next = [...value];
+    const [item] = next.splice(from, 1);
+    next.splice(to, 0, item);
+    onChange(next);
+  };
+
+  const blockLabel = (type: BlogBlockType) => {
+    if (type === "pros_cons") return "pros & cons";
+    if (type === "partner_cta") return "invite brokers/appraisers";
+    return type.replace("_", " ");
   };
 
   async function image(index: number, file?: File) {
@@ -102,28 +118,39 @@ export function BlockEditor({ value, onChange }: { value: BlogBlock[]; onChange:
   }
 
   return (
-    <div>
-      <div className="flex flex-wrap gap-2 rounded-lg border bg-navy-50 p-3">
-        {buttons.map((button) => (
-          <button
-            key={button.type}
-            type="button"
-            onClick={() => onChange([...value, fresh(button.type)])}
-            className="rounded-md border bg-white px-3 py-2 text-sm hover:border-gold-400"
-          >
-            + {button.label}
-          </button>
-        ))}
-      </div>
-
-      <div className="mt-4 space-y-3">
+    <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_280px]">
+      <div className="space-y-3">
+        <InsertBlockButton open={insertIndex === 0} onOpen={() => setInsertIndex(insertIndex === 0 ? null : 0)} onInsert={(type) => insert(type, 0)} />
         {value.map((block, index) => (
-          <div key={block.id} className="rounded-lg border bg-white p-4">
+          <div
+            key={block.id}
+            onDragOver={(event) => event.preventDefault()}
+            onDrop={(event) => {
+              event.preventDefault();
+              if (draggingIndex !== null) reorder(draggingIndex, index);
+              setDraggingIndex(null);
+            }}
+          >
+            <div className={`rounded-lg border bg-white p-4 transition ${draggingIndex === index ? "border-gold-400 opacity-60 ring-2 ring-gold-100" : ""}`}>
             <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-              <span className="text-xs font-bold uppercase text-navy-400">{block.type.replace("_", " ")}</span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  draggable
+                  onDragStart={(event) => {
+                    setDraggingIndex(index);
+                    event.dataTransfer.effectAllowed = "move";
+                  }}
+                  onDragEnd={() => setDraggingIndex(null)}
+                  className="cursor-grab rounded border border-navy-200 px-2 py-1 text-xs font-bold text-navy-500 active:cursor-grabbing"
+                  aria-label={`Drag ${blockLabel(block.type)} block`}
+                  title="Drag to reorder"
+                >
+                  ⋮⋮
+                </button>
+                <span className="text-xs font-bold uppercase text-navy-400">{blockLabel(block.type)}</span>
+              </div>
               <div className="flex flex-wrap gap-3">
-                <button type="button" onClick={() => move(index, -1)}>Up</button>
-                <button type="button" onClick={() => move(index, 1)}>Down</button>
                 <button type="button" onClick={() => onChange(value.filter((_, itemIndex) => itemIndex !== index))} className="text-red-600">
                   Remove
                 </button>
@@ -185,14 +212,14 @@ export function BlockEditor({ value, onChange }: { value: BlogBlock[]; onChange:
                 </div>
                 <div className="grid gap-3 md:grid-cols-2">
                   <div>
-                    <label className="mb-1 block text-xs font-bold uppercase text-green-700">Advantages</label>
+                    <label className="mb-1 block text-xs font-bold uppercase text-green-700">Pros</label>
                     <FormatButtons onInsert={(kind) => update(index, { text: addMarkdown(block.text, kind) })} />
-                    <textarea value={block.text || ""} onChange={(event) => update(index, { text: event.target.value })} rows={6} placeholder="One advantage per line" className="w-full rounded border p-2" />
+                    <textarea value={block.text || ""} onChange={(event) => update(index, { text: event.target.value })} rows={6} placeholder="One pro per line" className="w-full rounded border p-2" />
                   </div>
                   <div>
-                    <label className="mb-1 block text-xs font-bold uppercase text-amber-700">Trade-offs</label>
+                    <label className="mb-1 block text-xs font-bold uppercase text-amber-700">Cons</label>
                     <FormatButtons onInsert={(kind) => update(index, { caption: addMarkdown(block.caption, kind) })} />
-                    <textarea value={block.caption || ""} onChange={(event) => update(index, { caption: event.target.value })} rows={6} placeholder="One trade-off per line" className="w-full rounded border p-2" />
+                    <textarea value={block.caption || ""} onChange={(event) => update(index, { caption: event.target.value })} rows={6} placeholder="One con per line" className="w-full rounded border p-2" />
                   </div>
                 </div>
               </div>
@@ -248,9 +275,47 @@ export function BlockEditor({ value, onChange }: { value: BlogBlock[]; onChange:
             )}
 
             {block.type === "divider" && <hr />}
+            </div>
+            <InsertBlockButton open={insertIndex === index + 1} onOpen={() => setInsertIndex(insertIndex === index + 1 ? null : index + 1)} onInsert={(type) => insert(type, index + 1)} />
           </div>
         ))}
       </div>
+
+      <aside className="xl:sticky xl:top-24 xl:self-start">
+        <div className="rounded-xl border border-navy-100 bg-navy-50 p-4">
+          <p className="text-sm font-bold text-navy-900">Add content blocks</p>
+          <p className="mt-1 text-xs text-navy-500">Click to add at the end, or use “Add block here” between existing sections.</p>
+          <BlockPalette onInsert={(type) => insert(type)} className="mt-3 grid grid-cols-2 gap-2 xl:grid-cols-1" />
+        </div>
+      </aside>
+    </div>
+  );
+}
+
+function BlockPalette({ onInsert, className }: { onInsert: (type: BlogBlockType) => void; className?: string }) {
+  return (
+    <div className={className || "flex flex-wrap gap-2"}>
+      {buttons.map((button) => (
+        <button
+          key={button.type}
+          type="button"
+          onClick={() => onInsert(button.type)}
+          className="min-h-10 rounded-md border bg-white px-3 py-2 text-left text-sm font-medium text-navy-800 hover:border-gold-400 hover:bg-gold-50"
+        >
+          + {button.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function InsertBlockButton({ open, onOpen, onInsert }: { open: boolean; onOpen: () => void; onInsert: (type: BlogBlockType) => void }) {
+  return (
+    <div className="rounded-lg border border-dashed border-navy-200 bg-white/70 p-2">
+      <button type="button" onClick={onOpen} className="w-full rounded-md px-3 py-2 text-sm font-semibold text-navy-500 hover:bg-gold-50 hover:text-navy-900">
+        + Add block here
+      </button>
+      {open && <BlockPalette onInsert={onInsert} className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3" />}
     </div>
   );
 }

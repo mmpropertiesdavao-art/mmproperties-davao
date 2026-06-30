@@ -63,8 +63,10 @@ function bestForText(value?: string) {
   return match?.[1]?.trim() || "";
 }
 
-function isLabel(value: unknown, label: string) {
-  return typeof value === "string" && new RegExp(`^\\*\\*${label}:\\*\\*\\s*$|^${label}:\\s*$`, "i").test(value.trim());
+function isLabel(value: unknown, label: string | string[]) {
+  if (typeof value !== "string") return false;
+  const labels = Array.isArray(label) ? label : [label];
+  return labels.some((item) => new RegExp(`^\\*\\*${item}:\\*\\*\\s*$|^${item}:\\s*$`, "i").test(value.trim()));
 }
 
 function convertProsConsPatterns(blocks: BlogBlock[]) {
@@ -79,10 +81,10 @@ function convertProsConsPatterns(blocks: BlogBlock[]) {
     if (
       bestFor &&
       advantagesLabel?.type === "paragraph" &&
-      isLabel(advantagesLabel.text, "Advantages") &&
+      isLabel(advantagesLabel.text, ["Advantages", "Pros"]) &&
       advantages?.type === "list" &&
       tradeoffsLabel?.type === "paragraph" &&
-      isLabel(tradeoffsLabel.text, "Trade-offs") &&
+      isLabel(tradeoffsLabel.text, ["Trade-offs", "Cons"]) &&
       tradeoffs?.type === "list"
     ) {
       next.push({
