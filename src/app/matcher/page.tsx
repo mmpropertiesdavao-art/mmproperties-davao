@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import type { MatchedProperty, PropertyTypeSlug } from "@/types/property";
+import type { MatchDetails, MatchDetailTone, MatchedProperty, PropertyTypeSlug } from "@/types/property";
 import { CompareButton } from "@/components/compare/CompareButton";
 import { FavoriteButton } from "@/components/property/FavoriteButton";
 import { ValueEstimator } from "@/components/pulse/ValueEstimator";
@@ -46,6 +46,7 @@ type MatchedDeveloperProject = {
   lotAreaMax: number | null;
   matchScore: number;
   matchReason: string;
+  matchDetails?: MatchDetails;
   distanceKm: number;
   outsidePreferredArea: boolean;
 };
@@ -207,10 +208,7 @@ function DeveloperProjectSection({ title, description, projects }: { title: stri
       <div className="mt-4 grid items-stretch gap-5 md:grid-cols-2 xl:grid-cols-3">
         {projects.map((project) => (
           <div key={project.id} className="flex h-full flex-col">
-            <div className={`mb-2 rounded-xl border p-3 text-sm font-semibold ${project.matchScore >= 80 ? "border-green-200 bg-green-50 text-green-950" : project.matchScore >= 55 ? "border-yellow-200 bg-yellow-50 text-yellow-950" : "border-red-200 bg-red-50 text-red-950"}`}>
-              <span className="font-extrabold">{project.matchScore}% project match</span>
-              <span className="block pt-1 text-sm font-medium">{project.matchReason}</span>
-            </div>
+            <RecommendationOutline score={project.matchScore} details={project.matchDetails} fallback={project.matchReason} project />
             <DeveloperProjectCard {...project} />
           </div>
         ))}
@@ -220,7 +218,6 @@ function DeveloperProjectSection({ title, description, projects }: { title: stri
 }
 
 function PropertyMatch({ property: p }: { property: MatchedProperty }) {
-  const reasonColor = p.matchScore >= 80 ? "border-green-200 bg-green-50 text-green-950" : p.matchScore >= 55 ? "border-yellow-200 bg-yellow-50 text-yellow-950" : "border-red-200 bg-red-50 text-red-950";
   return (
     <article className="flex h-full flex-col overflow-hidden rounded-xl border bg-white shadow-sm">
       <Link href={`/property/${p.slug}`} onClick={() => track("listing_click", [p.id])} className="flex flex-1 flex-col">
@@ -240,7 +237,7 @@ function PropertyMatch({ property: p }: { property: MatchedProperty }) {
             <Spec n="Parking" v={shown(p.parkingSpaces, " space(s)")} />
             <Spec n="Availability" v={p.availability} />
           </dl>
-          <p className={`mt-5 rounded-lg border p-4 text-base font-medium leading-6 ${reasonColor}`}>{p.matchReason}</p>
+          <RecommendationOutline score={p.matchScore} details={p.matchDetails} fallback={p.matchReason} />
         </div>
       </Link>
       <div className="mt-auto flex min-h-16 items-center justify-between gap-3 border-t bg-white px-4 py-3">
@@ -256,6 +253,51 @@ function PropertyMatch({ property: p }: { property: MatchedProperty }) {
       </div>
     </article>
   );
+}
+
+function RecommendationOutline({ score, details, fallback, project = false }: { score: number; details?: MatchDetails; fallback: string; project?: boolean }) {
+  const frame = score >= 80 ? "border-green-200 bg-green-50/70" : score >= 55 ? "border-yellow-200 bg-yellow-50/80" : "border-red-200 bg-red-50/80";
+  const headingColor = score >= 80 ? "text-green-950" : score >= 55 ? "text-yellow-950" : "text-red-950";
+  if (!details) {
+    return (
+      <div className={`mt-5 rounded-xl border p-4 text-sm leading-6 ${frame} ${headingColor}`}>
+        <p className="font-extrabold">{score}% {project ? "project" : "property"} match</p>
+        <p className="mt-1 font-medium">{fallback}</p>
+      </div>
+    );
+  }
+  const rows = [
+    ["Location", details.location],
+    ["Budget", details.budget],
+    [project ? "Inventory" : "Property fit", details.fit],
+    details.lifestyle ? ["Lifestyle", details.lifestyle] : null,
+    ["MM Pulse take", details.take],
+  ].filter(Boolean) as [string, { tone: MatchDetailTone; label: string; text: string }][];
+  return (
+    <div className={`mt-5 rounded-xl border p-3 text-sm ${frame}`}>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className={`font-extrabold ${headingColor}`}>{score}% {project ? "project" : "property"} match</p>
+        <span className="rounded-full bg-white/80 px-2 py-1 text-[11px] font-bold uppercase text-navy-600">Recommendation outline</span>
+      </div>
+      <div className="mt-3 space-y-2">
+        {rows.map(([title, detail]) => (
+          <div key={title} className="rounded-lg bg-white/85 p-2.5 shadow-sm">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[11px] font-black uppercase tracking-wide text-navy-500">{title}:</span>
+              <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${toneClass(detail.tone)}`}>{detail.label}</span>
+            </div>
+            <p className="mt-1 text-[13px] leading-5 text-navy-800">{detail.text}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function toneClass(tone: MatchDetailTone) {
+  if (tone === "strong") return "bg-green-100 text-green-800";
+  if (tone === "ok") return "bg-yellow-100 text-yellow-800";
+  return "bg-red-100 text-red-800";
 }
 
 function Choice({ title, values, selected, toggle }: { title: string; values: string[]; selected: string[]; toggle: (value: string) => void }) {

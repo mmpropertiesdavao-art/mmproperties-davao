@@ -115,7 +115,18 @@ export interface MatcherInput {
 
 export interface MatchedProperty extends Property {
   matchReason: string;
+  matchDetails?: MatchDetails;
   matchScore: number;
   distanceKm: number;
   outsidePreferredArea: boolean;
+}
+
+export type MatchDetailTone = "strong" | "ok" | "caution";
+
+export interface MatchDetails {
+  location: { tone: MatchDetailTone; label: string; text: string };
+  budget: { tone: MatchDetailTone; label: string; text: string };
+  fit: { tone: MatchDetailTone; label: string; text: string };
+  lifestyle?: { tone: MatchDetailTone; label: string; text: string };
+  take: { tone: MatchDetailTone; label: string; text: string };
 }
