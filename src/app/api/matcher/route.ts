@@ -69,18 +69,10 @@ export async function POST(req: NextRequest) {
     const shouldReturnListings = propertyType !== "new-development";
     const shouldReturnProjects = !propertyType || ["new-development", "lot-only", "house-and-lot", "townhouse"].includes(propertyType);
 
-    const { rows } = shouldReturnListings
-      ? await db.query(
-          combinedFilterSearchQuery({
-            minPrice: input.budget * 0.7,
-            maxPrice: input.budget * 1.3,
-            minBedrooms,
-            propertyType: listingPropertyType,
-            pageSize: 120,
-          }),
-        )
-      : { rows: [] as MatchedProperty[] };
-    const available = (rows as MatchedProperty[]).filter((property) => property.availability === "available" && property.status === "active");
+    const listingRows = shouldReturnListings
+      ? await getListingCandidates(input, minBedrooms, listingPropertyType)
+      : [];
+    const available = listingRows.filter((property) => property.availability === "available" && property.status === "active");
 
     const ids = available.map((property) => property.id);
     const { rows: amenities } = ids.length
@@ -101,7 +93,7 @@ export async function POST(req: NextRequest) {
     const amenityById = new Map(amenities.map((amenity) => [amenity.id, amenity]));
     const ranked = available
       .map((property) => scoreProperty(property, input, minBedrooms, wanted, selectedCenters, amenityById.get(property.id)))
-      .sort((a, b) => b.matchScore - a.matchScore || a.distanceKm - b.distanceKm)
+      .sort((a, b) => Number(b.exactPreferredArea) - Number(a.exactPreferredArea) || b.matchScore - a.matchScore || a.distanceKm - b.distanceKm)
       .slice(0, 24);
 
     const projectCandidates = shouldReturnProjects
@@ -130,24 +122,56 @@ export async function POST(req: NextRequest) {
   }
 }
 
+async function getListingCandidates(input: MatcherInput, minBedrooms: number, propertyType?: PropertyTypeSlug) {
+  const candidateMap = new Map<string, MatchedProperty>();
+  const addRows = (rows: MatchedProperty[]) => rows.forEach((property) => candidateMap.set(property.id, property));
+
+  const base = await db.query(
+    combinedFilterSearchQuery({
+      minPrice: input.budget * 0.7,
+      maxPrice: input.budget * 1.3,
+      minBedrooms,
+      propertyType,
+      pageSize: 120,
+    }),
+  );
+  addRows(base.rows as MatchedProperty[]);
+
+  for (const area of input.preferredAreas.slice(0, 4)) {
+    const term = area.trim();
+    if (!term) continue;
+    const exactArea = await db.query(
+      combinedFilterSearchQuery({
+        barangay: term,
+        propertyType,
+        pageSize: 80,
+      }),
+    );
+    addRows(exactArea.rows as MatchedProperty[]);
+  }
+
+  return Array.from(candidateMap.values());
+}
+
 function scoreProperty(property: MatchedProperty, input: MatcherInput, minBedrooms: number, wanted: string[], centers: Center[], amenity?: Amenity): MatchedProperty {
   const primary = clean(`${property.primaryPlace || property.neighborhoodName} ${property.barangay || ""}`);
-  const textExact = Boolean(wanted.length && wanted.some((area) => primary === area || primary.includes(area) || area.includes(primary)));
+  const searchText = clean(`${property.title} ${property.address} ${property.primaryPlace || ""} ${property.neighborhoodName || ""} ${property.barangay || ""} ${(property.nearbyPlaces || []).join(" ")}`);
+  const textExact = Boolean(wanted.length && wanted.some((area) => primary === area || primary.includes(area) || area.includes(primary) || searchText.includes(area)));
   const nearbyTag = Boolean(!textExact && wanted.length && (property.nearbyPlaces || []).some((place) => wanted.some((area) => clean(place) === area)));
   const distanceKm = centers.length ? Math.min(...centers.map((center) => haversine(property.lat, property.lng, Number(center.lat), Number(center.lng)))) : Infinity;
-  const exact = centers.length ? distanceKm <= 0.75 : textExact;
+  const exact = textExact || (centers.length ? distanceKm <= 1.2 : false);
   const locationPoints = wanted.length
     ? centers.length
-      ? distanceKm <= 0.75
+      ? exact
         ? 50
-        : distanceKm <= 2
-          ? 45
+        : distanceKm <= 2.5
+          ? 36
           : distanceKm <= 5
-            ? 35
+            ? 22
             : distanceKm <= 8
-              ? 22
+              ? 8
               : nearbyTag
-                ? 18
+                ? 12
                 : 0
       : textExact
         ? 45
@@ -186,7 +210,8 @@ function scoreProperty(property: MatchedProperty, input: MatcherInput, minBedroo
     matchScore: score,
     matchDetails,
     distanceKm: Number.isFinite(distanceKm) ? Math.round(distanceKm * 10) / 10 : 0,
-    outsidePreferredArea: Boolean(wanted.length && !exact && !nearbyTag && distanceKm > 8),
+    exactPreferredArea: exact,
+    outsidePreferredArea: Boolean(wanted.length && !exact && !nearbyTag && distanceKm > 5),
     matchReason: `${concise.join(" · ")}.`,
   };
 }

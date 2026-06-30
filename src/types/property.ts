@@ -118,6 +118,7 @@ export interface MatchedProperty extends Property {
   matchDetails?: MatchDetails;
   matchScore: number;
   distanceKm: number;
+  exactPreferredArea?: boolean;
   outsidePreferredArea: boolean;
 }
 
