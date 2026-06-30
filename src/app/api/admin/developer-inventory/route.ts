@@ -398,6 +398,21 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ ok: true, deleted: true });
   }
 
+  if (type === "model") {
+    const { rows } = await db.query<{ name: string }>({
+      text: `SELECT name FROM developer_house_models WHERE id=$1::uuid LIMIT 1`,
+      values: [id],
+    });
+
+    if (!rows[0]) return NextResponse.json({ error: "House model or lot inventory not found." }, { status: 404 });
+    if (String(body.confirmation || "") !== rows[0].name) {
+      return NextResponse.json({ error: "Confirmation text does not match the model or lot name." }, { status: 400 });
+    }
+
+    await db.query({ text: `DELETE FROM developer_house_models WHERE id=$1::uuid`, values: [id] });
+    return NextResponse.json({ ok: true, deleted: true });
+  }
+
   if (type !== "developer") {
     return NextResponse.json({ error: "Unsupported delete action." }, { status: 400 });
   }

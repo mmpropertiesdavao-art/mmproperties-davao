@@ -412,10 +412,60 @@ export default function DeveloperInventoryAdminPage() {
                           </label>
                           <textarea name="description" defaultValue={model.description ?? ""} className={`${input} sm:col-span-3`} rows={2} aria-label="Description" />
                         </div>
-                        <button disabled={saving} className="mt-3 min-h-11 rounded-lg bg-navy-900 px-4 py-2 text-sm font-bold text-white disabled:opacity-50">Save model / inventory</button>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <button disabled={saving} className="min-h-11 rounded-lg bg-navy-900 px-4 py-2 text-sm font-bold text-white disabled:opacity-50">Save model / inventory</button>
+                          <button
+                            type="button"
+                            disabled={saving}
+                            onClick={async (event) => {
+                              const form = event.currentTarget.closest("form");
+                              if (!form) return;
+                              setSaving(true);
+                              setMessage(null);
+                              const response = await fetch("/api/admin/developer-inventory", {
+                                method: "PATCH",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ type: "model", id: model.id, ...Object.fromEntries(new FormData(form).entries()), active: false }),
+                              });
+                              const data = await readJson(response);
+                              setSaving(false);
+                              setMessage(response.ok ? "Model / lot archived." : data.error || "Could not archive model / lot.");
+                              if (response.ok) await load();
+                            }}
+                            className="min-h-11 rounded-lg border border-amber-300 bg-white px-4 py-2 text-sm font-bold text-amber-800 disabled:opacity-50"
+                          >
+                            Archive
+                          </button>
+                          <button
+                            type="button"
+                            disabled={saving}
+                            onClick={async () => {
+                              const confirmation = window.prompt(`Type "${model.name}" to permanently delete this model / lot inventory.`);
+                              if (confirmation === null) return;
+                              if (confirmation !== model.name) {
+                                setMessage("Delete cancelled. The confirmation text did not match the model / lot name.");
+                                return;
+                              }
+                              setSaving(true);
+                              setMessage(null);
+                              const response = await fetch("/api/admin/developer-inventory", {
+                                method: "DELETE",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ type: "model", id: model.id, confirmation }),
+                              });
+                              const data = await readJson(response);
+                              setSaving(false);
+                              setMessage(response.ok ? "Model / lot permanently deleted." : data.error || "Could not delete model / lot.");
+                              if (response.ok) await load();
+                            }}
+                            className="min-h-11 rounded-lg bg-red-700 px-4 py-2 text-sm font-bold text-white disabled:opacity-50"
+                          >
+                            Delete
+                          </button>
+                        </div>
                       </form>
                     ))}
-                    {project.models.length === 0 && <p className="text-sm text-navy-500">No house models yet.</p>}
+                    {project.models.length === 0 && <p className="text-sm text-navy-500">No house model or lot inventory yet.</p>}
                   </div>
                 </div>
               ))}
