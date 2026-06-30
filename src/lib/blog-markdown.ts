@@ -58,6 +58,48 @@ function parseFaqJsonLd(markdown: string): BlogBlock[] {
   }
 }
 
+function bestForText(value?: string) {
+  const match = (value || "").match(/^\*\*Best for:\*\*\s*([\s\S]+)$/i) || (value || "").match(/^Best for:\s*([\s\S]+)$/i);
+  return match?.[1]?.trim() || "";
+}
+
+function isLabel(value: unknown, label: string) {
+  return typeof value === "string" && new RegExp(`^\\*\\*${label}:\\*\\*\\s*$|^${label}:\\s*$`, "i").test(value.trim());
+}
+
+function convertProsConsPatterns(blocks: BlogBlock[]) {
+  const next: BlogBlock[] = [];
+  for (let index = 0; index < blocks.length; index++) {
+    const current = blocks[index];
+    const bestFor = current.type === "paragraph" ? bestForText(current.text) : "";
+    const advantagesLabel = blocks[index + 1];
+    const advantages = blocks[index + 2];
+    const tradeoffsLabel = blocks[index + 3];
+    const tradeoffs = blocks[index + 4];
+    if (
+      bestFor &&
+      advantagesLabel?.type === "paragraph" &&
+      isLabel(advantagesLabel.text, "Advantages") &&
+      advantages?.type === "list" &&
+      tradeoffsLabel?.type === "paragraph" &&
+      isLabel(tradeoffsLabel.text, "Trade-offs") &&
+      tradeoffs?.type === "list"
+    ) {
+      next.push({
+        id: id("pros-cons"),
+        type: "pros_cons",
+        label: bestFor,
+        text: advantages.text || "",
+        caption: tradeoffs.text || "",
+      });
+      index += 4;
+    } else {
+      next.push(current);
+    }
+  }
+  return next;
+}
+
 export function importMarkdownBlog(raw: string): ImportedMarkdownPost {
   const faqBlocks = parseFaqJsonLd(raw);
   let markdown = raw
@@ -177,7 +219,8 @@ export function importMarkdownBlog(raw: string): ImportedMarkdownPost {
     blocks.push(...faqBlocks);
   }
 
-  const firstParagraph = blocks.find((block) => block.type === "paragraph" && block.text)?.text || "";
+  const finalBlocks = convertProsConsPatterns(blocks);
+  const firstParagraph = finalBlocks.find((block) => block.type === "paragraph" && block.text)?.text || "";
   return {
     title,
     slug: slugify(title),
@@ -185,6 +228,6 @@ export function importMarkdownBlog(raw: string): ImportedMarkdownPost {
     excerpt: stripMarkdown(firstParagraph).slice(0, 220),
     seoTitle: seoTitle || title,
     metaDescription: metaDescription || stripMarkdown(firstParagraph).slice(0, 155),
-    blocks: blocks.length ? blocks : [{ id: id("p"), type: "paragraph", text: cleanInline(markdown.trim()) }],
+    blocks: finalBlocks.length ? finalBlocks : [{ id: id("p"), type: "paragraph", text: cleanInline(markdown.trim()) }],
   };
 }

@@ -7,6 +7,7 @@ export type BlogBlockType =
   | "checklist"
   | "quote"
   | "callout"
+  | "pros_cons"
   | "table"
   | "faq"
   | "toc"
@@ -134,6 +135,51 @@ function Block({ block, headings }: { block: BlogBlock; headings: { id: string; 
         <p className="text-xs font-bold uppercase tracking-widest text-gold-700">{block.label || "MM Insight"}</p>
         <p className="mt-2 whitespace-pre-wrap">{renderInlineMarkdown(block.text)}</p>
       </aside>
+    );
+  }
+  if (block.type === "pros_cons") {
+    const advantages = (block.text || "").split("\n").filter(Boolean);
+    const tradeoffs = (block.caption || "").split("\n").filter(Boolean);
+    return (
+      <section className="rounded-2xl border border-navy-100 bg-white p-5 shadow-sm">
+        {block.label && (
+          <p className="text-lg font-bold leading-7 text-navy-900">
+            <span className="text-gold-700">Best for:</span> {renderInlineMarkdown(block.label)}
+          </p>
+        )}
+        <div className="mt-5 grid gap-5 md:grid-cols-2">
+          <div className="rounded-xl border border-green-100 bg-green-50 p-4">
+            <h3 className="font-bold text-green-900">Advantages</h3>
+            {advantages.length ? (
+              <ul className="mt-3 space-y-2">
+                {advantages.map((item, index) => (
+                  <li key={index} className="flex gap-2 text-base leading-7 text-green-950">
+                    <span className="mt-1 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-green-600 text-xs font-bold text-white">✓</span>
+                    <span>{renderInlineMarkdown(item)}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-3 text-sm text-green-800">Add advantage points in the editor.</p>
+            )}
+          </div>
+          <div className="rounded-xl border border-amber-100 bg-amber-50 p-4">
+            <h3 className="font-bold text-amber-900">Trade-offs</h3>
+            {tradeoffs.length ? (
+              <ul className="mt-3 space-y-2">
+                {tradeoffs.map((item, index) => (
+                  <li key={index} className="flex gap-2 text-base leading-7 text-amber-950">
+                    <span className="mt-1 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-500 text-xs font-bold text-navy-900">!</span>
+                    <span>{renderInlineMarkdown(item)}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-3 text-sm text-amber-800">Add trade-off points in the editor.</p>
+            )}
+          </div>
+        </div>
+      </section>
     );
   }
   if (block.type === "toc") {

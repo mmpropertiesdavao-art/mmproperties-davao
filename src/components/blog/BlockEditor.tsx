@@ -36,6 +36,7 @@ const buttons: { type: BlogBlockType; label: string }[] = [
   { type: "checklist", label: "Checklist" },
   { type: "quote", label: "Quote" },
   { type: "callout", label: "MM Insight" },
+  { type: "pros_cons", label: "Pros / Trade-offs" },
   { type: "table", label: "Table" },
   { type: "faq", label: "FAQ" },
   { type: "image", label: "Image" },
@@ -48,12 +49,36 @@ const buttons: { type: BlogBlockType; label: string }[] = [
 const fresh = (type: BlogBlockType): BlogBlock => ({
   id: crypto.randomUUID(),
   type,
-  text: type === "button" ? "Learn more" : type === "partner_cta" ? "Are you a broker or property appraiser?" : type === "callout" ? "" : type === "table" ? "Column 1 | Column 2\nValue 1 | Value 2" : type === "faq" ? "Question?" : "",
-  caption: type === "faq" ? "Answer." : undefined,
-  label: type === "callout" ? "MM Insight" : undefined,
+  text: type === "button" ? "Learn more" : type === "partner_cta" ? "Are you a broker or property appraiser?" : type === "callout" ? "" : type === "pros_cons" ? "You own the land—which is typically what appreciates most over time\nMore indoor and outdoor space\nGreater freedom to renovate, expand, or modify" : type === "table" ? "Column 1 | Column 2\nValue 1 | Value 2" : type === "faq" ? "Question?" : "",
+  caption: type === "faq" ? "Answer." : type === "pros_cons" ? "Higher entry cost in established neighborhoods\nAll maintenance is your responsibility" : undefined,
+  label: type === "callout" ? "MM Insight" : type === "pros_cons" ? "Families, buyers prioritizing space and permanence, and long-term land ownership." : undefined,
   level: type === "heading" ? 2 : undefined,
   partnerType: type === "partner_cta" ? "both" : undefined,
 });
+
+function addMarkdown(value: string | undefined, kind: "bold" | "italic" | "link") {
+  const current = value || "";
+  const spacer = current && !current.endsWith(" ") && !current.endsWith("\n") ? " " : "";
+  if (kind === "bold") return `${current}${spacer}**bold text**`;
+  if (kind === "italic") return `${current}${spacer}*italic text*`;
+  return `${current}${spacer}[link text](https://example.com)`;
+}
+
+function FormatButtons({ onInsert }: { onInsert: (kind: "bold" | "italic" | "link") => void }) {
+  return (
+    <div className="mb-2 flex flex-wrap gap-2">
+      <button type="button" onClick={() => onInsert("bold")} className="rounded border border-navy-200 px-2 py-1 text-xs font-bold hover:border-gold-400">
+        Bold
+      </button>
+      <button type="button" onClick={() => onInsert("italic")} className="rounded border border-navy-200 px-2 py-1 text-xs italic hover:border-gold-400">
+        Italic
+      </button>
+      <button type="button" onClick={() => onInsert("link")} className="rounded border border-navy-200 px-2 py-1 text-xs underline hover:border-gold-400">
+        Link
+      </button>
+    </div>
+  );
+}
 
 export function BlockEditor({ value, onChange }: { value: BlogBlock[]; onChange: (blocks: BlogBlock[]) => void }) {
   const [uploading, setUploading] = useState<string | null>(null);
@@ -117,7 +142,10 @@ export function BlockEditor({ value, onChange }: { value: BlogBlock[]; onChange:
             )}
 
             {["paragraph", "quote"].includes(block.type) && (
-              <textarea value={block.text || ""} onChange={(event) => update(index, { text: event.target.value })} rows={4} className="w-full rounded border p-2" />
+              <>
+                <FormatButtons onInsert={(kind) => update(index, { text: addMarkdown(block.text, kind) })} />
+                <textarea value={block.text || ""} onChange={(event) => update(index, { text: event.target.value })} rows={4} className="w-full rounded border p-2" />
+              </>
             )}
 
             {block.type === "toc" && (
@@ -129,18 +157,44 @@ export function BlockEditor({ value, onChange }: { value: BlogBlock[]; onChange:
                 <label className="text-xs">
                   <input type="checkbox" checked={!!block.ordered} onChange={(event) => update(index, { ordered: event.target.checked })} /> Numbered
                 </label>
+                <FormatButtons onInsert={(kind) => update(index, { text: addMarkdown(block.text, kind) })} />
                 <textarea value={block.text || ""} onChange={(event) => update(index, { text: event.target.value })} rows={4} placeholder="One item per line" className="mt-2 w-full rounded border p-2" />
               </>
             )}
 
             {block.type === "checklist" && (
-              <textarea value={block.text || ""} onChange={(event) => update(index, { text: event.target.value })} rows={5} placeholder="One checklist item per line" className="w-full rounded border p-2" />
+              <>
+                <FormatButtons onInsert={(kind) => update(index, { text: addMarkdown(block.text, kind) })} />
+                <textarea value={block.text || ""} onChange={(event) => update(index, { text: event.target.value })} rows={5} placeholder="One checklist item per line" className="w-full rounded border p-2" />
+              </>
             )}
 
             {block.type === "callout" && (
               <div className="space-y-2">
                 <input value={block.label || ""} onChange={(event) => update(index, { label: event.target.value })} placeholder="Label, e.g. MM Insight" className="w-full rounded border p-2" />
+                <FormatButtons onInsert={(kind) => update(index, { text: addMarkdown(block.text, kind) })} />
                 <textarea value={block.text || ""} onChange={(event) => update(index, { text: event.target.value })} rows={4} placeholder="Callout text" className="w-full rounded border p-2" />
+              </div>
+            )}
+
+            {block.type === "pros_cons" && (
+              <div className="space-y-3">
+                <div>
+                  <label className="mb-1 block text-xs font-bold uppercase text-navy-400">Best for</label>
+                  <input value={block.label || ""} onChange={(event) => update(index, { label: event.target.value })} placeholder="Families, investors, first-time buyers..." className="w-full rounded border p-2" />
+                </div>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div>
+                    <label className="mb-1 block text-xs font-bold uppercase text-green-700">Advantages</label>
+                    <FormatButtons onInsert={(kind) => update(index, { text: addMarkdown(block.text, kind) })} />
+                    <textarea value={block.text || ""} onChange={(event) => update(index, { text: event.target.value })} rows={6} placeholder="One advantage per line" className="w-full rounded border p-2" />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-bold uppercase text-amber-700">Trade-offs</label>
+                    <FormatButtons onInsert={(kind) => update(index, { caption: addMarkdown(block.caption, kind) })} />
+                    <textarea value={block.caption || ""} onChange={(event) => update(index, { caption: event.target.value })} rows={6} placeholder="One trade-off per line" className="w-full rounded border p-2" />
+                  </div>
+                </div>
               </div>
             )}
 
@@ -154,6 +208,7 @@ export function BlockEditor({ value, onChange }: { value: BlogBlock[]; onChange:
             {block.type === "faq" && (
               <div className="space-y-2">
                 <input value={block.text || ""} onChange={(event) => update(index, { text: event.target.value })} placeholder="Question" className="w-full rounded border p-2" />
+                <FormatButtons onInsert={(kind) => update(index, { caption: addMarkdown(block.caption, kind) })} />
                 <textarea value={block.caption || ""} onChange={(event) => update(index, { caption: event.target.value })} rows={4} placeholder="Answer" className="w-full rounded border p-2" />
               </div>
             )}
