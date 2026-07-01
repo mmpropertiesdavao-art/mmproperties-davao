@@ -126,7 +126,49 @@ export function BlogBlocks({ blocks, relatedPosts = [] }: { blocks: BlogBlock[];
     .filter((block) => block.type === "heading" && block.level !== 1 && block.text?.trim())
     .map((block) => ({ id: headingId(block) || slugifyHeading(block.text || ""), text: block.text || "", level: block.level || 2 }));
 
-  return <div className="space-y-6 text-lg leading-8 text-navy-700">{blocks.map((block) => <Block key={block.id} block={block} headings={headings} relatedPosts={relatedPosts} />)}</div>;
+  return <div className="space-y-6 text-lg leading-8 text-navy-700">{renderBlocksWithFaqGroups(blocks, headings, relatedPosts)}</div>;
+}
+
+function renderBlocksWithFaqGroups(blocks: BlogBlock[], headings: { id: string; text: string; level: 1 | 2 | 3 }[], relatedPosts: RelatedArticleSummary[]) {
+  const rendered: ReactNode[] = [];
+  for (let index = 0; index < blocks.length; index++) {
+    const block = blocks[index];
+    if (block.type === "faq") {
+      const faqs: BlogBlock[] = [];
+      let cursor = index;
+      while (blocks[cursor]?.type === "faq") {
+        faqs.push(blocks[cursor]);
+        cursor++;
+      }
+      rendered.push(<FaqAccordion key={`faq-${block.id}`} faqs={faqs} />);
+      index = cursor - 1;
+    } else {
+      rendered.push(<Block key={block.id} block={block} headings={headings} relatedPosts={relatedPosts} />);
+    }
+  }
+  return rendered;
+}
+
+function FaqAccordion({ faqs }: { faqs: BlogBlock[] }) {
+  return (
+    <section>
+      <h2 className="text-3xl font-bold leading-tight text-blue-700">Frequently asked questions</h2>
+      <div className="mt-6 overflow-hidden rounded border border-navy-200 bg-white">
+        {faqs.map((faq, index) => (
+          <details key={faq.id} open={index === 0} className="group border-b border-navy-200 last:border-b-0">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-3 text-base font-bold leading-6 text-navy-900 marker:hidden hover:bg-navy-50">
+              <span>{renderInlineMarkdown(faq.text)}</span>
+              <span className="shrink-0 text-2xl leading-none text-navy-800 group-open:hidden">+</span>
+              <span className="hidden shrink-0 text-2xl leading-none text-navy-800 group-open:inline">−</span>
+            </summary>
+            <div className="border-t border-navy-200 px-5 py-5 text-base leading-8 text-navy-800">
+              <p className="whitespace-pre-wrap">{renderInlineMarkdown(faq.caption)}</p>
+            </div>
+          </details>
+        ))}
+      </div>
+    </section>
+  );
 }
 
 function Block({ block, headings, relatedPosts }: { block: BlogBlock; headings: { id: string; text: string; level: 1 | 2 | 3 }[]; relatedPosts: RelatedArticleSummary[] }): ReactNode {
