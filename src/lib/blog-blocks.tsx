@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { BuyerReadinessQuiz } from "@/components/blog/BuyerReadinessQuiz";
 
 export type BlogBlockType =
   | "paragraph"
@@ -16,6 +17,7 @@ export type BlogBlockType =
   | "button"
   | "internal_link"
   | "related_articles"
+  | "buyer_readiness_quiz"
   | "partner_cta"
   | "divider";
 
@@ -378,6 +380,7 @@ function Block({ block, headings, relatedPosts }: { block: BlogBlock; headings: 
       </section>
     );
   }
+  if (block.type === "buyer_readiness_quiz") return <BuyerReadinessQuiz />;
   if (block.type === "partner_cta") {
     const type = block.partnerType || "both";
     const href = type === "both" ? "/signup?profession=broker" : `/signup?profession=${type}`;

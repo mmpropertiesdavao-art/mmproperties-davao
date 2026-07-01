@@ -44,6 +44,7 @@ const buttons: { type: BlogBlockType; label: string }[] = [
   { type: "button", label: "Button" },
   { type: "internal_link", label: "Internal link" },
   { type: "related_articles", label: "Related reading" },
+  { type: "buyer_readiness_quiz", label: "Buyer quiz" },
   { type: "partner_cta", label: "Invite brokers/appraisers" },
   { type: "divider", label: "Divider" },
 ];
@@ -150,6 +151,7 @@ export function BlockEditor({ value, onChange }: { value: BlogBlock[]; onChange:
     if (type === "pros_cons") return "pros & cons";
     if (type === "partner_cta") return "invite brokers/appraisers";
     if (type === "related_articles") return "related reading";
+    if (type === "buyer_readiness_quiz") return "buyer readiness quiz";
     if (type === "neighborhood_insight") return "neighborhood card";
     return type.replace("_", " ");
   };
@@ -340,6 +342,13 @@ export function BlockEditor({ value, onChange }: { value: BlogBlock[]; onChange:
                 <input value={block.label || ""} onChange={(event) => update(index, { label: event.target.value })} placeholder="Related reading" className="w-full rounded border p-2" />
                 <p className="text-xs text-navy-500">Add one guide slug or URL per line. The published article will use each guide's featured image, title, and excerpt automatically.</p>
                 <textarea value={block.text || ""} onChange={(event) => update(index, { text: event.target.value })} rows={5} placeholder="/guides/buying-property-in-davao&#10;another-guide-slug" className="w-full rounded border p-2" />
+              </div>
+            )}
+
+            {block.type === "buyer_readiness_quiz" && (
+              <div className="rounded-lg border border-gold-200 bg-gold-50 p-4 text-sm leading-6 text-navy-700">
+                <p className="font-bold text-navy-900">Interactive Buyer Readiness Quiz</p>
+                <p className="mt-1">This renders a 10-question score-based quiz in the published article. Ready and almost-ready results send visitors to MM Pulse at <code>/matcher</code> with no login required.</p>
               </div>
             )}
 
