@@ -106,6 +106,8 @@ const questions: QuizQuestion[] = [
   },
 ];
 
+const BUYING_GUIDE_READINESS_URL = "/guides/the-complete-guide-to-buying-property-in-davao-philippines-2026-mm-properties-mqylksqz#part-1-are-you-ready-to-buy-property-in-davao";
+
 function resultFor(score: number) {
   if (score >= 16) {
     return {
@@ -121,9 +123,9 @@ function resultFor(score: number) {
     return {
       tone: "almost",
       title: "Almost there — a few things to strengthen.",
-      copy: "You're closer than you think, but one or two areas need attention before you commit. MM Pulse can still help you understand what fits your budget and target areas.",
-      cta: "Get matched with properties using MM Pulse",
-      href: "/matcher",
+      copy: "You're closer than you think, but one or two areas need attention before you commit. Review the readiness section first so you can strengthen the weak spots before shortlisting properties.",
+      cta: "Review the buyer readiness guide",
+      href: BUYING_GUIDE_READINESS_URL,
       className: "border-gold-200 bg-gold-50 text-navy-950",
     };
   }
@@ -131,8 +133,8 @@ function resultFor(score: number) {
     tone: "prepare",
     title: "Not yet — and that's okay.",
     copy: "Buying now could put you in a more vulnerable position than you need to be. Use this result as a preparation checklist before you commit.",
-    cta: "Read what to prepare before buying",
-    href: "/guides/buying-property-in-davao#part-1-are-you-ready-to-buy-property-in-davao",
+    cta: "Review the buyer readiness guide",
+    href: BUYING_GUIDE_READINESS_URL,
     className: "border-red-100 bg-red-50 text-red-950",
   };
 }
