@@ -36,6 +36,7 @@ const buttons: { type: BlogBlockType; label: string }[] = [
   { type: "checklist", label: "Checklist" },
   { type: "quote", label: "Quote" },
   { type: "callout", label: "MM Insight" },
+  { type: "neighborhood_insight", label: "Neighborhood card" },
   { type: "pros_cons", label: "Pros & Cons" },
   { type: "table", label: "Table" },
   { type: "faq", label: "FAQ" },
@@ -56,6 +57,22 @@ export const createBlogBlock = (type: BlogBlockType): BlogBlock => ({
   level: type === "heading" ? 2 : undefined,
   partnerType: type === "partner_cta" ? "both" : undefined,
 });
+
+export function createEditorBlogBlock(type: BlogBlockType): BlogBlock {
+  if (type !== "neighborhood_insight") return createBlogBlock(type);
+  return {
+    id: crypto.randomUUID(),
+    type,
+    text: "Poblacion / Downtown Davao",
+    caption: JSON.stringify({
+      character: "The historic commercial and civic center.",
+      buyers: "Commercial investors, business owners, and buyers looking for older residential properties at lower price points.",
+      market: "Residential demand is more limited compared to newer districts, but the area is central and active.",
+      bestFor: "Commercial property buyers, heritage or mixed-use investors, and buyers comfortable with urban density.",
+      caution: "Less suitable as a primary family residence for buyers accustomed to subdivision living.",
+    }),
+  };
+}
 
 function addMarkdown(value: string | undefined, kind: "bold" | "italic" | "link") {
   const current = value || "";
@@ -81,6 +98,33 @@ function FormatButtons({ onInsert }: { onInsert: (kind: "bold" | "italic" | "lin
   );
 }
 
+type NeighborhoodInsight = {
+  character: string;
+  buyers: string;
+  market: string;
+  bestFor: string;
+  caution: string;
+};
+
+function parseNeighborhoodInsight(value?: string): NeighborhoodInsight {
+  try {
+    const parsed = JSON.parse(value || "{}") as Partial<NeighborhoodInsight>;
+    return {
+      character: parsed.character || "",
+      buyers: parsed.buyers || "",
+      market: parsed.market || "",
+      bestFor: parsed.bestFor || "",
+      caution: parsed.caution || "",
+    };
+  } catch {
+    return { character: "", buyers: "", market: "", bestFor: "", caution: value || "" };
+  }
+}
+
+function updateNeighborhoodInsight(value: string | undefined, key: keyof NeighborhoodInsight, nextValue: string) {
+  return JSON.stringify({ ...parseNeighborhoodInsight(value), [key]: nextValue });
+}
+
 export function BlockEditor({ value, onChange }: { value: BlogBlock[]; onChange: (blocks: BlogBlock[]) => void }) {
   const [uploading, setUploading] = useState<string | null>(null);
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
@@ -89,7 +133,7 @@ export function BlockEditor({ value, onChange }: { value: BlogBlock[]; onChange:
 
   const insert = (type: BlogBlockType, index = value.length) => {
     const next = [...value];
-    next.splice(index, 0, createBlogBlock(type));
+    next.splice(index, 0, createEditorBlogBlock(type));
     onChange(next);
     setInsertIndex(null);
   };
@@ -106,6 +150,7 @@ export function BlockEditor({ value, onChange }: { value: BlogBlock[]; onChange:
     if (type === "pros_cons") return "pros & cons";
     if (type === "partner_cta") return "invite brokers/appraisers";
     if (type === "related_articles") return "related reading";
+    if (type === "neighborhood_insight") return "neighborhood card";
     return type.replace("_", " ");
   };
 
@@ -203,6 +248,31 @@ export function BlockEditor({ value, onChange }: { value: BlogBlock[]; onChange:
                 <input value={block.label || ""} onChange={(event) => update(index, { label: event.target.value })} placeholder="Label, e.g. MM Insight" className="w-full rounded border p-2" />
                 <FormatButtons onInsert={(kind) => update(index, { text: addMarkdown(block.text, kind) })} />
                 <textarea value={block.text || ""} onChange={(event) => update(index, { text: event.target.value })} rows={4} placeholder="Callout text" className="w-full rounded border p-2" />
+              </div>
+            )}
+
+            {block.type === "neighborhood_insight" && (
+              <div className="space-y-3">
+                <div>
+                  <label className="mb-1 block text-xs font-bold uppercase text-navy-400">Area / neighborhood name</label>
+                  <input value={block.text || ""} onChange={(event) => update(index, { text: event.target.value })} placeholder="Poblacion / Downtown Davao" className="w-full rounded border p-2" />
+                </div>
+                {([
+                  ["character", "Character"],
+                  ["buyers", "Who buys here"],
+                  ["market", "Market reality"],
+                  ["bestFor", "Best for"],
+                  ["caution", "Caution"],
+                ] as [keyof NeighborhoodInsight, string][]).map(([key, label]) => {
+                  const details = parseNeighborhoodInsight(block.caption);
+                  return (
+                    <div key={key}>
+                      <label className="mb-1 block text-xs font-bold uppercase text-navy-400">{label}</label>
+                      <FormatButtons onInsert={(kind) => update(index, { caption: updateNeighborhoodInsight(block.caption, key, addMarkdown(details[key], kind)) })} />
+                      <textarea value={details[key]} onChange={(event) => update(index, { caption: updateNeighborhoodInsight(block.caption, key, event.target.value) })} rows={3} className="w-full rounded border p-2" />
+                    </div>
+                  );
+                })}
               </div>
             )}
 

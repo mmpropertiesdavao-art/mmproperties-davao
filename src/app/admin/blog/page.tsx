@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { BlogBlockPalette, BlockEditor, createBlogBlock, uploadBlogImage } from "@/components/blog/BlockEditor";
+import { BlogBlockPalette, BlockEditor, createEditorBlogBlock, uploadBlogImage } from "@/components/blog/BlockEditor";
 import { BlogBlocks, normalizeBlocks, type BlogBlock } from "@/lib/blog-blocks";
 import { BlogPostTable } from "@/components/admin/BlogPostTable";
 import { importMarkdownBlog } from "@/lib/blog-markdown";
@@ -133,7 +133,7 @@ export default function AdminBlogPage() {
   }
 
   function addBlock(type: BlogBlock["type"]) {
-    setEditor((current) => (current ? { ...current, blocks: [...current.blocks, createBlogBlock(type)] } : current));
+    setEditor((current) => (current ? { ...current, blocks: [...current.blocks, createEditorBlogBlock(type)] } : current));
   }
 
   async function save() {

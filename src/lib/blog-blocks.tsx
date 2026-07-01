@@ -7,6 +7,7 @@ export type BlogBlockType =
   | "checklist"
   | "quote"
   | "callout"
+  | "neighborhood_insight"
   | "pros_cons"
   | "table"
   | "faq"
@@ -117,6 +118,29 @@ function renderInlineMarkdown(text = ""): ReactNode[] {
   return nodes;
 }
 
+type NeighborhoodInsight = {
+  character: string;
+  buyers: string;
+  market: string;
+  bestFor: string;
+  caution: string;
+};
+
+function parseNeighborhoodInsight(value?: string): NeighborhoodInsight {
+  try {
+    const parsed = JSON.parse(value || "{}") as Partial<NeighborhoodInsight>;
+    return {
+      character: parsed.character || "",
+      buyers: parsed.buyers || "",
+      market: parsed.market || "",
+      bestFor: parsed.bestFor || "",
+      caution: parsed.caution || "",
+    };
+  } catch {
+    return { character: "", buyers: "", market: "", bestFor: "", caution: value || "" };
+  }
+}
+
 export function getFaqBlocks(blocks: BlogBlock[]) {
   return blocks.filter((block) => block.type === "faq" && block.text?.trim() && block.caption?.trim());
 }
@@ -188,6 +212,31 @@ function Block({ block, headings, relatedPosts }: { block: BlogBlock; headings: 
         <p className="text-xs font-bold uppercase tracking-widest text-gold-700">{block.label || "MM Insight"}</p>
         <p className="mt-2 whitespace-pre-wrap">{renderInlineMarkdown(block.text)}</p>
       </aside>
+    );
+  }
+  if (block.type === "neighborhood_insight") {
+    const details = parseNeighborhoodInsight(block.caption);
+    const rows = [
+      ["Character", details.character],
+      ["Who buys here", details.buyers],
+      ["Market reality", details.market],
+      ["Best for", details.bestFor],
+      ["Caution", details.caution],
+    ].filter((row): row is [string, string] => Boolean(row[1]?.trim()));
+    return (
+      <section className="rounded-2xl border border-navy-100 bg-navy-50/70 p-6 shadow-sm">
+        <div className="border-l-4 border-gold-500 pl-4">
+          <h2 className="text-xl font-black leading-7 text-navy-950">{renderInlineMarkdown(block.text || "Neighborhood insight")}</h2>
+          <p className="mt-1 text-xs font-bold uppercase tracking-[.18em] text-gold-700">Davao area insight</p>
+        </div>
+        <div className="mt-6 space-y-5 text-base leading-8 text-navy-800">
+          {rows.map(([label, value]) => (
+            <p key={label} className="whitespace-pre-wrap">
+              <strong className="font-black text-navy-950">{label}:</strong> {renderInlineMarkdown(value)}
+            </p>
+          ))}
+        </div>
+      </section>
     );
   }
   if (block.type === "pros_cons") {
