@@ -14,6 +14,7 @@ export type BlogBlockType =
   | "image"
   | "button"
   | "internal_link"
+  | "related_articles"
   | "partner_cta"
   | "divider";
 
@@ -29,6 +30,16 @@ export type BlogBlock = {
   partnerType?: "broker" | "appraiser" | "both";
   label?: string;
   anchorId?: string;
+};
+
+export type RelatedArticleSummary = {
+  id?: string;
+  title: string;
+  slug: string;
+  category?: string;
+  coverImageUrl?: string | null;
+  excerpt?: string | null;
+  content?: string | null;
 };
 
 export function blocksToText(blocks: BlogBlock[]): string {
@@ -110,15 +121,15 @@ export function getFaqBlocks(blocks: BlogBlock[]) {
   return blocks.filter((block) => block.type === "faq" && block.text?.trim() && block.caption?.trim());
 }
 
-export function BlogBlocks({ blocks }: { blocks: BlogBlock[] }) {
+export function BlogBlocks({ blocks, relatedPosts = [] }: { blocks: BlogBlock[]; relatedPosts?: RelatedArticleSummary[] }) {
   const headings = blocks
     .filter((block) => block.type === "heading" && block.level !== 1 && block.text?.trim())
     .map((block) => ({ id: headingId(block) || slugifyHeading(block.text || ""), text: block.text || "", level: block.level || 2 }));
 
-  return <div className="space-y-6 text-lg leading-8 text-navy-700">{blocks.map((block) => <Block key={block.id} block={block} headings={headings} />)}</div>;
+  return <div className="space-y-6 text-lg leading-8 text-navy-700">{blocks.map((block) => <Block key={block.id} block={block} headings={headings} relatedPosts={relatedPosts} />)}</div>;
 }
 
-function Block({ block, headings }: { block: BlogBlock; headings: { id: string; text: string; level: 1 | 2 | 3 }[] }): ReactNode {
+function Block({ block, headings, relatedPosts }: { block: BlogBlock; headings: { id: string; text: string; level: 1 | 2 | 3 }[]; relatedPosts: RelatedArticleSummary[] }): ReactNode {
   if (block.type === "heading") {
     const classes = block.level === 1 ? "text-3xl" : block.level === 2 ? "text-2xl" : "text-xl";
     const id = headingId(block);
@@ -254,6 +265,28 @@ function Block({ block, headings }: { block: BlogBlock; headings: { id: string; 
   if (block.type === "image") return block.url ? <figure><img src={block.url} alt={block.alt || ""} className="max-h-[620px] w-full rounded-xl object-cover" />{block.caption && <figcaption className="mt-2 text-center text-sm text-navy-400">{block.caption}</figcaption>}</figure> : null;
   if (block.type === "button") return <p><a href={safeHref(block.url)} className="inline-flex rounded-md bg-gold-500 px-5 py-3 font-semibold text-navy-900 hover:bg-gold-300">{block.text || "Learn more"}</a></p>;
   if (block.type === "internal_link") return <p><a href={safeHref(block.url)} className="font-bold text-gold-700 underline underline-offset-4 hover:text-navy-900">{block.text || block.url || "Read more"}</a></p>;
+  if (block.type === "related_articles") {
+    const related = resolveRelatedArticles(block, relatedPosts);
+    return (
+      <section className="rounded-2xl border border-navy-100 bg-white p-5 shadow-sm">
+        <h2 className="text-2xl font-bold text-blue-700">{block.label || "Related reading"}</h2>
+        <div className="mt-5 space-y-5">
+          {related.length ? related.map((item, index) => (
+            <a key={`${item.href}-${index}`} href={safeHref(item.href)} className="group grid gap-4 rounded-xl p-2 transition hover:bg-navy-50 sm:grid-cols-[180px_1fr]">
+              <div className="image-zoom-frame h-36 overflow-hidden rounded-lg bg-navy-50 sm:h-32">
+                {item.image ? <img src={item.image} alt="" className="zoomable-image h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center px-4 text-center text-sm text-navy-400">MM Properties guide</div>}
+              </div>
+              <div className="min-w-0">
+                {item.category && <p className="text-xs font-bold uppercase tracking-wide text-gold-700">{item.category}</p>}
+                <h3 className="text-lg font-bold leading-6 text-navy-900 group-hover:text-gold-700">{item.title}</h3>
+                {item.excerpt && <p className="mt-2 line-clamp-3 text-base leading-7 text-navy-600">{item.excerpt}</p>}
+              </div>
+            </a>
+          )) : <p className="text-sm text-navy-500">Add guide slugs or URLs in the editor to show related articles.</p>}
+        </div>
+      </section>
+    );
+  }
   if (block.type === "partner_cta") {
     const type = block.partnerType || "both";
     const href = type === "both" ? "/signup?profession=broker" : `/signup?profession=${type}`;
@@ -268,4 +301,45 @@ function Block({ block, headings }: { block: BlogBlock; headings: { id: string; 
   }
   if (block.type === "divider") return <hr className="border-navy-200" />;
   return null;
+}
+
+function articleKey(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  try {
+    const url = new URL(trimmed, "https://mmpropertiesdavao.com");
+    return url.pathname.replace(/^\/guides\//, "").replace(/^\/+|\/+$/g, "").toLowerCase();
+  } catch {
+    return trimmed.replace(/^\/guides\//, "").replace(/^\/+|\/+$/g, "").toLowerCase();
+  }
+}
+
+function resolveRelatedArticles(block: BlogBlock, posts: RelatedArticleSummary[]) {
+  const bySlug = new Map(posts.map((post) => [post.slug.toLowerCase(), post]));
+  return (block.text || "")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .slice(0, 6)
+    .map((line) => {
+      const [manualTitle, manualHref, manualImage, manualExcerpt] = line.split("|").map((part) => part.trim());
+      const hrefCandidate = manualHref || manualTitle;
+      const matched = bySlug.get(articleKey(hrefCandidate));
+      if (matched) {
+        return {
+          title: matched.title,
+          href: `/guides/${matched.slug}`,
+          image: matched.coverImageUrl || "",
+          excerpt: matched.excerpt || matched.content || "",
+          category: matched.category,
+        };
+      }
+      return {
+        title: manualTitle || hrefCandidate,
+        href: hrefCandidate,
+        image: manualImage || "",
+        excerpt: manualExcerpt || "",
+        category: "",
+      };
+    });
 }

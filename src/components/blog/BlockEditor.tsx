@@ -42,11 +42,12 @@ const buttons: { type: BlogBlockType; label: string }[] = [
   { type: "image", label: "Image" },
   { type: "button", label: "Button" },
   { type: "internal_link", label: "Internal link" },
+  { type: "related_articles", label: "Related reading" },
   { type: "partner_cta", label: "Invite brokers/appraisers" },
   { type: "divider", label: "Divider" },
 ];
 
-const fresh = (type: BlogBlockType): BlogBlock => ({
+export const createBlogBlock = (type: BlogBlockType): BlogBlock => ({
   id: crypto.randomUUID(),
   type,
   text: type === "button" ? "Learn more" : type === "partner_cta" ? "Are you a broker or property appraiser?" : type === "callout" ? "" : type === "pros_cons" ? "You own the land—which is typically what appreciates most over time\nMore indoor and outdoor space\nGreater freedom to renovate, expand, or modify" : type === "table" ? "Column 1 | Column 2\nValue 1 | Value 2" : type === "faq" ? "Question?" : "",
@@ -88,7 +89,7 @@ export function BlockEditor({ value, onChange }: { value: BlogBlock[]; onChange:
 
   const insert = (type: BlogBlockType, index = value.length) => {
     const next = [...value];
-    next.splice(index, 0, fresh(type));
+    next.splice(index, 0, createBlogBlock(type));
     onChange(next);
     setInsertIndex(null);
   };
@@ -104,6 +105,7 @@ export function BlockEditor({ value, onChange }: { value: BlogBlock[]; onChange:
   const blockLabel = (type: BlogBlockType) => {
     if (type === "pros_cons") return "pros & cons";
     if (type === "partner_cta") return "invite brokers/appraisers";
+    if (type === "related_articles") return "related reading";
     return type.replace("_", " ");
   };
 
@@ -118,7 +120,7 @@ export function BlockEditor({ value, onChange }: { value: BlogBlock[]; onChange:
   }
 
   return (
-    <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_280px]">
+    <div className="grid gap-5">
       <div className="space-y-3">
         <InsertBlockButton open={insertIndex === 0} onOpen={() => setInsertIndex(insertIndex === 0 ? null : 0)} onInsert={(type) => insert(type, 0)} />
         {value.map((block, index) => (
@@ -263,6 +265,14 @@ export function BlockEditor({ value, onChange }: { value: BlogBlock[]; onChange:
               </div>
             )}
 
+            {block.type === "related_articles" && (
+              <div className="space-y-2">
+                <input value={block.label || ""} onChange={(event) => update(index, { label: event.target.value })} placeholder="Related reading" className="w-full rounded border p-2" />
+                <p className="text-xs text-navy-500">Add one guide slug or URL per line. The published article will use each guide's featured image, title, and excerpt automatically.</p>
+                <textarea value={block.text || ""} onChange={(event) => update(index, { text: event.target.value })} rows={5} placeholder="/guides/buying-property-in-davao&#10;another-guide-slug" className="w-full rounded border p-2" />
+              </div>
+            )}
+
             {block.type === "partner_cta" && (
               <div className="grid gap-2 sm:grid-cols-2">
                 <input value={block.text || ""} onChange={(event) => update(index, { text: event.target.value })} placeholder="Invitation headline" className="rounded border p-2" />
@@ -281,18 +291,18 @@ export function BlockEditor({ value, onChange }: { value: BlogBlock[]; onChange:
         ))}
       </div>
 
-      <aside className="xl:sticky xl:top-24 xl:self-start">
+      <aside className="hidden">
         <div className="rounded-xl border border-navy-100 bg-navy-50 p-4">
           <p className="text-sm font-bold text-navy-900">Add content blocks</p>
           <p className="mt-1 text-xs text-navy-500">Click to add at the end, or use “Add block here” between existing sections.</p>
-          <BlockPalette onInsert={(type) => insert(type)} className="mt-3 grid grid-cols-2 gap-2 xl:grid-cols-1" />
+          <BlogBlockPalette onInsert={(type) => insert(type)} className="mt-3 grid grid-cols-2 gap-2 xl:grid-cols-1" />
         </div>
       </aside>
     </div>
   );
 }
 
-function BlockPalette({ onInsert, className }: { onInsert: (type: BlogBlockType) => void; className?: string }) {
+export function BlogBlockPalette({ onInsert, className }: { onInsert: (type: BlogBlockType) => void; className?: string }) {
   return (
     <div className={className || "flex flex-wrap gap-2"}>
       {buttons.map((button) => (
@@ -315,7 +325,7 @@ function InsertBlockButton({ open, onOpen, onInsert }: { open: boolean; onOpen: 
       <button type="button" onClick={onOpen} className="w-full rounded-md px-3 py-2 text-sm font-semibold text-navy-500 hover:bg-gold-50 hover:text-navy-900">
         + Add block here
       </button>
-      {open && <BlockPalette onInsert={onInsert} className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3" />}
+      {open && <BlogBlockPalette onInsert={onInsert} className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3" />}
     </div>
   );
 }

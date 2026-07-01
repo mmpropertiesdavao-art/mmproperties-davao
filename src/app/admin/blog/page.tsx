@@ -1,31 +1,292 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { BlockEditor, uploadBlogImage } from "@/components/blog/BlockEditor";
+import { BlogBlockPalette, BlockEditor, createBlogBlock, uploadBlogImage } from "@/components/blog/BlockEditor";
 import { BlogBlocks, normalizeBlocks, type BlogBlock } from "@/lib/blog-blocks";
 import { BlogPostTable } from "@/components/admin/BlogPostTable";
 import { importMarkdownBlog } from "@/lib/blog-markdown";
 
-type Post = { id:string;title:string;slug:string;category:string;content:string;contentJson:BlogBlock[]|null;coverImageUrl:string|null;excerpt:string|null;seoTitle:string|null;metaDescription:string|null;publishedAt:string|null;featuredPosition:number|null };
-type Editor = { id?:string;title:string;slug:string;category:string;coverImageUrl:string;excerpt:string;seoTitle:string;metaDescription:string;status:"draft"|"published"|"scheduled";scheduledAt:string;featuredPosition:string;blocks:BlogBlock[] };
-const emptyEditor=():Editor=>({title:"",slug:"",category:"market_update",coverImageUrl:"",excerpt:"",seoTitle:"",metaDescription:"",status:"draft",scheduledAt:"",featuredPosition:"",blocks:[{id:crypto.randomUUID(),type:"paragraph",text:""}]});
-const input="w-full rounded-md border border-navy-200 px-3 py-2 focus:border-gold-500 focus:outline-none";
+type Post = {
+  id: string;
+  title: string;
+  slug: string;
+  category: string;
+  content: string;
+  contentJson: BlogBlock[] | null;
+  coverImageUrl: string | null;
+  excerpt: string | null;
+  seoTitle: string | null;
+  metaDescription: string | null;
+  publishedAt: string | null;
+  featuredPosition: number | null;
+};
 
-export default function AdminBlogPage(){
-  const [posts,setPosts]=useState<Post[]>([]); const [editor,setEditor]=useState<Editor|null>(null); const [saving,setSaving]=useState(false); const [uploadingCover,setUploadingCover]=useState(false); const [preview,setPreview]=useState(false); const [message,setMessage]=useState<string|null>(null);
-  const load=()=>fetch("/api/admin/blog").then(r=>r.json()).then(data=>setPosts(Array.isArray(data)?data:[]));
-  useEffect(()=>{load(); const saved=localStorage.getItem("mm-blog-editor-draft"); setEditor(saved?JSON.parse(saved):emptyEditor());},[]);
-  useEffect(()=>{if(!editor)return; const timer=setTimeout(()=>localStorage.setItem("mm-blog-editor-draft",JSON.stringify(editor)),500); return()=>clearTimeout(timer);},[editor]);
-  const featureSlots=useMemo(()=>[1,2,3].map(position=>posts.find(post=>post.featuredPosition===position)),[posts]);
-  if(!editor)return <p className="p-8">Loading editor…</p>;
-  function edit(post:Post){setEditor({id:post.id,title:post.title,slug:post.slug,category:post.category,coverImageUrl:post.coverImageUrl||"",excerpt:post.excerpt||"",seoTitle:post.seoTitle||"",metaDescription:post.metaDescription||"",status:post.publishedAt?(new Date(post.publishedAt)>new Date()?"scheduled":"published"):"draft",scheduledAt:post.publishedAt&&new Date(post.publishedAt)>new Date()?toLocal(post.publishedAt):"",featuredPosition:post.featuredPosition?String(post.featuredPosition):"",blocks:normalizeBlocks(post.contentJson,post.content)});setPreview(false);setMessage(null);}
-  async function importMarkdown(file?:File){if(!file)return;try{const imported=importMarkdownBlog(await file.text());setEditor(current=>({...emptyEditor(),...current,id:current?.id,title:imported.title,slug:imported.slug,category:imported.category,excerpt:imported.excerpt,seoTitle:imported.seoTitle,metaDescription:imported.metaDescription,blocks:imported.blocks}));setPreview(true);setMessage(`Imported ${imported.blocks.length} content blocks from ${file.name}. Review the preview, add a cover image, then save.`);}catch(error){setMessage(error instanceof Error?error.message:"Could not import Markdown file.");}}
-  async function cover(file?:File){if(!file)return;setUploadingCover(true);try{const url=await uploadBlogImage(file);setEditor(current=>current?({...current,coverImageUrl:url}):current);}catch(error){setMessage(error instanceof Error?error.message:"Upload failed.");}finally{setUploadingCover(false);}}
-  async function save(){const current=editor;if(!current)return;setSaving(true);setMessage(null);try{const response=await fetch("/api/admin/blog",{method:current.id?"PATCH":"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({...current,contentJson:current.blocks})});const raw=await response.text();let data:{error?:string}={};if(raw){try{data=JSON.parse(raw)}catch{data={error:`The server returned an invalid response (${response.status}).`}}}if(response.ok){localStorage.removeItem("mm-blog-editor-draft");setMessage(current.id?"Post updated.":"Post created.");await load();if(!current.id)setEditor(emptyEditor());}else setMessage(data.error||`Could not save post (${response.status}).`);}catch(error){setMessage(error instanceof Error?error.message:"Could not reach the server. Please try again.");}finally{setSaving(false);}}
-  return <div className="mx-auto max-w-7xl px-6 py-8"><div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-sm font-semibold uppercase tracking-wide text-gold-700">Content studio</p><h1 className="text-3xl font-semibold text-navy-900">Blog page builder</h1><p className="mt-1 text-sm text-navy-500">Blocks auto-save in this browser while you work.</p></div><div className="flex gap-2"><button type="button" onClick={()=>setPreview(!preview)} className="rounded-md border border-navy-200 px-4 py-2">{preview?"Back to editor":"Preview"}</button><button type="button" onClick={()=>{setEditor(emptyEditor());setPreview(false)}} className="rounded-md border border-navy-200 px-4 py-2">New post</button><button type="button" onClick={save} disabled={saving} className="rounded-md bg-gold-500 px-5 py-2 font-semibold text-navy-900 disabled:opacity-50">{saving?"Saving…":"Save"}</button></div></div>
-    {message&&<p className="mt-4 rounded-md bg-navy-50 p-3 text-sm text-navy-700">{message}</p>}
-    <BlogPostTable posts={posts} onEdit={edit}/>
-    <div className="mt-7 grid gap-7 xl:grid-cols-[minmax(0,1fr)_340px]">{preview?<article className="rounded-xl border border-navy-100 bg-white p-8"><p className="text-sm font-bold uppercase text-gold-700">{editor.category.replace(/_/g," ")}</p><h1 className="mt-3 text-4xl font-bold text-navy-900">{editor.title||"Untitled post"}</h1>{editor.coverImageUrl&&<img src={editor.coverImageUrl} alt="" className="mt-7 max-h-[440px] w-full rounded-xl object-cover"/>}<div className="mt-8"><BlogBlocks blocks={editor.blocks}/></div></article>:<div className="space-y-6"><section className="space-y-4 rounded-xl border border-navy-100 bg-white p-6"><div><label className="mb-1 block text-sm font-medium">Post title (main H1)</label><input value={editor.title} onChange={e=>setEditor({...editor,title:e.target.value})} className={input}/><p className="mt-1 text-xs text-navy-400">For best SEO, use this as the only H1 and H2/H3 inside the article.</p></div><div className="grid gap-4 sm:grid-cols-2"><div><label className="mb-1 block text-sm font-medium">URL slug</label><input value={editor.slug} onChange={e=>setEditor({...editor,slug:e.target.value})} placeholder="generated-from-title" className={input}/></div><div><label className="mb-1 block text-sm font-medium">Category</label><select value={editor.category} onChange={e=>setEditor({...editor,category:e.target.value})} className={input}>{["buyer_update","seller_update","buying_guide","selling_guide","market_update","neighborhood_guide"].map(value=><option key={value} value={value}>{value.replace(/_/g," ")}</option>)}</select></div></div></section><section className="rounded-xl border border-navy-100 bg-white p-6"><div className="mb-4 flex flex-wrap items-center justify-between gap-3"><div><h2 className="font-semibold text-navy-900">Page content</h2><p className="mt-1 text-xs text-navy-500">Import Markdown to preserve H2/H3 jump links, lists, tables, FAQ schema, and internal links.</p></div><label className="inline-flex cursor-pointer items-center rounded-md border border-gold-400 bg-gold-50 px-4 py-2 text-sm font-semibold text-navy-900 hover:bg-gold-100">Import .md<input type="file" accept=".md,text/markdown,text/plain" onChange={e=>void importMarkdown(e.target.files?.[0])} className="sr-only"/></label></div><BlockEditor value={editor.blocks} onChange={blocks=>setEditor({...editor,blocks})}/></section></div>}
-      <aside className="space-y-5"><section className="rounded-xl border border-navy-100 bg-white p-5"><h2 className="font-semibold text-navy-900">Publish</h2><select value={editor.status} onChange={e=>setEditor({...editor,status:e.target.value as Editor["status"]})} className={`${input} mt-3`}><option value="draft">Draft</option><option value="published">Publish now</option><option value="scheduled">Schedule</option></select>{editor.status==="scheduled"&&<input type="datetime-local" value={editor.scheduledAt} onChange={e=>setEditor({...editor,scheduledAt:e.target.value})} className={`${input} mt-3`}/>}</section><section className="rounded-xl border border-navy-100 bg-white p-5"><h2 className="font-semibold text-navy-900">Featured image</h2>{editor.coverImageUrl&&<img src={editor.coverImageUrl} alt="Cover preview" className="mt-3 h-40 w-full rounded-lg object-cover"/>}<input type="file" accept="image/*" onChange={e=>void cover(e.target.files?.[0])} className="mt-3 w-full text-sm"/>{uploadingCover&&<p className="mt-2 text-sm text-gold-700">Optimizing and uploading…</p>}{editor.coverImageUrl&&<button type="button" onClick={()=>setEditor({...editor,coverImageUrl:""})} className="mt-2 text-xs text-red-600">Remove image</button>}</section><section className="rounded-xl border border-navy-100 bg-white p-5"><h2 className="font-semibold text-navy-900">Homepage feature</h2><select value={editor.featuredPosition} onChange={e=>setEditor({...editor,featuredPosition:e.target.value})} className={`${input} mt-3`}><option value="">Not featured</option>{[1,2,3].map(position=><option key={position} value={position}>Position {position}{featureSlots[position-1]&&featureSlots[position-1]?.id!==editor.id?` — replace ${featureSlots[position-1]?.title}`:""}</option>)}</select><p className="mt-2 text-xs text-navy-500">Saving into an occupied position automatically unfeatures the previous post.</p></section><section className="space-y-3 rounded-xl border border-navy-100 bg-white p-5"><h2 className="font-semibold text-navy-900">Excerpt and SEO</h2><textarea value={editor.excerpt} onChange={e=>setEditor({...editor,excerpt:e.target.value})} rows={3} maxLength={220} placeholder="Card excerpt" className={input}/><input value={editor.seoTitle} onChange={e=>setEditor({...editor,seoTitle:e.target.value})} maxLength={70} placeholder="SEO title" className={input}/><textarea value={editor.metaDescription} onChange={e=>setEditor({...editor,metaDescription:e.target.value})} rows={3} maxLength={160} placeholder="Meta description" className={input}/></section></aside></div></div>;
+type Editor = {
+  id?: string;
+  title: string;
+  slug: string;
+  category: string;
+  coverImageUrl: string;
+  excerpt: string;
+  seoTitle: string;
+  metaDescription: string;
+  status: "draft" | "published" | "scheduled";
+  scheduledAt: string;
+  featuredPosition: string;
+  blocks: BlogBlock[];
+};
+
+const input = "w-full rounded-md border border-navy-200 px-3 py-2 focus:border-gold-500 focus:outline-none";
+
+const emptyEditor = (): Editor => ({
+  title: "",
+  slug: "",
+  category: "market_update",
+  coverImageUrl: "",
+  excerpt: "",
+  seoTitle: "",
+  metaDescription: "",
+  status: "draft",
+  scheduledAt: "",
+  featuredPosition: "",
+  blocks: [{ id: crypto.randomUUID(), type: "paragraph", text: "" }],
+});
+
+export default function AdminBlogPage() {
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [editor, setEditor] = useState<Editor | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [uploadingCover, setUploadingCover] = useState(false);
+  const [preview, setPreview] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+
+  const load = () => fetch("/api/admin/blog").then((response) => response.json()).then((data) => setPosts(Array.isArray(data) ? data : []));
+  const featureSlots = useMemo(() => [1, 2, 3].map((position) => posts.find((post) => post.featuredPosition === position)), [posts]);
+
+  useEffect(() => {
+    void load();
+    const saved = localStorage.getItem("mm-blog-editor-draft");
+    setEditor(saved ? JSON.parse(saved) : emptyEditor());
+  }, []);
+
+  useEffect(() => {
+    if (!editor) return;
+    const timer = setTimeout(() => localStorage.setItem("mm-blog-editor-draft", JSON.stringify(editor)), 500);
+    return () => clearTimeout(timer);
+  }, [editor]);
+
+  if (!editor) return <p className="p-8">Loading editor…</p>;
+
+  function edit(post: Post) {
+    setEditor({
+      id: post.id,
+      title: post.title,
+      slug: post.slug,
+      category: post.category,
+      coverImageUrl: post.coverImageUrl || "",
+      excerpt: post.excerpt || "",
+      seoTitle: post.seoTitle || "",
+      metaDescription: post.metaDescription || "",
+      status: post.publishedAt ? (new Date(post.publishedAt) > new Date() ? "scheduled" : "published") : "draft",
+      scheduledAt: post.publishedAt && new Date(post.publishedAt) > new Date() ? toLocal(post.publishedAt) : "",
+      featuredPosition: post.featuredPosition ? String(post.featuredPosition) : "",
+      blocks: normalizeBlocks(post.contentJson, post.content),
+    });
+    setPreview(false);
+    setMessage(null);
+  }
+
+  async function importMarkdown(file?: File) {
+    if (!file) return;
+    try {
+      const imported = importMarkdownBlog(await file.text());
+      setEditor((current) => ({
+        ...emptyEditor(),
+        ...current,
+        id: current?.id,
+        title: imported.title,
+        slug: imported.slug,
+        category: imported.category,
+        excerpt: imported.excerpt,
+        seoTitle: imported.seoTitle,
+        metaDescription: imported.metaDescription,
+        blocks: imported.blocks,
+      }));
+      setPreview(true);
+      setMessage(`Imported ${imported.blocks.length} content blocks from ${file.name}. Review the preview, add a cover image, then save.`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Could not import Markdown file.");
+    }
+  }
+
+  async function cover(file?: File) {
+    if (!file) return;
+    setUploadingCover(true);
+    try {
+      const url = await uploadBlogImage(file);
+      setEditor((current) => (current ? { ...current, coverImageUrl: url } : current));
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Upload failed.");
+    } finally {
+      setUploadingCover(false);
+    }
+  }
+
+  function addBlock(type: BlogBlock["type"]) {
+    setEditor((current) => (current ? { ...current, blocks: [...current.blocks, createBlogBlock(type)] } : current));
+  }
+
+  async function save() {
+    const current = editor;
+    if (!current) return;
+    setSaving(true);
+    setMessage(null);
+    try {
+      const response = await fetch("/api/admin/blog", {
+        method: current.id ? "PATCH" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...current, contentJson: current.blocks }),
+      });
+      const raw = await response.text();
+      let data: { error?: string } = {};
+      if (raw) {
+        try {
+          data = JSON.parse(raw);
+        } catch {
+          data = { error: `The server returned an invalid response (${response.status}).` };
+        }
+      }
+      if (response.ok) {
+        localStorage.removeItem("mm-blog-editor-draft");
+        setMessage(current.id ? "Post updated." : "Post created.");
+        await load();
+        if (!current.id) setEditor(emptyEditor());
+      } else {
+        setMessage(data.error || `Could not save post (${response.status}).`);
+      }
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Could not reach the server. Please try again.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="mx-auto max-w-7xl px-6 py-8">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-sm font-semibold uppercase tracking-wide text-gold-700">Content studio</p>
+          <h1 className="text-3xl font-semibold text-navy-900">Blog page builder</h1>
+          <p className="mt-1 text-sm text-navy-500">Blocks auto-save in this browser while you work.</p>
+        </div>
+        <div className="flex gap-2">
+          <button type="button" onClick={() => setPreview(!preview)} className="rounded-md border border-navy-200 px-4 py-2">{preview ? "Back to editor" : "Preview"}</button>
+          <button type="button" onClick={() => { setEditor(emptyEditor()); setPreview(false); }} className="rounded-md border border-navy-200 px-4 py-2">New post</button>
+          <button type="button" onClick={save} disabled={saving} className="rounded-md bg-gold-500 px-5 py-2 font-semibold text-navy-900 disabled:opacity-50">{saving ? "Saving…" : "Save"}</button>
+        </div>
+      </div>
+
+      {message && <p className="mt-4 rounded-md bg-navy-50 p-3 text-sm text-navy-700">{message}</p>}
+      <BlogPostTable posts={posts} onEdit={edit} />
+
+      <div className="mt-7 grid gap-7 xl:grid-cols-[minmax(0,1fr)_340px]">
+        {preview ? (
+          <article className="rounded-xl border border-navy-100 bg-white p-8">
+            <p className="text-sm font-bold uppercase text-gold-700">{editor.category.replace(/_/g, " ")}</p>
+            <h1 className="mt-3 text-4xl font-bold text-navy-900">{editor.title || "Untitled post"}</h1>
+            {editor.coverImageUrl && <img src={editor.coverImageUrl} alt="" className="mt-7 max-h-[440px] w-full rounded-xl object-cover" />}
+            <div className="mt-8"><BlogBlocks blocks={editor.blocks} relatedPosts={posts} /></div>
+          </article>
+        ) : (
+          <div className="space-y-6">
+            <section className="space-y-4 rounded-xl border border-navy-100 bg-white p-6">
+              <div>
+                <label className="mb-1 block text-sm font-medium">Post title (main H1)</label>
+                <input value={editor.title} onChange={(event) => setEditor({ ...editor, title: event.target.value })} className={input} />
+                <p className="mt-1 text-xs text-navy-400">For best SEO, use this as the only H1 and H2/H3 inside the article.</p>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="mb-1 block text-sm font-medium">URL slug</label>
+                  <input value={editor.slug} onChange={(event) => setEditor({ ...editor, slug: event.target.value })} placeholder="generated-from-title" className={input} />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium">Category</label>
+                  <select value={editor.category} onChange={(event) => setEditor({ ...editor, category: event.target.value })} className={input}>
+                    {["buyer_update", "seller_update", "buying_guide", "selling_guide", "market_update", "neighborhood_guide"].map((value) => <option key={value} value={value}>{value.replace(/_/g, " ")}</option>)}
+                  </select>
+                </div>
+              </div>
+            </section>
+
+            <section className="rounded-xl border border-navy-100 bg-white p-6">
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h2 className="font-semibold text-navy-900">Page content</h2>
+                  <p className="mt-1 text-xs text-navy-500">Import Markdown to preserve H2/H3 jump links, lists, tables, FAQ schema, and internal links.</p>
+                </div>
+                <label className="inline-flex cursor-pointer items-center rounded-md border border-gold-400 bg-gold-50 px-4 py-2 text-sm font-semibold text-navy-900 hover:bg-gold-100">
+                  Import .md
+                  <input type="file" accept=".md,text/markdown,text/plain" onChange={(event) => void importMarkdown(event.target.files?.[0])} className="sr-only" />
+                </label>
+              </div>
+              <BlockEditor value={editor.blocks} onChange={(blocks) => setEditor({ ...editor, blocks })} />
+            </section>
+
+            <section className="space-y-3 rounded-xl border border-navy-100 bg-white p-6">
+              <h2 className="font-semibold text-navy-900">Excerpt and SEO</h2>
+              <textarea value={editor.excerpt} onChange={(event) => setEditor({ ...editor, excerpt: event.target.value })} rows={3} maxLength={220} placeholder="Card excerpt" className={input} />
+              <input value={editor.seoTitle} onChange={(event) => setEditor({ ...editor, seoTitle: event.target.value })} maxLength={70} placeholder="SEO title" className={input} />
+              <textarea value={editor.metaDescription} onChange={(event) => setEditor({ ...editor, metaDescription: event.target.value })} rows={3} maxLength={160} placeholder="Meta description" className={input} />
+            </section>
+          </div>
+        )}
+
+        <aside className="space-y-5 xl:sticky xl:top-24 xl:self-start">
+          <section className="rounded-xl border border-navy-100 bg-white p-5">
+            <h2 className="font-semibold text-navy-900">Publish</h2>
+            <select value={editor.status} onChange={(event) => setEditor({ ...editor, status: event.target.value as Editor["status"] })} className={`${input} mt-3`}>
+              <option value="draft">Draft</option>
+              <option value="published">Publish now</option>
+              <option value="scheduled">Schedule</option>
+            </select>
+            {editor.status === "scheduled" && <input type="datetime-local" value={editor.scheduledAt} onChange={(event) => setEditor({ ...editor, scheduledAt: event.target.value })} className={`${input} mt-3`} />}
+          </section>
+
+          <section className="rounded-xl border border-navy-100 bg-white p-5">
+            <h2 className="font-semibold text-navy-900">Featured image</h2>
+            {editor.coverImageUrl && <img src={editor.coverImageUrl} alt="Cover preview" className="mt-3 h-40 w-full rounded-lg object-cover" />}
+            <input type="file" accept="image/*" onChange={(event) => void cover(event.target.files?.[0])} className="mt-3 w-full text-sm" />
+            {uploadingCover && <p className="mt-2 text-sm text-gold-700">Optimizing and uploading…</p>}
+            {editor.coverImageUrl && <button type="button" onClick={() => setEditor({ ...editor, coverImageUrl: "" })} className="mt-2 text-xs text-red-600">Remove image</button>}
+          </section>
+
+          <section className="rounded-xl border border-navy-100 bg-white p-5">
+            <h2 className="font-semibold text-navy-900">Homepage feature</h2>
+            <select value={editor.featuredPosition} onChange={(event) => setEditor({ ...editor, featuredPosition: event.target.value })} className={`${input} mt-3`}>
+              <option value="">Not featured</option>
+              {[1, 2, 3].map((position) => (
+                <option key={position} value={position}>
+                  Position {position}{featureSlots[position - 1] && featureSlots[position - 1]?.id !== editor.id ? ` — replace ${featureSlots[position - 1]?.title}` : ""}
+                </option>
+              ))}
+            </select>
+            <p className="mt-2 text-xs text-navy-500">Saving into an occupied position automatically unfeatures the previous post.</p>
+          </section>
+
+          <section className="rounded-xl border border-navy-100 bg-navy-50 p-5">
+            <h2 className="font-semibold text-navy-900">Add content blocks</h2>
+            <p className="mt-1 text-xs text-navy-500">Click to add at the end, or use “Add block here” between existing sections.</p>
+            <BlogBlockPalette onInsert={addBlock} className="mt-3 grid grid-cols-2 gap-2" />
+          </section>
+        </aside>
+      </div>
+    </div>
+  );
 }
-function toLocal(value:string){const date=new Date(value);const offset=date.getTimezoneOffset();return new Date(date.getTime()-offset*60000).toISOString().slice(0,16);}
+
+function toLocal(value: string) {
+  const date = new Date(value);
+  const offset = date.getTimezoneOffset();
+  return new Date(date.getTime() - offset * 60000).toISOString().slice(0, 16);
+}

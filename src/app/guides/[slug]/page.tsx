@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { BLOG_CATEGORY_LABELS, getPublishedPost } from "@/lib/blog";
+import { BLOG_CATEGORY_LABELS, getPublishedPost, getPublishedPosts } from "@/lib/blog";
 import { BlogBlocks, getFaqBlocks } from "@/lib/blog-blocks";
 
 export async function generateMetadata({params}:{params:Promise<{slug:string}>}) {
@@ -18,6 +18,7 @@ export const dynamic = "force-dynamic";
 export default async function GuidePostPage({ params }: { params: Promise<{ slug: string }> }) {
   const post = await getPublishedPost((await params).slug);
   if (!post) notFound();
+  const relatedPosts = (await getPublishedPosts()).filter((item) => item.id !== post.id);
   const faqs = getFaqBlocks(post.contentJson);
   const faqJsonLd = faqs.length ? {
     "@context": "https://schema.org",
@@ -49,7 +50,7 @@ export default async function GuidePostPage({ params }: { params: Promise<{ slug
       <p className="mt-3 text-sm text-navy-400">Published {new Date(post.publishedAt).toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" })} · Written by MM Properties Davao Editorial Team</p>
       <p className="mt-3 rounded-xl border border-navy-100 bg-navy-50 p-4 text-sm leading-6 text-navy-600">This guide is educational and maintained for Davao property buyers, sellers, and investors. For decisions specific to your situation, consult a licensed attorney, accountant, broker, or financing professional.</p>
       {post.coverImageUrl && <img src={post.coverImageUrl} alt="" className="mt-8 max-h-[440px] w-full rounded-xl object-cover" />}
-      <div className="mt-8"><BlogBlocks blocks={post.contentJson}/></div>
+      <div className="mt-8"><BlogBlocks blocks={post.contentJson} relatedPosts={relatedPosts}/></div>
     </article>
   );
 }
