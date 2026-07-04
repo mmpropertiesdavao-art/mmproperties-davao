@@ -134,6 +134,16 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         property_type_id=pt.id,
         developer_id=$3::uuid,
         price=$4,
+        previous_price=CASE
+          WHEN $4::numeric < p.price THEN p.price
+          WHEN $4::numeric > p.price THEN NULL
+          ELSE p.previous_price
+        END,
+        price_reduced_at=CASE
+          WHEN $4::numeric < p.price THEN now()
+          WHEN $4::numeric > p.price THEN NULL
+          ELSE p.price_reduced_at
+        END,
         monthly_amortization=$5,
         downpayment_percent=$6,
         bedrooms=$7,

@@ -212,6 +212,21 @@ export function combinedFilterSearchQuery(filters: PropertySearchFilters): SqlQu
  * Distance-to-amenity — used on the property detail page to render
  * "Distance to SM Lanang, Davao Doctors Hospital, Ateneo de Davao..."
  */
+export function priceReducedPropertiesQuery(limit = 4): SqlQuery {
+  return {
+    text: `
+      ${BASE_SELECT}
+      WHERE p.status = 'active'
+        AND p.availability = 'available'
+        AND p.previous_price IS NOT NULL
+        AND p.previous_price > p.price
+      ORDER BY p.price_reduced_at DESC NULLS LAST, p.updated_at DESC
+      LIMIT $1
+    `,
+    values: [limit],
+  };
+}
+
 export function nearbyAmenitiesQuery(lng: number, lat: number, limit = 5): SqlQuery {
   return {
     text: `

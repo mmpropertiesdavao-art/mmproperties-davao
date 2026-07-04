@@ -40,6 +40,16 @@ export async function PATCH(
         title = $1,
         description = $2,
         price = $3,
+        previous_price = CASE
+          WHEN $3::numeric < p.price THEN p.price
+          WHEN $3::numeric > p.price THEN NULL
+          ELSE p.previous_price
+        END,
+        price_reduced_at = CASE
+          WHEN $3::numeric < p.price THEN now()
+          WHEN $3::numeric > p.price THEN NULL
+          ELSE p.price_reduced_at
+        END,
         listing_intent = $4,
         availability = $5,
         status = CASE WHEN $5 = 'sold' THEN 'sold' WHEN $5 = 'inactive' THEN 'inactive' ELSE 'active' END,
