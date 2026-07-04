@@ -53,8 +53,8 @@ export const createBlogBlock = (type: BlogBlockType): BlogBlock => ({
   id: crypto.randomUUID(),
   type,
   text: type === "button" ? "Learn more" : type === "partner_cta" ? "Are you a broker or property appraiser?" : type === "callout" ? "" : type === "pros_cons" ? "You own the land—which is typically what appreciates most over time\nMore indoor and outdoor space\nGreater freedom to renovate, expand, or modify" : type === "table" ? "Column 1 | Column 2\nValue 1 | Value 2" : type === "faq" ? "Question?" : "",
-  caption: type === "faq" ? "Answer." : type === "pros_cons" ? "Higher entry cost in established neighborhoods\nAll maintenance is your responsibility" : undefined,
-  label: type === "callout" ? "MM Insight" : type === "pros_cons" ? "Families, buyers prioritizing space and permanence, and long-term land ownership." : undefined,
+  caption: type === "faq" ? "Answer." : type === "pros_cons" ? "Higher entry cost in established neighborhoods\nAll maintenance is your responsibility" : type === "toc" ? "h2-h3" : undefined,
+  label: type === "callout" ? "MM Insight" : type === "pros_cons" ? "Families, buyers prioritizing space and permanence, and long-term land ownership." : type === "toc" ? "Table of Contents" : undefined,
   level: type === "heading" ? 2 : undefined,
   partnerType: type === "partner_cta" ? "both" : undefined,
 });
@@ -225,7 +225,23 @@ export function BlockEditor({ value, onChange }: { value: BlogBlock[]; onChange:
             )}
 
             {block.type === "toc" && (
-              <p className="rounded-lg bg-navy-50 p-3 text-sm text-navy-500">This automatically lists the H2 and H3 headings in the article.</p>
+              <div className="space-y-3 rounded-lg bg-navy-50 p-3 text-sm text-navy-600">
+                <p>This controls the article table of contents. It appears as a sticky left sidebar on desktop and a drawer on mobile.</p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <label className="grid gap-1">
+                    <span className="text-xs font-bold uppercase text-navy-400">TOC title</span>
+                    <input value={block.label || ""} onChange={(event) => update(index, { label: event.target.value })} placeholder="Table of Contents" className="rounded border p-2" />
+                  </label>
+                  <label className="grid gap-1">
+                    <span className="text-xs font-bold uppercase text-navy-400">Show headings</span>
+                    <select value={block.caption || "h2-h3"} onChange={(event) => update(index, { caption: event.target.value })} className="rounded border p-2">
+                      <option value="h2-h3">H2 and H3</option>
+                      <option value="h2">H2 only</option>
+                      <option value="hidden">Hide TOC</option>
+                    </select>
+                  </label>
+                </div>
+              </div>
             )}
 
             {block.type === "list" && (

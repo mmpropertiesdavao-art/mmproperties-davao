@@ -45,6 +45,10 @@ export type RelatedArticleSummary = {
   content?: string | null;
 };
 
+export type BlogHeading = { id: string; text: string; level: 2 | 3 };
+export type TocMode = "h2-h3" | "h2" | "hidden";
+export type TocSettings = { title: string; mode: TocMode };
+
 export function blocksToText(blocks: BlogBlock[]): string {
   return blocks
     .map((block) => [block.text, block.caption, block.label].filter(Boolean).join("\n"))
@@ -86,8 +90,22 @@ function slugifyHeading(value: string) {
     .slice(0, 80);
 }
 
-function headingId(block: BlogBlock) {
+export function headingId(block: BlogBlock) {
   return block.anchorId || (block.text ? slugifyHeading(block.text) : undefined);
+}
+
+export function getTocSettings(blocks: BlogBlock[]): TocSettings {
+  const toc = blocks.find((block) => block.type === "toc");
+  const mode = toc?.caption === "h2" || toc?.caption === "hidden" ? toc.caption : "h2-h3";
+  return { title: toc?.label || toc?.text || "Table of Contents", mode };
+}
+
+export function getArticleHeadings(blocks: BlogBlock[], mode: TocMode = "h2-h3"): BlogHeading[] {
+  if (mode === "hidden") return [];
+  return blocks
+    .filter((block) => block.type === "heading" && block.level !== 1 && block.text?.trim())
+    .filter((block) => mode !== "h2" || (block.level || 2) === 2)
+    .map((block) => ({ id: headingId(block) || slugifyHeading(block.text || ""), text: block.text || "", level: (block.level || 2) as 2 | 3 }));
 }
 
 function renderInlineMarkdown(text = ""): ReactNode[] {
@@ -148,17 +166,18 @@ export function getFaqBlocks(blocks: BlogBlock[]) {
 }
 
 export function BlogBlocks({ blocks, relatedPosts = [] }: { blocks: BlogBlock[]; relatedPosts?: RelatedArticleSummary[] }) {
-  const headings = blocks
-    .filter((block) => block.type === "heading" && block.level !== 1 && block.text?.trim())
-    .map((block) => ({ id: headingId(block) || slugifyHeading(block.text || ""), text: block.text || "", level: block.level || 2 }));
+  const headings = getArticleHeadings(blocks);
 
-  return <div className="space-y-6 text-lg leading-8 text-navy-700">{renderBlocksWithFaqGroups(blocks, headings, relatedPosts)}</div>;
+  return <div className="space-y-5 text-[16px] leading-7 text-navy-700 sm:text-[17px]">{renderBlocksWithFaqGroups(blocks, headings, relatedPosts)}</div>;
 }
 
 function renderBlocksWithFaqGroups(blocks: BlogBlock[], headings: { id: string; text: string; level: 1 | 2 | 3 }[], relatedPosts: RelatedArticleSummary[]) {
   const rendered: ReactNode[] = [];
   for (let index = 0; index < blocks.length; index++) {
     const block = blocks[index];
+    if (block.type === "toc") {
+      continue;
+    }
     if (block.type === "faq") {
       const faqs: BlogBlock[] = [];
       let cursor = index;
@@ -199,11 +218,11 @@ function FaqAccordion({ faqs }: { faqs: BlogBlock[] }) {
 
 function Block({ block, headings, relatedPosts }: { block: BlogBlock; headings: { id: string; text: string; level: 1 | 2 | 3 }[]; relatedPosts: RelatedArticleSummary[] }): ReactNode {
   if (block.type === "heading") {
-    const classes = block.level === 1 ? "text-3xl" : block.level === 2 ? "text-2xl" : "text-xl";
+    const classes = block.level === 1 ? "text-3xl" : block.level === 2 ? "text-[1.65rem]" : "text-xl";
     const id = headingId(block);
-    if (block.level === 1) return <h1 id={id} className={`${classes} scroll-mt-24 pt-3 font-bold leading-tight text-navy-900`}>{renderInlineMarkdown(block.text)}</h1>;
-    if (block.level === 3) return <h3 id={id} className={`${classes} scroll-mt-24 pt-3 font-bold leading-tight text-navy-900`}>{renderInlineMarkdown(block.text)}</h3>;
-    return <h2 id={id} className={`${classes} scroll-mt-24 pt-3 font-bold leading-tight text-navy-900`}>{renderInlineMarkdown(block.text)}</h2>;
+    if (block.level === 1) return <h1 id={id} className={`${classes} scroll-mt-24 pt-4 font-black leading-tight text-navy-950`}>{renderInlineMarkdown(block.text)}</h1>;
+    if (block.level === 3) return <h3 id={id} className={`${classes} scroll-mt-24 pt-3 font-black leading-tight text-navy-950`}>{renderInlineMarkdown(block.text)}</h3>;
+    return <h2 id={id} className={`${classes} scroll-mt-24 pt-5 font-black leading-tight text-navy-950`}>{renderInlineMarkdown(block.text)}</h2>;
   }
 
   if (block.type === "paragraph") return <p className="whitespace-pre-wrap">{renderInlineMarkdown(block.text)}</p>;
