@@ -33,6 +33,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
         pt.slug AS "propertyTypeSlug",
         d.name AS "developerName",
         p.price::float AS price,
+        p.previous_price::float AS "previousPrice",
         p.monthly_amortization::float AS "monthlyAmortization",
         p.downpayment_percent::float AS "downpaymentPercent",
         p.bedrooms,
@@ -90,6 +91,8 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
   const address = String(body.address || "").trim();
   const propertyTypeSlug = String(body.propertyTypeSlug || body.propertyType || "").trim();
   const price = toNumber(body.price);
+  const hasManualPreviousPrice = Object.prototype.hasOwnProperty.call(body, "previousPrice") || Object.prototype.hasOwnProperty.call(body, "previous_price");
+  const manualPreviousPrice = toNumber(body.previousPrice ?? body.previous_price);
   const lat = toNumber(body.lat ?? body.latitude);
   const lng = toNumber(body.lng ?? body.longitude);
   const listingIntent = String(body.listingIntent || "sale");
@@ -135,11 +138,15 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         developer_id=$3::uuid,
         price=$4,
         previous_price=CASE
+          WHEN $26::boolean AND $27::numeric IS NOT NULL THEN $27::numeric
+          WHEN $26::boolean AND $27::numeric IS NULL AND p.previous_price IS NOT NULL THEN NULL
           WHEN $4::numeric < p.price THEN p.price
           WHEN $4::numeric > p.price THEN NULL
           ELSE p.previous_price
         END,
         price_reduced_at=CASE
+          WHEN $26::boolean AND $27::numeric IS NOT NULL AND $27::numeric > $4::numeric THEN COALESCE(p.price_reduced_at, now())
+          WHEN $26::boolean AND $27::numeric IS NULL AND p.previous_price IS NOT NULL THEN NULL
           WHEN $4::numeric < p.price THEN now()
           WHEN $4::numeric > p.price THEN NULL
           ELSE p.price_reduced_at
@@ -193,6 +200,8 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       toBool(body.assumeBalanceAvailable),
       id,
       propertyTypeSlug,
+      hasManualPreviousPrice,
+      manualPreviousPrice,
     ],
   });
 

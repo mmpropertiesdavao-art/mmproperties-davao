@@ -12,6 +12,7 @@ import { ListingStatusActions } from "@/components/admin/ListingStatusActions";
 interface EditableListing {
   id: string; slug: string; title: string; description: string | null;
   propertyTypeSlug: string; developerName: string | null; price: number;
+  previousPrice: number | null;
   monthlyAmortization: number | null; downpaymentPercent: number | null;
   bedrooms: number | null; bathrooms: number | null; floorAreaSqm: number | null;
   lotAreaSqm: number | null; neighborhoodSlug: string | null; barangay: string | null;
@@ -101,7 +102,7 @@ export default function EditListingPage() {
           <div><label className={labelClass}>Developer</label><DeveloperField defaultValue={listing.developerName ?? ""} className={inputClass} /></div>
         </div>
         <div className="grid gap-4 sm:grid-cols-3"><div><label className={labelClass}>Listing offer</label><select name="listingIntent" defaultValue={listing.listingIntent} className={inputClass}><option value="sale">For sale</option><option value="rent">For rent</option><option value="sale_or_rent">Sale or rent</option></select></div><div><label className={labelClass}>Availability</label><select name="availability" defaultValue={listing.availability} className={inputClass}><option value="available">Available</option><option value="reserved">Reserved</option><option value="rented">Rented</option><option value="sold">Sold</option><option value="inactive">Inactive</option></select></div><NumberField name="rentPrice" label="Monthly rent (PHP)" value={listing.rentPrice} /></div>
-        <div className="grid gap-4 sm:grid-cols-3"><NumberField name="price" label="Price (PHP)" value={listing.price} required /><NumberField name="monthlyAmortization" label="Monthly amortization" value={listing.monthlyAmortization} /><NumberField name="downpaymentPercent" label="Downpayment %" value={listing.downpaymentPercent} /></div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4"><NumberField name="price" label="Current price (PHP)" value={listing.price} required /><NumberField name="previousPrice" label="Previous price (price drop)" value={listing.previousPrice} /><NumberField name="monthlyAmortization" label="Monthly amortization" value={listing.monthlyAmortization} /><NumberField name="downpaymentPercent" label="Downpayment %" value={listing.downpaymentPercent} /></div>
         <div className="grid gap-4 sm:grid-cols-5"><NumberField name="bedrooms" label="Bedrooms" value={listing.bedrooms} /><NumberField name="bathrooms" label="Bathrooms" value={listing.bathrooms} step="0.5" /><NumberField name="floorAreaSqm" label="Floor area (sqm)" value={listing.floorAreaSqm} /><NumberField name="lotAreaSqm" label="Lot area (sqm)" value={listing.lotAreaSqm} /><NumberField name="parkingSpaces" label="Parking / carport" value={listing.parkingSpaces}/></div>
         <PlaceFields primary={primaryPlace} onPrimaryChange={setPrimaryPlace} nearby={nearbyPlaces} onNearbyChange={setNearbyPlaces} className={inputClass}/>
         <div><label className={labelClass}>Barangay</label><input name="barangay" defaultValue={listing.barangay ?? ""} className={inputClass} /></div>

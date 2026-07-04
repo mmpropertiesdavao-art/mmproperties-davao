@@ -9,6 +9,7 @@ type PropertyFormData = {
   slug: string
   title: string
   price: number | null
+  previous_price: number | null
   barangay: string | null
   listing_intent: string | null
   status: string | null
@@ -45,6 +46,7 @@ export default function EditPropertyForm({
     const payload = {
       title: String(formData.get('title') || ''),
       price: String(formData.get('price') || ''),
+      previousPrice: String(formData.get('previousPrice') || ''),
       barangay: String(formData.get('barangay') || ''),
       listingIntent: String(formData.get('listingIntent') || 'sale'),
       availability: String(formData.get('availability') || 'available'),
@@ -117,7 +119,7 @@ export default function EditPropertyForm({
 
         <div className="grid gap-5 md:grid-cols-2">
           <label className="grid gap-1">
-            <span className="text-sm font-medium text-gray-700">Price</span>
+            <span className="text-sm font-medium text-gray-700">Current price</span>
             <input
               name="price"
               type="number"
@@ -127,6 +129,20 @@ export default function EditPropertyForm({
             />
           </label>
 
+          <label className="grid gap-1">
+            <span className="text-sm font-medium text-gray-700">Previous price</span>
+            <input
+              name="previousPrice"
+              type="number"
+              min="0"
+              defaultValue={property.previous_price || ''}
+              className="rounded-lg border px-3 py-2"
+            />
+            <span className="text-xs text-gray-500">Use this to show a price-drop highlight when it is higher than the current price.</span>
+          </label>
+        </div>
+
+        <div className="grid gap-5 md:grid-cols-2">
           <label className="grid gap-1">
             <span className="text-sm font-medium text-gray-700">Barangay</span>
             <input

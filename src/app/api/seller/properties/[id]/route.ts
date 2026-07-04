@@ -24,6 +24,8 @@ export async function PATCH(
 
   const title = String(body.title || '').trim()
   const availability = String(body.availability || 'available')
+  const hasManualPreviousPrice = Object.prototype.hasOwnProperty.call(body, 'previousPrice') || Object.prototype.hasOwnProperty.call(body, 'previous_price')
+  const manualPreviousPrice = toNumber(body.previousPrice ?? body.previous_price)
 
   if (!title) {
     return NextResponse.json({ error: 'Property title is required.' }, { status: 400 })
@@ -41,11 +43,15 @@ export async function PATCH(
         description = $2,
         price = $3,
         previous_price = CASE
+          WHEN $14::boolean AND $15::numeric IS NOT NULL THEN $15::numeric
+          WHEN $14::boolean AND $15::numeric IS NULL AND p.previous_price IS NOT NULL THEN NULL
           WHEN $3::numeric < p.price THEN p.price
           WHEN $3::numeric > p.price THEN NULL
           ELSE p.previous_price
         END,
         price_reduced_at = CASE
+          WHEN $14::boolean AND $15::numeric IS NOT NULL AND $15::numeric > $3::numeric THEN COALESCE(p.price_reduced_at, now())
+          WHEN $14::boolean AND $15::numeric IS NULL AND p.previous_price IS NOT NULL THEN NULL
           WHEN $3::numeric < p.price THEN now()
           WHEN $3::numeric > p.price THEN NULL
           ELSE p.price_reduced_at
@@ -89,6 +95,8 @@ export async function PATCH(
       id,
       actor.userId,
       actor.role,
+      hasManualPreviousPrice,
+      manualPreviousPrice,
     ],
   })
 

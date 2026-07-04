@@ -9,6 +9,7 @@ type PropertyRow = {
   slug: string
   title: string
   price: number | null
+  previous_price: number | null
   barangay: string | null
   listing_intent: string | null
   status: string | null
@@ -35,6 +36,7 @@ export default async function SellerPropertyManagePage({
         slug,
         title,
         price::float AS price,
+        previous_price::float AS previous_price,
         barangay,
         listing_intent,
         status,
