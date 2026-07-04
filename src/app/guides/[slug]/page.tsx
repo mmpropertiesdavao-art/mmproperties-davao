@@ -78,7 +78,7 @@ export default async function GuidePostPage({ params }: { params: Promise<{ slug
         <article className="min-w-0">
           <header>
             <p className="text-center text-xs font-black uppercase tracking-[.22em] text-gold-700">{BLOG_CATEGORY_LABELS[post.category] ?? post.category}</p>
-            <h1 className="mx-auto mt-3 max-w-3xl text-center text-4xl font-black leading-tight tracking-tight text-navy-900 sm:text-5xl">
+            <h1 className="mx-auto mt-3 max-w-3xl text-center text-3xl font-black leading-tight tracking-tight text-navy-900 sm:text-4xl">
               {post.title}
             </h1>
 
@@ -125,10 +125,10 @@ function ArticleToc({ title, headings, compact = false }: { title: string; headi
   return (
     <nav aria-label={title || "Table of contents"} className={compact ? "mt-3" : ""}>
       {title && <p className="text-base font-black text-blue-700">{title}</p>}
-      <ol className={`${compact ? "mt-3" : "mt-4 border-l border-blue-100 pl-4"} space-y-2 text-sm leading-5`}>
+      <ol className={`${compact ? "mt-3" : "mt-4 border-l border-blue-100 pl-4"} space-y-2 text-[13px] leading-5`}>
         {headings.map((heading) => (
           <li key={heading.id} className={heading.level === 3 ? "pl-4" : ""}>
-            <a href={`#${heading.id}`} className={`block font-semibold hover:text-blue-700 ${heading.level === 3 ? "text-navy-500" : "text-navy-900"}`}>
+            <a href={`#${heading.id}`} title={heading.text} className={`block truncate font-medium hover:text-blue-700 hover:underline ${heading.level === 3 ? "text-navy-500" : "text-navy-800"}`}>
               {heading.text}
             </a>
           </li>
