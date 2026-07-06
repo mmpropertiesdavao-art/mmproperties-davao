@@ -4,6 +4,18 @@ import type { Property, Neighborhood } from "@/types/property";
 
 const SITE_URL = "https://mmpropertiesdavao.com";
 
+function cleanText(value: unknown) {
+  if (typeof value !== "string") return null;
+  const text = value.trim();
+  if (!text || ["null", "undefined", "n/a"].includes(text.toLowerCase())) return null;
+  return text;
+}
+
+function absoluteUrl(path: string) {
+  if (/^https?:\/\//i.test(path)) return path;
+  return `${SITE_URL}${path.startsWith("/") ? path : `/${path}`}`;
+}
+
 export function propertyMetadata(property: Property): Metadata {
   return {
     title: `${property.title} | ${property.neighborhoodName}, Davao City — ₱${property.price.toLocaleString()}`,
@@ -65,11 +77,20 @@ export function neighborhoodJsonLd(neighborhood: Neighborhood) {
   };
 }
 
-export function breadcrumbJsonLd(items: { name: string; url: string }[]) {
+export function breadcrumbJsonLd(items: { name: string | null | undefined; url: string | null | undefined }[]) {
+  const validItems = items
+    .map((item) => {
+      const name = cleanText(item.name);
+      const url = cleanText(item.url);
+      if (!name || !url || /\/(?:null|undefined)(?:\/)?$/i.test(url)) return null;
+      return { name, url: absoluteUrl(url) };
+    })
+    .filter((item): item is { name: string; url: string } => Boolean(item));
+
   return {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
-    itemListElement: items.map((item, i) => ({
+    itemListElement: validItems.map((item, i) => ({
       "@type": "ListItem",
       position: i + 1,
       name: item.name,

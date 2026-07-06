@@ -3,6 +3,7 @@ import type { MetadataRoute } from "next";
 import { getAllActiveProperties, getAllNeighborhoods } from "@/lib/data";
 import { getPublishedPosts } from "@/lib/blog";
 import { getActiveDeveloperProjects } from "@/lib/developer-inventory";
+import { isValidSlug } from "@/lib/slugify";
 
 export const dynamic = "force-dynamic";
 
@@ -20,25 +21,25 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: SITE_URL, priority: 1, changeFrequency: "daily" },
     { url: `${SITE_URL}/search`, priority: 0.9, changeFrequency: "daily" },
     { url: `${SITE_URL}/guides`, priority: 0.6, changeFrequency: "weekly" },
-    ...posts.map((post) => ({
+    ...posts.filter((post) => isValidSlug(post.slug)).map((post) => ({
       url: `${SITE_URL}/guides/${post.slug}`,
       priority: 0.7,
       changeFrequency: "monthly" as const,
       lastModified: post.updatedAt || post.publishedAt,
     })),
     { url: `${SITE_URL}/matcher`, priority: 0.6, changeFrequency: "monthly" },
-    ...neighborhoods.map((n) => ({
+    ...neighborhoods.filter((n) => isValidSlug(n.slug)).map((n) => ({
       url: `${SITE_URL}/neighborhoods/${n.slug}`,
       priority: 0.8,
       changeFrequency: "weekly" as const,
     })),
-    ...properties.map((p) => ({
+    ...properties.filter((p) => isValidSlug(p.slug)).map((p) => ({
       url: `${SITE_URL}/property/${p.slug}`,
       priority: 0.6,
       changeFrequency: "weekly" as const,
       lastModified: p.updatedAt,
     })),
-    ...projects.map((project) => ({
+    ...projects.filter((project) => isValidSlug(project.slug)).map((project) => ({
       url: `${SITE_URL}/projects/${project.slug}`,
       priority: 0.7,
       changeFrequency: "weekly" as const,

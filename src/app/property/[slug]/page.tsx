@@ -5,6 +5,7 @@ import { getPropertyBySlug } from "@/lib/data";
 import { db } from "@/lib/supabase/server";
 import { nearbyAmenitiesQuery } from "@/lib/postgis/queries";
 import { propertyMetadata, propertyJsonLd, breadcrumbJsonLd } from "@/lib/seo/meta";
+import { isValidSlug } from "@/lib/slugify";
 import { PaymentCalculator } from "@/components/property/PaymentCalculator";
 import { DistanceToAmenities } from "@/components/property/DistanceToAmenities";
 import { InquiryForm } from "@/components/property/InquiryForm";
@@ -21,6 +22,7 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
+  if (!isValidSlug(slug)) return {};
   const property = await getPropertyBySlug(slug);
   if (!property) return {};
   return propertyMetadata(property);
@@ -36,6 +38,7 @@ export default async function PropertyPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
+  if (!isValidSlug(slug)) notFound();
   const property = await getPropertyBySlug(slug);
   if (!property) notFound();
 
@@ -51,12 +54,14 @@ export default async function PropertyPage({
     }),
   ]);
 
-  const breadcrumbs = breadcrumbJsonLd([
+  const hasNeighborhoodCrumb = Boolean(property.neighborhoodName && property.neighborhoodSlug);
+  const breadcrumbItems = [
     { name: "Home", url: "/" },
     { name: "Neighborhoods", url: "/neighborhoods" },
-    { name: property.neighborhoodName, url: `/neighborhoods/${property.neighborhoodSlug}` },
+    hasNeighborhoodCrumb ? { name: property.neighborhoodName, url: `/neighborhoods/${property.neighborhoodSlug}` } : null,
     { name: property.title, url: `/property/${property.slug}` },
-  ]);
+  ].filter((item): item is { name: string; url: string } => Boolean(item));
+  const breadcrumbs = breadcrumbJsonLd(breadcrumbItems);
 
   const listedByName = property.agentName || "MM Properties";
   const listedBySubtext = property.agencyName || null;
@@ -69,7 +74,7 @@ export default async function PropertyPage({
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbs) }} />
 
       <nav className="mb-4 text-sm text-gray-500">
-        Home / Neighborhoods / {property.neighborhoodName} / {property.title}
+        Home / Neighborhoods / {hasNeighborhoodCrumb ? `${property.neighborhoodName} / ` : ""}{property.title}
       </nav>
 
       <PropertyGallery images={images.map((image) => ({ url: image.url, altText: image.alt_text }))} title={property.title} />
