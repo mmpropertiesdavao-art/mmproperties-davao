@@ -54,13 +54,36 @@ export const metadata: Metadata = {
   },
 };
 
-const orgJsonLd = {
+const siteJsonLd = {
   "@context": "https://schema.org",
-  "@type": "Organization",
-  name: "MM Properties",
-  url: "https://mmpropertiesdavao.com",
-  description:
-    "MM Properties – Real estate listings and property discovery in Davao City.",
+  "@graph": [
+    {
+      "@type": ["Organization", "RealEstateAgent"],
+      "@id": "https://mmpropertiesdavao.com/#organization",
+      name: "MM Properties",
+      url: "https://mmpropertiesdavao.com",
+      logo: "https://mmpropertiesdavao.com/mm-favicon.png",
+      description:
+        "MM Properties - Real estate listings and property discovery in Davao City.",
+      areaServed: {
+        "@type": "City",
+        name: "Davao City",
+        addressCountry: "PH",
+      },
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://mmpropertiesdavao.com/#website",
+      name: "MM Properties Davao",
+      url: "https://mmpropertiesdavao.com",
+      publisher: { "@id": "https://mmpropertiesdavao.com/#organization" },
+      potentialAction: {
+        "@type": "SearchAction",
+        target: "https://mmpropertiesdavao.com/search?q={search_term_string}",
+        "query-input": "required name=search_term_string",
+      },
+    },
+  ],
 };
 
 export default function RootLayout({
@@ -74,7 +97,7 @@ export default function RootLayout({
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
-            __html: JSON.stringify(orgJsonLd),
+            __html: JSON.stringify(siteJsonLd),
           }}
         />
         <AnalyticsScripts />

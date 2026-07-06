@@ -224,6 +224,19 @@ export default async function NeighborhoodPage({
       url: `/neighborhoods/${neighborhood.slug}`,
     },
   ])
+  const listingItemListJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    name: `Available properties in ${neighborhood.name}, Davao City`,
+    itemListElement: listings
+      .filter((property: any) => property.slug)
+      .map((property: any, index: number) => ({
+        '@type': 'ListItem',
+        position: index + 1,
+        url: `https://mmpropertiesdavao.com/property/${property.slug}`,
+        name: property.title,
+      })),
+  }
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-8">
@@ -240,6 +253,14 @@ export default async function NeighborhoodPage({
           __html: JSON.stringify(breadcrumbs),
         }}
       />
+      {listingItemListJsonLd.itemListElement.length > 0 && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(listingItemListJsonLd),
+          }}
+        />
+      )}
 
       <nav className="mb-4 text-sm text-gray-500">
         Home / Neighborhoods / {neighborhood.name}

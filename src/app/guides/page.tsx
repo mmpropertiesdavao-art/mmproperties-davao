@@ -1,5 +1,11 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { BLOG_CATEGORY_LABELS, getPublishedPosts } from "@/lib/blog";
 
 export const dynamic = "force-dynamic";
+export const metadata: Metadata = {
+  title: "Davao Property Guides",
+  description: "Buyer guides, seller guides, neighborhood explainers, and Davao real estate market updates from MM Properties.",
+  alternates: { canonical: "/guides" },
+};
 export default async function GuidesPage(){const posts=await getPublishedPosts();return <div className="mx-auto max-w-6xl px-6 py-12"><p className="text-sm font-semibold uppercase tracking-wide text-gold-700">Davao property knowledge</p><h1 className="mt-2 text-3xl font-semibold text-navy-900">Buyer, seller, and market updates</h1><p className="mt-3 max-w-2xl text-navy-500">Practical local guidance for buying and selling property in Davao City.</p>{posts.length===0?<div className="mt-10 rounded-xl border border-dashed border-navy-200 bg-white p-10 text-center text-navy-500">The first MM Properties updates are being prepared. Check back soon.</div>:<div className="mt-9 grid gap-5 md:grid-cols-2 lg:grid-cols-3">{posts.map(post=><Link key={post.id} href={`/guides/${post.slug}`} className="overflow-hidden rounded-xl border border-navy-100 bg-white transition hover:border-gold-400 hover:shadow-md">{post.coverImageUrl&&<img src={post.coverImageUrl} alt="" className="h-44 w-full object-cover"/>}<div className="p-6"><p className="text-xs font-semibold uppercase tracking-wide text-gold-700">{BLOG_CATEGORY_LABELS[post.category]??post.category}</p><h2 className="mt-2 text-xl font-semibold text-navy-900">{post.title}</h2><p className="mt-3 line-clamp-3 text-sm text-navy-500">{post.excerpt||post.content}</p><p className="mt-5 text-xs text-navy-400">{new Date(post.publishedAt).toLocaleDateString("en-PH",{year:"numeric",month:"long",day:"numeric"})}</p></div></Link>)}</div>}</div>}
