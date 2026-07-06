@@ -178,6 +178,17 @@ function renderBlocksWithFaqGroups(blocks: BlogBlock[], headings: { id: string; 
     if (block.type === "toc") {
       continue;
     }
+    if (block.type === "internal_link") {
+      const links: BlogBlock[] = [];
+      let cursor = index;
+      while (blocks[cursor]?.type === "internal_link") {
+        links.push(blocks[cursor]);
+        cursor++;
+      }
+      rendered.push(<InternalLinkList key={`internal-links-${block.id}`} links={links} />);
+      index = cursor - 1;
+      continue;
+    }
     if (block.type === "faq") {
       const faqs: BlogBlock[] = [];
       let cursor = index;
@@ -192,6 +203,20 @@ function renderBlocksWithFaqGroups(blocks: BlogBlock[], headings: { id: string; 
     }
   }
   return rendered;
+}
+
+function InternalLinkList({ links }: { links: BlogBlock[] }) {
+  return (
+    <ul className="space-y-1 py-1 leading-6">
+      {links.map((link) => (
+        <li key={link.id}>
+          <a href={safeHref(link.url)} className="font-bold text-gold-700 underline underline-offset-4 hover:text-navy-900">
+            {link.text || link.url || "Read more"}
+          </a>
+        </li>
+      ))}
+    </ul>
+  );
 }
 
 function FaqAccordion({ faqs }: { faqs: BlogBlock[] }) {
@@ -376,15 +401,7 @@ function Block({ block, headings, relatedPosts }: { block: BlogBlock; headings: 
   }
   if (block.type === "image") return block.url ? <figure><img src={block.url} alt={block.alt || ""} className="max-h-[620px] w-full rounded-xl object-cover" />{block.caption && <figcaption className="mt-2 text-center text-sm text-navy-400">{block.caption}</figcaption>}</figure> : null;
   if (block.type === "button") return <p><a href={safeHref(block.url)} className="inline-flex rounded-md bg-gold-500 px-5 py-3 font-semibold text-navy-900 hover:bg-gold-300">{block.text || "Learn more"}</a></p>;
-  if (block.type === "internal_link") {
-    return (
-      <p className="py-1 leading-8">
-        <a href={safeHref(block.url)} className="inline-block font-bold text-gold-700 underline underline-offset-4 hover:text-navy-900">
-          {block.text || block.url || "Read more"}
-        </a>
-      </p>
-    );
-  }
+  if (block.type === "internal_link") return <p className="leading-6"><a href={safeHref(block.url)} className="font-bold text-gold-700 underline underline-offset-4 hover:text-navy-900">{block.text || block.url || "Read more"}</a></p>;
   if (block.type === "related_articles") {
     const related = resolveRelatedArticles(block, relatedPosts);
     return (
