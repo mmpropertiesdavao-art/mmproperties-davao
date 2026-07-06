@@ -137,9 +137,14 @@ export async function getActiveDeveloperProjects(limit = 24, filters: DeveloperP
           )
           AND (
             ($3::text IS NULL AND $9::uuid IS NULL)
+            OR p.project_name ILIKE '%' || $3 || '%'
             OR p.barangay ILIKE '%' || $3 || '%'
             OR p.address ILIKE '%' || $3 || '%'
             OR p.city ILIKE '%' || $3 || '%'
+            OR EXISTS (
+              SELECT 1 FROM developer_house_models qm
+              WHERE qm.project_id = p.id AND qm.name ILIKE '%' || $3 || '%'
+            )
             OR (
               p.latitude IS NOT NULL
               AND p.longitude IS NOT NULL

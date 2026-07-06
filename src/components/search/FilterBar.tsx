@@ -33,6 +33,10 @@ type NeighborhoodOption = {
   id: string | null;
   name: string;
   source: "neighborhood" | "barangay" | "place" | "developer_project";
+  kind?: string;
+  listingCount?: number;
+  projectCount?: number;
+  aliases?: string[];
 };
 
 export function FilterBar({ onChange }: FilterBarProps) {
@@ -64,8 +68,8 @@ export function FilterBar({ onChange }: FilterBarProps) {
   function updateNeighborhood(value: string, option?: NeighborhoodOption | null) {
     const exact = option || neighborhoods.find((item) => item.name.toLowerCase() === value.trim().toLowerCase());
     update({
-      neighborhoodId: exact?.id || undefined,
-      barangay: value.trim() && !exact?.id ? value.trim() : undefined,
+      neighborhoodId: exact?.source === "neighborhood" && exact.id ? exact.id : undefined,
+      barangay: value.trim() || undefined,
     });
   }
 
@@ -185,7 +189,9 @@ function NeighborhoodCombobox({ options, onChange }: { options: NeighborhoodOpti
 
   const results = useMemo(() => {
     const term = query.trim().toLowerCase();
-    const filtered = term ? options.filter((option) => option.name.toLowerCase().includes(term)) : options;
+    const filtered = term
+      ? options.filter((option) => [option.name, ...(option.aliases || [])].some((value) => value.toLowerCase().includes(term)))
+      : options;
     return filtered.slice(0, 12);
   }, [options, query]);
 
@@ -245,8 +251,14 @@ function NeighborhoodCombobox({ options, onChange }: { options: NeighborhoodOpti
                   onClick={() => select(option)}
                   className="flex min-h-11 w-full items-center justify-between gap-3 px-3 py-2 text-left text-xs font-semibold text-navy-800 hover:bg-gold-50"
                 >
-                  <span className="truncate">{option.name}</span>
-                  <span className="shrink-0 rounded-full bg-navy-50 px-2 py-0.5 text-[10px] uppercase tracking-wide text-navy-500">{sourceLabel(option.source)}</span>
+                  <span className="min-w-0">
+                    <span className="block truncate">{option.name}</span>
+                    {option.aliases?.length ? <span className="block truncate text-[10px] font-medium text-navy-400">Also known as {option.aliases.slice(0, 2).join(", ")}</span> : null}
+                  </span>
+                  <span className="flex shrink-0 items-center gap-1.5">
+                    {optionCount(option) ? <span className="text-[10px] font-bold text-navy-400">{optionCount(option)}</span> : null}
+                    <span className="rounded-full bg-navy-50 px-2 py-0.5 text-[10px] uppercase tracking-wide text-navy-500">{sourceLabel(option)}</span>
+                  </span>
                 </button>
               ))
             ) : (
@@ -259,9 +271,21 @@ function NeighborhoodCombobox({ options, onChange }: { options: NeighborhoodOpti
   );
 }
 
-function sourceLabel(source: NeighborhoodOption["source"]) {
-  if (source === "developer_project") return "Project";
-  if (source === "neighborhood") return "Area";
-  if (source === "barangay") return "Brgy";
+function sourceLabel(option: NeighborhoodOption) {
+  if (option.source === "developer_project") return option.kind === "project" ? "Project" : "Project area";
+  if (option.source === "neighborhood") return "Area";
+  if (option.source === "barangay") return "Brgy";
+  if (option.kind === "subdivision") return "Subdivision";
+  if (option.kind === "landmark") return "Landmark";
+  if (option.kind === "district") return "District";
   return "Place";
+}
+
+function optionCount(option: NeighborhoodOption) {
+  const listings = Number(option.listingCount || 0);
+  const projects = Number(option.projectCount || 0);
+  if (listings && projects) return `${listings} + ${projects}`;
+  if (listings) return `${listings} listing${listings === 1 ? "" : "s"}`;
+  if (projects) return `${projects} project${projects === 1 ? "" : "s"}`;
+  return "";
 }

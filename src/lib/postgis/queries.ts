@@ -178,18 +178,27 @@ export function combinedFilterSearchQuery(filters: PropertySearchFilters): SqlQu
         AND ($2::numeric IS NULL OR p.price <= $2)
         AND ($3::text IS NULL OR pt.slug = $3)
         AND ($4::text IS NULL OR d.name = $4)
-        AND ($5::uuid IS NULL OR p.neighborhood_id = $5)
         AND (
-          $6::text IS NULL
-          OR p.barangay ILIKE '%' || $6 || '%'
-          OR n.name ILIKE '%' || $6 || '%'
-          OR p.address ILIKE '%' || $6 || '%'
-          OR EXISTS (
-            SELECT 1
-            FROM property_places pp
-            JOIN places pl ON pl.id = pp.place_id
-            WHERE pp.property_id = p.id
-              AND pl.name ILIKE '%' || $6 || '%'
+          ($5::uuid IS NULL AND $6::text IS NULL)
+          OR ($5::uuid IS NOT NULL AND p.neighborhood_id = $5)
+          OR (
+            $6::text IS NOT NULL
+            AND (
+              p.barangay ILIKE '%' || $6 || '%'
+              OR n.name ILIKE '%' || $6 || '%'
+              OR p.address ILIKE '%' || $6 || '%'
+              OR EXISTS (
+                SELECT 1
+                FROM property_places pp
+                JOIN places pl ON pl.id = pp.place_id
+                LEFT JOIN place_aliases pa ON pa.place_id = pl.id
+                WHERE pp.property_id = p.id
+                  AND (
+                    pl.name ILIKE '%' || $6 || '%'
+                    OR pa.alias ILIKE '%' || $6 || '%'
+                  )
+              )
+            )
           )
         )
         AND ($7::int IS NULL OR p.bedrooms >= $7)
