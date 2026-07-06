@@ -41,7 +41,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Budget and family size are required." }, { status: 400 });
     }
 
-    const minBedrooms = Math.ceil(input.familySize / 2);
+    const propertyType = input.propertyType || "";
+    const isLandSearch = propertyType === "lot-only" || propertyType === "commercial";
+    const minBedrooms = isLandSearch ? 0 : Math.ceil(input.familySize / 2);
     const wanted = input.preferredAreas.map(clean).filter(Boolean);
     const { rows: centers } = await db.query<Center>({
       text: `
@@ -64,7 +66,6 @@ export async function POST(req: NextRequest) {
       .filter((center) => wanted.some((area) => [center.name, center.barangay, center.slug].some((value) => clean(value) === area)))
       .filter((center) => center.lat != null && center.lng != null);
 
-    const propertyType = input.propertyType || "";
     const listingPropertyType = listingTypes.has(propertyType as PropertyTypeSlug) ? (propertyType as PropertyTypeSlug) : undefined;
     const shouldReturnListings = propertyType !== "new-development";
     const shouldReturnProjects = !propertyType || ["new-development", "lot-only", "house-and-lot", "townhouse"].includes(propertyType);
@@ -101,7 +102,7 @@ export async function POST(req: NextRequest) {
           query: input.preferredAreas[0] || null,
           minPrice: input.budget * 0.7,
           maxPrice: input.budget * 1.3,
-          minBedrooms,
+          minBedrooms: isLandSearch ? undefined : minBedrooms,
           propertyType,
         })
       : [];
@@ -114,7 +115,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       results: ranked,
       developerProjects: projectMatches,
-      weights: { location: 50, budget: 25, bedrooms: 10, lifestyle: 15 },
+      weights: { location: 50, budget: 25, fit: 10, lifestyle: 15 },
     });
   } catch (error) {
     console.error("Matcher failed", error);
@@ -130,7 +131,7 @@ async function getListingCandidates(input: MatcherInput, minBedrooms: number, pr
     combinedFilterSearchQuery({
       minPrice: input.budget * 0.7,
       maxPrice: input.budget * 1.3,
-      minBedrooms,
+      minBedrooms: propertyType === "lot-only" || propertyType === "commercial" ? undefined : minBedrooms,
       propertyType,
       pageSize: 120,
     }),
@@ -181,7 +182,8 @@ function scoreProperty(property: MatchedProperty, input: MatcherInput, minBedroo
     : 50;
   const budgetGap = Math.abs(property.price - input.budget) / input.budget;
   const budgetPoints = Math.max(0, 25 * (1 - budgetGap / 0.3));
-  const bedroomPoints = Math.min(10, 10 * ((property.bedrooms || 0) / minBedrooms));
+  const landFit = input.propertyType === "lot-only" || input.propertyType === "commercial";
+  const bedroomPoints = landFit ? 10 : Math.min(10, 10 * ((property.bedrooms || 0) / minBedrooms));
   const checks = input.lifestyle.map((tag) =>
     tag === "near_schools"
       ? (amenity?.schoolDistance ?? Infinity) <= 3000
@@ -301,6 +303,34 @@ function locationDetail(distanceKm: number, exact: boolean, nearbyTag: boolean, 
 }
 
 function propertyDetails(property: MatchedProperty, input: MatcherInput, distanceKm: number, exact: boolean, nearbyTag: boolean, minBedrooms: number, lifestyleChecks: boolean[], score: number): MatchDetails {
+  if (input.propertyType === "lot-only" || property.propertyType === "lot-only") {
+    const lotText = property.lotAreaSqm
+      ? `Lot area is ${property.lotAreaSqm} sqm. Compare price per sqm, road access, title status, terrain, frontage, utilities, and allowable use before shortlisting.`
+      : "Lot area is not provided, so confirm exact lot size, title status, frontage, access road, utilities, and allowable use before shortlisting.";
+    return {
+      location: locationDetail(distanceKm, exact, nearbyTag, Boolean(input.preferredAreas.length)),
+      budget: budgetDetail(property.price, input.budget),
+      fit: { tone: property.lotAreaSqm ? "strong" : "ok", label: property.propertyTypeLabel || "Lot fit", text: lotText },
+      lifestyle: input.lifestyle.length
+        ? {
+            tone: lifestyleChecks.filter(Boolean).length === input.lifestyle.length ? "strong" : lifestyleChecks.some(Boolean) ? "ok" : "caution",
+            label: `${lifestyleChecks.filter(Boolean).length}/${input.lifestyle.length} priorities`,
+            text: `${lifestyleChecks.filter(Boolean).length} of your ${input.lifestyle.length} selected priorities matched. For land, also verify access, utilities, zoning, and future construction plans.`,
+          }
+        : undefined,
+      take: takeDetail(score, "property"),
+    };
+  }
+
+  if (input.propertyType === "commercial" || property.propertyType === "commercial") {
+    return {
+      location: locationDetail(distanceKm, exact, nearbyTag, Boolean(input.preferredAreas.length)),
+      budget: budgetDetail(property.price, input.budget),
+      fit: { tone: "ok", label: property.propertyTypeLabel || "Commercial fit", text: "Commercial fit depends more on frontage, foot traffic, access, permitted use, parking, and target customer flow than bedroom count." },
+      take: takeDetail(score, "property"),
+    };
+  }
+
   const bedroomCount = property.bedrooms || 0;
   const fitText = property.bedrooms == null
     ? "Bedroom count is not provided, so confirm the layout before relying on this match."
