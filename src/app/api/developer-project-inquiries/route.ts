@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/supabase/server";
+import { sendMetaLeadEvent } from "@/lib/meta-capi";
 
 export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => null);
@@ -30,5 +31,14 @@ export async function POST(request: NextRequest) {
   });
 
   if (!rows[0]) return NextResponse.json({ error: "Developer project not found." }, { status: 404 });
+  await sendMetaLeadEvent({
+    request,
+    eventId: `developer-project-inquiry-${rows[0].id}`,
+    email,
+    phone,
+    name,
+    contentName: "Developer project inquiry",
+    contentIds: [projectId],
+  });
   return NextResponse.json({ id: rows[0].id, status: "new" }, { status: 201 });
 }

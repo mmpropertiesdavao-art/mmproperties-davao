@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { Bath, BedDouble, Building2, Car, ChevronLeft, ChevronRight, MapPin, Ruler, Square, X } from "lucide-react";
 import { PaymentCalculator } from "@/components/property/PaymentCalculator";
 import { VideoEmbed } from "@/components/video/VideoEmbed";
+import { trackLead, trackViewContent } from "@/lib/analytics";
 
 type Model = {
   id: string;
@@ -105,7 +106,18 @@ export function DeveloperProjectModalProvider({ children }: { children: React.Re
         return data as ProjectPayload;
       })
       .then((data) => {
-        if (!cancelled) setPayload(data);
+        if (!cancelled) {
+          setPayload(data);
+          trackViewContent({
+            content_type: "developer_project",
+            content_ids: [data.project.id],
+            content_name: data.project.projectName,
+            project_id: data.project.id,
+            project_slug: data.project.slug,
+            value: data.models?.find((model) => model.currentPrice)?.currentPrice,
+            currency: "PHP",
+          });
+        }
       })
       .catch((reason) => {
         if (!cancelled) setError(reason instanceof Error ? reason.message : "Could not load this project.");
@@ -357,7 +369,16 @@ function DeveloperProjectModalContent({ payload, openInquiryAfterLoad, initialMo
                   message: form.get("message"),
                 }),
               });
-              if (response.ok) setSent(true);
+              if (response.ok) {
+                trackLead({
+                  lead_type: "developer_project_inquiry",
+                  project_id: project.id,
+                  project_slug: project.slug,
+                  model_id: selectedModel?.id || null,
+                  content_ids: [project.id],
+                });
+                setSent(true);
+              }
             }}
           >
             <div className="mb-3 flex items-center justify-between">

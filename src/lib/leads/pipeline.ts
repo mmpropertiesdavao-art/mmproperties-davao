@@ -4,6 +4,7 @@ export type LeadStage =
   | "all"
   | "new"
   | "contacted"
+  | "qualified"
   | "follow_up"
   | "interested"
   | "lost"
@@ -33,6 +34,12 @@ export type LeadPipelineRow = {
   createdAt: string | null;
   externalCrmProvider: string | null;
   syncStatus: string | null;
+  recordType?: "inquiry" | "lead";
+  leadType?: string | null;
+  propertyType?: string | null;
+  budget?: string | null;
+  buyingTimeline?: string | null;
+  preferredLocation?: string | null;
 };
 
 export type LeadPipelineData = {
@@ -73,6 +80,14 @@ async function getColumns(tableName: string) {
   });
 
   return rows.map((row) => row.column_name);
+}
+
+async function tableExists(tableName: string) {
+  const { rows } = await db.query<{ exists: boolean }>({
+    text: "SELECT to_regclass($1) IS NOT NULL AS exists",
+    values: [`public.${tableName}`],
+  });
+  return Boolean(rows[0]?.exists);
 }
 
 function visibilitySql(viewer: LeadViewer, userParamIndex: number, inquiryColumns: string[]) {
@@ -187,8 +202,64 @@ export async function getLeadPipelineData(viewer: LeadViewer, q = ""): Promise<L
     values,
   });
 
+  const unifiedRows: LeadPipelineRow[] = rows.map((row) => ({ ...row, recordType: "inquiry" }));
+
+  if (viewer.role === "admin" && await tableExists("leads")) {
+    const leadWhereParts = ["1 = 1"];
+    const leadValues: unknown[] = [];
+    if (q.trim()) {
+      leadValues.push(`%${q.trim()}%`);
+      leadWhereParts.push(`(
+        full_name ILIKE $1 OR email ILIKE $1 OR mobile ILIKE $1 OR
+        COALESCE(message, '') ILIKE $1 OR COALESCE(property_title, '') ILIKE $1 OR
+        COALESCE(property_address, '') ILIKE $1 OR COALESCE(preferred_location, '') ILIKE $1
+      )`);
+    }
+    const { rows: leadRows } = await db.query<LeadPipelineRow>({
+      text: `
+        SELECT
+          id::text AS "id",
+          full_name::text AS "name",
+          email::text AS "email",
+          mobile::text AS "phone",
+          message::text AS "message",
+          status::text AS "status",
+          COALESCE(source_page, lead_type)::text AS "source",
+          property_id::text AS "propertyId",
+          property_title::text AS "propertyTitle",
+          NULL::text AS "propertySlug",
+          property_address::text AS "propertyAddress",
+          preferred_location::text AS "barangay",
+          NULL::text AS "coverImageUrl",
+          NULL::text AS "sellerName",
+          NULL::text AS "sellerEmail",
+          NULL::text AS "agentName",
+          NULL::text AS "agentEmail",
+          internal_notes::text AS "internalNotes",
+          follow_up_at::text AS "followUpAt",
+          created_at::text AS "createdAt",
+          external_crm_provider::text AS "externalCrmProvider",
+          sync_status::text AS "syncStatus",
+          'lead'::text AS "recordType",
+          lead_type::text AS "leadType",
+          property_type::text AS "propertyType",
+          budget::text AS "budget",
+          buying_timeline::text AS "buyingTimeline",
+          preferred_location::text AS "preferredLocation"
+        FROM leads
+        WHERE ${leadWhereParts.join(" AND ")}
+        ORDER BY created_at DESC NULLS LAST
+        LIMIT 800
+      `,
+      values: leadValues,
+    });
+    unifiedRows.push(...leadRows);
+  }
+
+  unifiedRows.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+
   return {
-    leads: rows,
+    leads: unifiedRows,
     supportsNotes: Boolean(internalNotesColumn),
     supportsFollowUp: Boolean(followUpAtColumn),
     supportsCrmFields: Boolean(externalCrmProviderColumn),

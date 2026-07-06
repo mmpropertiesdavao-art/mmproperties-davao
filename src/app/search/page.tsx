@@ -7,6 +7,7 @@ import { FilterBar } from "@/components/search/FilterBar";
 import { PropertyCard } from "@/components/property/PropertyCard";
 import { DeveloperProjectCard } from "@/components/developer/DeveloperProjectCard";
 import type { Property, PropertySearchFilters } from "@/types/property";
+import { trackEvent } from "@/lib/analytics";
 
 const MapView = dynamic(() => import("@/components/search/MapView").then((m) => m.MapView), { ssr: false });
 
@@ -41,6 +42,19 @@ export default function SearchPage() {
         const count = Number(data.totalCount ?? 0);
         setResults(data.results ?? []);
         setTotalCount(count);
+        trackEvent("search_results_view", {
+          results_count: count,
+          listing_intent: params.get("listingIntent") || "any",
+          property_type: params.get("propertyType") || "any",
+          barangay: params.get("barangay") || "",
+          neighborhood_id: params.get("neighborhoodId") || "",
+          min_price: params.get("minPrice") || "",
+          max_price: params.get("maxPrice") || "",
+          min_bedrooms: params.get("minBedrooms") || "",
+          financing_available: params.get("financingAvailable") || "",
+          assume_balance_available: params.get("assumeBalanceAvailable") || "",
+          is_foreclosed: params.get("isForeclosed") || "",
+        });
 
         fetch(`/api/developer-projects?${params.toString()}`, { signal: controller.signal })
           .then(async (projectResponse) => {

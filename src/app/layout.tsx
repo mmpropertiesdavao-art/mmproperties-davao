@@ -7,6 +7,7 @@ import { DeveloperProjectModalProvider } from "@/components/developer/DeveloperP
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { MessengerButton } from "@/components/layout/MessengerButton";
+import { AnalyticsScripts } from "@/components/layout/AnalyticsScripts";
 import { Figtree } from "next/font/google";
 
 const figtree=Figtree({subsets:["latin"],display:"swap"});
@@ -76,6 +77,7 @@ export default function RootLayout({
             __html: JSON.stringify(orgJsonLd),
           }}
         />
+        <AnalyticsScripts />
 
         <PropertyModalProvider>
         <DeveloperProjectModalProvider>

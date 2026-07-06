@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { MessageCircle, X } from "lucide-react";
 import { useEffect, useState } from "react";
+import { trackEvent } from "@/lib/analytics";
 
 const MESSENGER_URL = "https://m.me/MMPropertiesDavao";
 
@@ -24,7 +25,10 @@ export function MessengerButton() {
     <>
       <button
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={() => {
+          trackEvent("messenger_prompt_opened", { contact_method: "messenger" });
+          setOpen(true);
+        }}
         aria-label="Message MM Properties on Messenger"
         className="fixed bottom-24 right-4 z-[8500] inline-flex h-14 w-14 items-center justify-center rounded-full bg-[#0084ff] text-white shadow-2xl ring-4 ring-white/80 transition hover:-translate-y-0.5 hover:bg-[#006fd6] sm:bottom-6 sm:right-6"
       >
@@ -74,6 +78,7 @@ export function MessengerButton() {
                 href={MESSENGER_URL}
                 target="_blank"
                 rel="noreferrer"
+                onClick={() => trackEvent("contact_click", { contact_method: "messenger", destination: MESSENGER_URL })}
                 className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-[#0084ff] px-4 py-3 text-sm font-bold text-white shadow-sm hover:bg-[#006fd6]"
               >
                 <MessageCircle size={18} />

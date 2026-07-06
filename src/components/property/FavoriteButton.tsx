@@ -2,6 +2,7 @@
 
 import { Heart } from "lucide-react";
 import { useEffect, useState } from "react";
+import { trackEvent } from "@/lib/analytics";
 
 export function FavoriteButton({ propertyId,className="absolute right-3 top-3 z-30",onAction }: { propertyId: string;className?:string;onAction?:()=>void }) {
   const [favorited, setFavorited] = useState(false);
@@ -27,6 +28,7 @@ export function FavoriteButton({ propertyId,className="absolute right-3 top-3 z-
       }
       if (!response.ok) throw new Error(data.error || "Could not update saved property.");
       setFavorited(Boolean(data.favorited));
+      if (data.favorited) trackEvent("save_listing", { property_id: propertyId, content_ids: [propertyId] });
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : "Could not update saved property.");
     } finally {

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { requireRole } from "@/lib/auth/requireRole";
 import { db } from "@/lib/supabase/server";
 
-const VALID_STATUSES = new Set(["new", "contacted", "follow_up", "interested", "under_contract", "closed", "lost"]);
+const VALID_STATUSES = new Set(["new", "contacted", "qualified", "follow_up", "interested", "under_contract", "closed", "lost"]);
 
 async function getInquiryColumns() {
   const { rows } = await db.query<{ column_name: string }>({
@@ -38,9 +38,11 @@ export async function PATCH(
     return NextResponse.json({ error: "Invalid inquiry status." }, { status: 400 });
   }
 
+  const inquiryStatus = status === "qualified" ? "interested" : status;
+
   const columns = await getInquiryColumns();
   const setParts = ["status = $1"];
-  const values: unknown[] = [status];
+  const values: unknown[] = [inquiryStatus];
   let valueIndex = 2;
 
   if (columns.includes("internal_notes")) {
@@ -105,7 +107,19 @@ export async function PATCH(
   });
 
   if (!rows[0]) {
-    return NextResponse.json({ error: "Inquiry not found." }, { status: 404 });
+    if (actor.role === "admin") {
+      const { rows: leadRows } = await db.query<{ id: string }>({
+        text: `
+          UPDATE leads
+          SET status = $1, internal_notes = $2, follow_up_at = $3::timestamptz, updated_at = now()
+          WHERE id = $4::uuid
+          RETURNING id
+        `,
+        values: [status, internalNotes || null, followUpAt || null, id],
+      }).catch(() => ({ rows: [] as { id: string }[] }));
+      if (leadRows[0]) return NextResponse.json({ ok: true, id });
+    }
+    return NextResponse.json({ error: "Inquiry or lead not found." }, { status: 404 });
   }
 
   return NextResponse.json({ ok: true, id });

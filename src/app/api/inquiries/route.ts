@@ -12,6 +12,8 @@ import { db } from "@/lib/supabase/server";
 import { notifyAgent, notifyAdmin } from "@/lib/notifications";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
+import { sendMetaLeadEvent } from "@/lib/meta-capi";
+import { createLeadFromPropertyInquiry } from "@/lib/leads/lead-service";
 
 async function getInquiryColumns() {
   const { rows } = await db.query<{ column_name: string }>({
@@ -30,8 +32,8 @@ export async function POST(req: NextRequest) {
   const body = await req.json();
   const { propertyId, name, email, phone, message, isRemoteBuyer } = body;
 
-  if (!propertyId || !name || !email) {
-    return NextResponse.json({ error: "propertyId, name, and email are required" }, { status: 400 });
+  if (!propertyId || !name || !email || !phone) {
+    return NextResponse.json({ error: "propertyId, name, email, and phone are required" }, { status: 400 });
   }
 
   const cookieStore = await cookies();
@@ -95,6 +97,27 @@ export async function POST(req: NextRequest) {
   } else {
     await notifyAdmin(inquiry.id);
   }
+
+  await sendMetaLeadEvent({
+    request: req,
+    eventId: `inquiry-${inquiry.id}`,
+    email,
+    phone,
+    name,
+    contentName: "Property inquiry",
+    contentIds: [propertyId],
+  });
+
+  await createLeadFromPropertyInquiry({
+    request: req,
+    propertyId,
+    name,
+    email,
+    phone,
+    message,
+  }).catch((error) => {
+    console.warn("Could not mirror property inquiry into leads table", error);
+  });
 
   return NextResponse.json({ id: inquiry.id, status: "new" }, { status: 201 });
 }

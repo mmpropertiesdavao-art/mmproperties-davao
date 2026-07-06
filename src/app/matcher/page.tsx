@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { MatchDetails, MatchDetailTone, MatchedProperty, PropertyTypeSlug } from "@/types/property";
 import { CompareButton } from "@/components/compare/CompareButton";
 import { FavoriteButton } from "@/components/property/FavoriteButton";
 import { ValueEstimator } from "@/components/pulse/ValueEstimator";
 import { DeveloperProjectCard } from "@/components/developer/DeveloperProjectCard";
 import { usePropertyModal } from "@/components/property/PropertyModalProvider";
+import { trackEvent } from "@/lib/analytics";
 
 const TAGS = ["near_schools", "near_malls", "near_hospitals", "financing", "parking"];
 const PROPERTY_TYPES: { value: "" | PropertyTypeSlug | "new-development"; label: string; hint: string }[] = [
@@ -54,6 +55,42 @@ type MatchedDeveloperProject = {
 
 const shown = (value: number | null | undefined, suffix = "") => (value == null ? "Not provided" : `${value}${suffix}`);
 
+function normalizePropertyType(value: string | null): "" | PropertyTypeSlug | "new-development" {
+  const clean = String(value || "").trim().toLowerCase().replace(/\s+/g, "-").replace(/&/g, "and");
+  const aliases: Record<string, "" | PropertyTypeSlug | "new-development"> = {
+    house: "house-and-lot",
+    "house-lot": "house-and-lot",
+    "house-and-lot": "house-and-lot",
+    condo: "condominium",
+    condominium: "condominium",
+    lot: "lot-only",
+    "lot-only": "lot-only",
+    commercial: "commercial",
+    townhouse: "townhouse",
+    "new-development": "new-development",
+    developer: "new-development",
+    project: "new-development",
+  };
+  return aliases[clean] || "";
+}
+
+function areasFromParams(params: URLSearchParams) {
+  const raw = params.getAll("area").concat(params.getAll("location"), params.getAll("preferredArea"), params.getAll("preferredLocation"), params.getAll("areas"));
+  return raw.flatMap((value) => value.split(",")).map((value) => value.trim()).filter(Boolean).slice(0, 6);
+}
+
+function linkForMatcher({ budget, familySize, propertyType, preferredAreas, lifestyle }: { budget: number; familySize: number; propertyType: string; preferredAreas: string[]; lifestyle: string[] }) {
+  if (typeof window === "undefined") return "";
+  const url = new URL("/matcher", window.location.origin);
+  preferredAreas.forEach((area) => url.searchParams.append("area", area));
+  if (propertyType) url.searchParams.set("type", propertyType);
+  if (budget) url.searchParams.set("budget", String(budget));
+  if (familySize) url.searchParams.set("familySize", String(familySize));
+  lifestyle.forEach((tag) => url.searchParams.append("tag", tag));
+  url.searchParams.set("run", "1");
+  return url.toString();
+}
+
 function visitor() {
   let id = localStorage.getItem("mm-visitor-id");
   if (!id) {
@@ -65,6 +102,7 @@ function visitor() {
 
 function track(eventType: string, propertyIds: string[]) {
   if (!propertyIds.length) return;
+  trackEvent(`mm_pulse_${eventType}`, { property_ids: propertyIds, result_count: propertyIds.length });
   void fetch("/api/matcher/events", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -104,28 +142,83 @@ function PropertyMatcher() {
   const [developerProjects, setDeveloperProjects] = useState<MatchedDeveloperProject[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [copyNotice, setCopyNotice] = useState("");
+  const initializedFromUrl = useRef(false);
   const toggle = (items: string[], value: string, setter: (next: string[]) => void) => setter(items.includes(value) ? items.filter((item) => item !== value) : [...items, value]);
 
-  async function submit() {
+  async function submit(overrides?: { budget: number; familySize: number; preferredAreas: string[]; propertyType: "" | PropertyTypeSlug | "new-development"; lifestyle: string[] }) {
+    const payload = overrides || { budget, familySize, preferredAreas, propertyType, lifestyle };
     setLoading(true);
     setError("");
     try {
       const response = await fetch("/api/matcher", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ budget, familySize, preferredAreas, propertyType, lifestyle }),
+        body: JSON.stringify(payload),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error);
       const nextResults = data.results || [];
+      const nextProjects = data.developerProjects || [];
       setResults(nextResults);
-      setDeveloperProjects(data.developerProjects || []);
+      setDeveloperProjects(nextProjects);
+      trackEvent("mm_pulse_completed", {
+        budget: payload.budget,
+        family_size: payload.familySize,
+        property_type: payload.propertyType || "any",
+        preferred_areas: payload.preferredAreas,
+        lifestyle: payload.lifestyle,
+        listing_result_count: nextResults.length,
+        developer_project_count: nextProjects.length,
+      });
       if (nextResults.length) track("result_view", nextResults.map((property: MatchedProperty) => property.id));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not find matches.");
     } finally {
       setLoading(false);
     }
+  }
+
+  useEffect(() => {
+    if (initializedFromUrl.current || typeof window === "undefined") return;
+    initializedFromUrl.current = true;
+    const params = new URLSearchParams(window.location.search);
+    const nextBudget = Number(params.get("budget")) || budget;
+    const nextFamilySize = Math.min(10, Math.max(1, Number(params.get("familySize") || params.get("family")) || familySize));
+    const nextPropertyType = normalizePropertyType(params.get("type") || params.get("propertyType"));
+    const nextAreas = areasFromParams(params);
+    const tagParams = params.getAll("tag").concat(params.getAll("priority"));
+    const nextLifestyle = Array.from(new Set([
+      ...tagParams,
+      params.get("financing") === "true" ? "financing" : "",
+      params.get("parking") === "true" ? "parking" : "",
+    ].filter((tag) => TAGS.includes(tag))));
+    const hasPrefill = nextAreas.length || nextPropertyType || params.get("budget") || params.get("familySize") || params.get("family") || nextLifestyle.length;
+    if (!hasPrefill) return;
+    const nextState = { budget: nextBudget, familySize: nextFamilySize, propertyType: nextPropertyType, preferredAreas: nextAreas, lifestyle: nextLifestyle };
+    setBudget(nextBudget);
+    setFamilySize(nextFamilySize);
+    setPropertyType(nextPropertyType);
+    setAreas(nextAreas);
+    setLifestyle(nextLifestyle);
+    trackEvent("mm_pulse_shared_link_opened", {
+      budget: nextBudget,
+      family_size: nextFamilySize,
+      property_type: nextPropertyType || "any",
+      preferred_areas: nextAreas,
+      lifestyle: nextLifestyle,
+    });
+    if (params.get("run") === "1" || params.get("auto") === "1") void submit(nextState);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function copyShareLink() {
+    const link = linkForMatcher({ budget, familySize, propertyType, preferredAreas, lifestyle });
+    if (!link) return;
+    await navigator.clipboard.writeText(link);
+    setCopyNotice("MM Pulse link copied.");
+    trackEvent("mm_pulse_link_copied", { property_type: propertyType || "any", preferred_areas: preferredAreas });
+    setTimeout(() => setCopyNotice(""), 1800);
   }
 
   const nearby = results.filter((property) => !property.outsidePreferredArea);
@@ -140,10 +233,16 @@ function PropertyMatcher() {
           <h2 className="text-2xl font-semibold">Property matching</h2>
           <p className="mt-2 max-w-3xl text-navy-500">Location carries 50% of the score. MM Pulse now uses your pinned places and neighborhoods, then adds budget, property type, family needs, and lifestyle priorities.</p>
         </div>
-        <Link href="/tools/payment-calculator" className="rounded-lg border border-gold-400 px-4 py-2 text-sm font-bold text-navy-900 hover:bg-gold-50">
-          Open calculator
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" onClick={copyShareLink} className="rounded-lg border border-navy-200 px-4 py-2 text-sm font-bold text-navy-900 hover:border-gold-400 hover:bg-gold-50">
+            Copy MM Pulse link
+          </button>
+          <Link href="/tools/payment-calculator" className="rounded-lg border border-gold-400 px-4 py-2 text-sm font-bold text-navy-900 hover:bg-gold-50">
+            Open calculator
+          </Link>
+        </div>
       </div>
+      {copyNotice && <p className="mt-3 rounded-lg bg-green-50 p-3 text-sm font-semibold text-green-800">{copyNotice}</p>}
 
       <div className="mt-6 rounded-2xl border bg-white p-4 shadow-sm sm:p-5">
         <div className="grid gap-5 md:grid-cols-2">
@@ -176,7 +275,7 @@ function PropertyMatcher() {
 
         <AreaInput selected={preferredAreas} onChange={setAreas} />
         <Choice title="Other priorities" values={TAGS} selected={lifestyle} toggle={(value) => toggle(lifestyle, value, setLifestyle)} />
-        <button onClick={submit} disabled={loading} className="mt-5 min-h-12 rounded-md bg-gold-500 px-5 py-3 font-semibold text-navy-950 disabled:opacity-60">
+        <button onClick={() => void submit()} disabled={loading} className="mt-5 min-h-12 rounded-md bg-gold-500 px-5 py-3 font-semibold text-navy-950 disabled:opacity-60">
           {loading ? "Finding matches…" : "Find my matches"}
         </button>
         {error && <p className="mt-3 rounded-md bg-red-50 p-3 text-red-700">{error}</p>}

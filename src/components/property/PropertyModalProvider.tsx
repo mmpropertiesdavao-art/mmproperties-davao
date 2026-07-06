@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { X } from "lucide-react";
 import { PropertyDetailsModal, type PropertyDetailPayload } from "@/components/property/PropertyDetailsModal";
+import { trackViewContent } from "@/lib/analytics";
 
 type PropertyModalContextValue = {
   openProperty: (slug: string) => void;
@@ -50,6 +51,15 @@ export function PropertyModalProvider({ children }: { children: React.ReactNode 
       .then((data) => {
         if (!cancelled) setPayload(data);
         if (data.property?.id) {
+          trackViewContent({
+            content_type: "property",
+            content_ids: [data.property.id],
+            content_name: data.property.title,
+            property_id: data.property.id,
+            property_slug: data.property.slug,
+            value: data.property.price,
+            currency: "PHP",
+          });
           void fetch(`/api/properties/${data.property.id}/view`, { method: "POST" });
         }
       })

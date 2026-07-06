@@ -9,6 +9,7 @@ const STAGES: { label: string; value: LeadStage; className: string }[] = [
   { label: "Total Leads", value: "all", className: "border-navy-200 bg-navy-900 text-white" },
   { label: "New", value: "new", className: "border-blue-200 bg-blue-50 text-blue-800" },
   { label: "Contacted", value: "contacted", className: "border-cyan-200 bg-cyan-50 text-cyan-800" },
+  { label: "Qualified", value: "qualified" as LeadStage, className: "border-emerald-200 bg-emerald-50 text-emerald-800" },
   { label: "Follow Up", value: "follow_up", className: "border-amber-200 bg-amber-50 text-amber-800" },
   { label: "Interested", value: "interested", className: "border-emerald-200 bg-emerald-50 text-emerald-800" },
   { label: "Lost", value: "lost", className: "border-red-200 bg-red-50 text-red-800" },
@@ -54,6 +55,36 @@ function toLocalInputValue(value: string | null) {
   return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
 }
 
+function propertyTypeParam(value?: string | null) {
+  const clean = String(value || "").toLowerCase();
+  if (clean.includes("condo")) return "condominium";
+  if (clean.includes("lot") && !clean.includes("house")) return "lot-only";
+  if (clean.includes("commercial")) return "commercial";
+  if (clean.includes("town")) return "townhouse";
+  if (clean.includes("house")) return "house-and-lot";
+  return "";
+}
+
+function budgetParam(value?: string | null) {
+  const clean = String(value || "").toLowerCase();
+  const millionMatches = [...clean.matchAll(/(\d+(?:\.\d+)?)\s*m/g)].map((match) => Number(match[1]) * 1_000_000);
+  if (millionMatches.length) return Math.max(...millionMatches);
+  const digits = clean.replace(/[^\d]/g, "");
+  return digits ? Number(digits) : 0;
+}
+
+function mmPulseUrl(lead: LeadPipelineRow) {
+  const params = new URLSearchParams();
+  const area = lead.preferredLocation || lead.barangay || "";
+  const type = propertyTypeParam(lead.propertyType);
+  const budget = budgetParam(lead.budget);
+  if (area) params.set("area", area);
+  if (type) params.set("type", type);
+  if (budget) params.set("budget", String(budget));
+  params.set("run", "1");
+  return `/matcher?${params.toString()}`;
+}
+
 export function LeadPipelineDashboard({
   leads,
   title,
@@ -81,9 +112,13 @@ export function LeadPipelineDashboard({
           </div>
           <div className="flex flex-wrap gap-2">
             {viewerRole === "admin" ? (
-              <Link href="/admin/properties" className="rounded-lg border border-navy-200 bg-white px-3 py-2 text-sm font-semibold text-navy-700 hover:border-gold-400">
-                Manage listings
-              </Link>
+              <>
+                <a href="/api/admin/leads/export?format=csv" className="rounded-lg border border-navy-200 bg-white px-3 py-2 text-sm font-semibold text-navy-700 hover:border-gold-400">Export CSV</a>
+                <a href="/api/admin/leads/export?format=xls" className="rounded-lg border border-navy-200 bg-white px-3 py-2 text-sm font-semibold text-navy-700 hover:border-gold-400">Export Excel</a>
+                <Link href="/admin/properties" className="rounded-lg border border-navy-200 bg-white px-3 py-2 text-sm font-semibold text-navy-700 hover:border-gold-400">
+                  Manage listings
+                </Link>
+              </>
             ) : (
               <Link href="/seller" className="rounded-lg border border-navy-200 bg-white px-3 py-2 text-sm font-semibold text-navy-700 hover:border-gold-400">
                 Seller dashboard
@@ -186,7 +221,9 @@ function LeadCard({
   const [notes, setNotes] = useState(lead.internalNotes || "");
   const [followUp, setFollowUp] = useState(toLocalInputValue(lead.followUpAt));
   const [notice, setNotice] = useState<string | null>(null);
+  const [pulseNotice, setPulseNotice] = useState("");
   const cleanPhone = normalizePhone(lead.phone);
+  const pulseUrl = mmPulseUrl(lead);
   const address = addressOf(lead);
   const shortAddress = address.length > 96 && !expanded ? `${address.slice(0, 96).trim()}...` : address;
   const shortMessage = lead.message && lead.message.length > 150 && !messageExpanded ? `${lead.message.slice(0, 150).trim()}...` : lead.message;
@@ -209,6 +246,26 @@ function LeadCard({
     }
     setNotice("Saved.");
     startTransition(() => router.refresh());
+  }
+
+  async function deleteLead() {
+    if (viewerRole !== "admin" || !window.confirm("Delete this lead record?")) return;
+    setNotice(null);
+    const response = await fetch(`/api/admin/leads/${lead.id}?type=${lead.recordType || "inquiry"}`, { method: "DELETE" });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      setNotice(data.error || "Could not delete lead.");
+      return;
+    }
+    setNotice("Deleted.");
+    startTransition(() => router.refresh());
+  }
+
+  async function copyPulseLink() {
+    const absolute = `${window.location.origin}${pulseUrl}`;
+    await navigator.clipboard.writeText(absolute);
+    setPulseNotice("MM Pulse link copied.");
+    setTimeout(() => setPulseNotice(""), 1800);
   }
 
   return (
@@ -296,10 +353,13 @@ function LeadCard({
             {isPending ? "Saving" : "Save"}
           </button>
           {mailto && <a href={mailto} className="rounded-lg border border-navy-200 px-3 py-2 text-xs font-bold text-navy-700">Email</a>}
+          <a href={pulseUrl} target="_blank" rel="noreferrer" className="rounded-lg border border-gold-300 px-3 py-2 text-xs font-bold text-navy-800">MM Pulse</a>
+          <button type="button" onClick={() => void copyPulseLink()} className="rounded-lg border border-gold-300 px-3 py-2 text-xs font-bold text-navy-800">Copy Pulse link</button>
           {cleanPhone && <a href={`tel:${cleanPhone}`} className="rounded-lg border border-navy-200 px-3 py-2 text-xs font-bold text-navy-700">Call</a>}
           {cleanPhone && <a href={`https://wa.me/${cleanPhone.replace(/^\+/, "")}`} target="_blank" rel="noreferrer" className="rounded-lg border border-navy-200 px-3 py-2 text-xs font-bold text-navy-700">WhatsApp</a>}
+          {viewerRole === "admin" && <button type="button" onClick={() => void deleteLead()} className="rounded-lg border border-red-200 px-3 py-2 text-xs font-bold text-red-700">Delete</button>}
         </div>
-        {notice && <p className="text-xs text-navy-500">{notice}</p>}
+        {(notice || pulseNotice) && <p className="text-xs text-navy-500">{pulseNotice || notice}</p>}
       </div>
     </article>
   );
