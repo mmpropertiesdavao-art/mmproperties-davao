@@ -71,6 +71,8 @@ export function createEditorBlogBlock(type: BlogBlockType): BlogBlock {
       market: "Residential demand is more limited compared to newer districts, but the area is central and active.",
       bestFor: "Commercial property buyers, heritage or mixed-use investors, and buyers comfortable with urban density.",
       caution: "Less suitable as a primary family residence for buyers accustomed to subdivision living.",
+      ctaLabel: "Check our listings",
+      ctaUrl: "/search?barangay=Poblacion",
     }),
   };
 }
@@ -105,6 +107,8 @@ type NeighborhoodInsight = {
   market: string;
   bestFor: string;
   caution: string;
+  ctaUrl?: string;
+  ctaLabel?: string;
 };
 
 function parseNeighborhoodInsight(value?: string): NeighborhoodInsight {
@@ -116,6 +120,8 @@ function parseNeighborhoodInsight(value?: string): NeighborhoodInsight {
       market: parsed.market || "",
       bestFor: parsed.bestFor || "",
       caution: parsed.caution || "",
+      ctaUrl: parsed.ctaUrl || "",
+      ctaLabel: parsed.ctaLabel || "",
     };
   } catch {
     return { character: "", buyers: "", market: "", bestFor: "", caution: value || "" };
@@ -291,6 +297,27 @@ export function BlockEditor({ value, onChange }: { value: BlogBlock[]; onChange:
                     </div>
                   );
                 })}
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div>
+                    <label className="mb-1 block text-xs font-bold uppercase text-navy-400">CTA label</label>
+                    <input
+                      value={parseNeighborhoodInsight(block.caption).ctaLabel || ""}
+                      onChange={(event) => update(index, { caption: updateNeighborhoodInsight(block.caption, "ctaLabel", event.target.value) })}
+                      placeholder="Check our listings"
+                      className="w-full rounded border p-2"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-bold uppercase text-navy-400">CTA URL</label>
+                    <input
+                      value={parseNeighborhoodInsight(block.caption).ctaUrl || ""}
+                      onChange={(event) => update(index, { caption: updateNeighborhoodInsight(block.caption, "ctaUrl", event.target.value) })}
+                      placeholder="/search?barangay=Mintal"
+                      className="w-full rounded border p-2"
+                    />
+                    <p className="mt-1 text-xs text-navy-400">Leave blank to auto-search using the first area name.</p>
+                  </div>
+                </div>
               </div>
             )}
 

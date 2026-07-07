@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { BuyerReadinessQuiz } from "@/components/blog/BuyerReadinessQuiz";
+import { BlogNeighborhoodInsightCard } from "@/components/blog/BlogNeighborhoodInsightCard";
 
 export type BlogBlockType =
   | "paragraph"
@@ -144,6 +145,8 @@ type NeighborhoodInsight = {
   market: string;
   bestFor: string;
   caution: string;
+  ctaUrl?: string;
+  ctaLabel?: string;
 };
 
 function parseNeighborhoodInsight(value?: string): NeighborhoodInsight {
@@ -155,6 +158,8 @@ function parseNeighborhoodInsight(value?: string): NeighborhoodInsight {
       market: parsed.market || "",
       bestFor: parsed.bestFor || "",
       caution: parsed.caution || "",
+      ctaUrl: parsed.ctaUrl || "",
+      ctaLabel: parsed.ctaLabel || "",
     };
   } catch {
     return { character: "", buyers: "", market: "", bestFor: "", caution: value || "" };
@@ -262,27 +267,17 @@ function Block({ block, headings, relatedPosts }: { block: BlogBlock; headings: 
   }
   if (block.type === "neighborhood_insight") {
     const details = parseNeighborhoodInsight(block.caption);
-    const rows = [
-      ["Character", details.character],
-      ["Who buys here", details.buyers],
-      ["Market reality", details.market],
-      ["Best for", details.bestFor],
-      ["Caution", details.caution],
-    ].filter((row): row is [string, string] => Boolean(row[1]?.trim()));
     return (
-      <section className="rounded-2xl border border-navy-100 bg-navy-50/70 p-6 shadow-sm">
-        <div className="border-l-4 border-gold-500 pl-4">
-          <h2 className="text-xl font-black leading-7 text-navy-950">{renderInlineMarkdown(block.text || "Neighborhood insight")}</h2>
-          <p className="mt-1 text-xs font-bold uppercase tracking-[.18em] text-gold-700">Davao area insight</p>
-        </div>
-        <div className="mt-6 space-y-5 text-base leading-8 text-navy-800">
-          {rows.map(([label, value]) => (
-            <p key={label} className="whitespace-pre-wrap">
-              <strong className="font-black text-navy-950">{label}:</strong> {renderInlineMarkdown(value)}
-            </p>
-          ))}
-        </div>
-      </section>
+      <BlogNeighborhoodInsightCard
+        title={block.text || "Neighborhood insight"}
+        character={details.character}
+        buyers={details.buyers}
+        market={details.market}
+        bestFor={details.bestFor}
+        caution={details.caution}
+        ctaUrl={details.ctaUrl || block.url}
+        ctaLabel={details.ctaLabel || block.label || "Check our listings"}
+      />
     );
   }
   if (block.type === "pros_cons") {
