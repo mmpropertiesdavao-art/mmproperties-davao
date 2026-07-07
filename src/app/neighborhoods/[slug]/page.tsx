@@ -276,7 +276,7 @@ export default async function NeighborhoodPage({
 
       {neighborhood.avgPricePerSqm && (
         <p className="mt-4 text-sm text-gray-500">
-          Estimated average price: ₱
+          Average asking price: ₱
           {neighborhood.avgPricePerSqm.toLocaleString()} per sqm
         </p>
       )}

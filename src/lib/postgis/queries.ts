@@ -180,7 +180,38 @@ export function combinedFilterSearchQuery(filters: PropertySearchFilters): SqlQu
         AND ($4::text IS NULL OR d.name = $4)
         AND (
           ($5::uuid IS NULL AND $6::text IS NULL)
-          OR ($5::uuid IS NOT NULL AND p.neighborhood_id = $5)
+          OR (
+            $5::uuid IS NOT NULL
+            AND (
+              p.neighborhood_id = $5
+              OR EXISTS (
+                SELECT 1
+                FROM neighborhoods selected_n
+                WHERE selected_n.id = $5
+                  AND (
+                    p.barangay ILIKE '%' || selected_n.name || '%'
+                    OR p.barangay ILIKE '%' || COALESCE(selected_n.barangay, selected_n.name) || '%'
+                    OR p.address ILIKE '%' || selected_n.name || '%'
+                    OR p.address ILIKE '%' || COALESCE(selected_n.barangay, selected_n.name) || '%'
+                    OR regexp_replace(lower(translate(COALESCE(p.barangay, ''), 'ñÑéÉ', 'nNeE')), '[^a-z0-9]+', '', 'g') LIKE '%' || regexp_replace(lower(translate(COALESCE(selected_n.name, ''), 'ñÑéÉ', 'nNeE')), '[^a-z0-9]+', '', 'g') || '%'
+                    OR regexp_replace(lower(translate(COALESCE(p.address, ''), 'ñÑéÉ', 'nNeE')), '[^a-z0-9]+', '', 'g') LIKE '%' || regexp_replace(lower(translate(COALESCE(selected_n.name, ''), 'ñÑéÉ', 'nNeE')), '[^a-z0-9]+', '', 'g') || '%'
+                    OR EXISTS (
+                      SELECT 1
+                      FROM property_places pp
+                      JOIN places pl ON pl.id = pp.place_id
+                      LEFT JOIN place_aliases pa ON pa.place_id = pl.id
+                      WHERE pp.property_id = p.id
+                        AND (
+                          pl.name ILIKE '%' || selected_n.name || '%'
+                          OR pa.alias ILIKE '%' || selected_n.name || '%'
+                          OR regexp_replace(lower(translate(COALESCE(pl.name, ''), 'ñÑéÉ', 'nNeE')), '[^a-z0-9]+', '', 'g') LIKE '%' || regexp_replace(lower(translate(COALESCE(selected_n.name, ''), 'ñÑéÉ', 'nNeE')), '[^a-z0-9]+', '', 'g') || '%'
+                          OR regexp_replace(lower(translate(COALESCE(pa.alias, ''), 'ñÑéÉ', 'nNeE')), '[^a-z0-9]+', '', 'g') LIKE '%' || regexp_replace(lower(translate(COALESCE(selected_n.name, ''), 'ñÑéÉ', 'nNeE')), '[^a-z0-9]+', '', 'g') || '%'
+                        )
+                    )
+                  )
+              )
+            )
+          )
           OR (
             $6::text IS NOT NULL
             AND (

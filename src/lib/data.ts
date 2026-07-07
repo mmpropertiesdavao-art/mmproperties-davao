@@ -9,10 +9,42 @@ import type { Neighborhood, Property } from "@/types/property";
 
 export async function getAllNeighborhoods(): Promise<Neighborhood[]> {
   const { rows } = await db.query({
-    text: `SELECT id, name, slug, barangay, city, overview, avg_price_per_sqm,
-                  advantages, disadvantages,
-                  ST_Y(centroid::geometry) AS lat, ST_X(centroid::geometry) AS lng
-           FROM neighborhoods ORDER BY name`,
+    text: `
+      SELECT
+        n.id,
+        n.name,
+        n.slug,
+        n.barangay,
+        n.city,
+        n.overview,
+        AVG(
+          CASE
+            WHEN p.price IS NULL OR p.price <= 0 THEN NULL
+            WHEN pt.slug IN ('lot-only','house-and-lot','townhouse') AND p.lot_area_sqm > 0 THEN p.price / p.lot_area_sqm
+            WHEN pt.slug IN ('condominium','commercial') AND p.floor_area_sqm > 0 THEN p.price / p.floor_area_sqm
+            WHEN p.lot_area_sqm > 0 THEN p.price / p.lot_area_sqm
+            WHEN p.floor_area_sqm > 0 THEN p.price / p.floor_area_sqm
+            ELSE NULL
+          END
+        )::float AS avg_price_per_sqm,
+        n.advantages,
+        n.disadvantages,
+        ST_Y(n.centroid::geometry) AS lat,
+        ST_X(n.centroid::geometry) AS lng
+      FROM neighborhoods n
+      LEFT JOIN properties p ON p.status='active' AND p.availability='available' AND (
+        p.neighborhood_id=n.id
+        OR p.barangay ILIKE '%' || n.name || '%'
+        OR p.barangay ILIKE '%' || COALESCE(n.barangay, n.name) || '%'
+        OR p.address ILIKE '%' || n.name || '%'
+        OR p.address ILIKE '%' || COALESCE(n.barangay, n.name) || '%'
+        OR regexp_replace(lower(translate(COALESCE(p.barangay, ''), 'ñÑéÉ', 'nNeE')), '[^a-z0-9]+', '', 'g') LIKE '%' || regexp_replace(lower(translate(COALESCE(n.name, ''), 'ñÑéÉ', 'nNeE')), '[^a-z0-9]+', '', 'g') || '%'
+        OR regexp_replace(lower(translate(COALESCE(p.address, ''), 'ñÑéÉ', 'nNeE')), '[^a-z0-9]+', '', 'g') LIKE '%' || regexp_replace(lower(translate(COALESCE(n.name, ''), 'ñÑéÉ', 'nNeE')), '[^a-z0-9]+', '', 'g') || '%'
+      )
+      LEFT JOIN property_types pt ON pt.id=p.property_type_id
+      GROUP BY n.id
+      ORDER BY n.name
+    `,
     values: [],
   });
   return rows.map((r: any) => ({
@@ -36,7 +68,37 @@ export async function getNeighborhoodBySlug(slug: string): Promise<Neighborhood 
 
 export async function getActiveDevelopers(featuredOnly=false){const{rows}=await db.query({text:`SELECT d.id,d.name,d.slug,d.logo_url AS "logoUrl",d.website,d.is_featured AS "isFeatured",d.display_order AS "displayOrder",(SELECT count(*)::int FROM properties p WHERE p.developer_id=d.id AND p.status='active') AS "listingCount" FROM developers d WHERE d.is_active=true AND d.approval_status='approved' AND d.merged_into_id IS NULL AND ($1::boolean=false OR (d.is_featured=true AND d.logo_url IS NOT NULL AND EXISTS(SELECT 1 FROM properties p WHERE p.developer_id=d.id AND p.status='active'))) ORDER BY d.is_featured DESC,d.display_order,d.name`,values:[featuredOnly]});return rows as {id:string;name:string;slug:string;logoUrl:string|null;website:string|null;isFeatured:boolean;displayOrder:number;listingCount:number}[]}
 
-export async function getHomepageNeighborhoods(){const{rows}=await db.query({text:`SELECT n.id,n.name,n.slug,n.avg_price_per_sqm::float AS "avgPricePerSqm",count(p.id)::int AS "listingCount" FROM neighborhoods n LEFT JOIN properties p ON p.neighborhood_id=n.id AND p.status='active' GROUP BY n.id ORDER BY count(p.id) DESC,n.name LIMIT 8`,values:[]});return rows as {id:string;name:string;slug:string;avgPricePerSqm:number|null;listingCount:number}[]}
+export async function getHomepageNeighborhoods(){const{rows}=await db.query({text:`
+  SELECT
+    n.id,
+    n.name,
+    n.slug,
+    AVG(
+      CASE
+        WHEN p.price IS NULL OR p.price <= 0 THEN NULL
+        WHEN pt.slug IN ('lot-only','house-and-lot','townhouse') AND p.lot_area_sqm > 0 THEN p.price / p.lot_area_sqm
+        WHEN pt.slug IN ('condominium','commercial') AND p.floor_area_sqm > 0 THEN p.price / p.floor_area_sqm
+        WHEN p.lot_area_sqm > 0 THEN p.price / p.lot_area_sqm
+        WHEN p.floor_area_sqm > 0 THEN p.price / p.floor_area_sqm
+        ELSE NULL
+      END
+    )::float AS "avgPricePerSqm",
+    count(p.id)::int AS "listingCount"
+  FROM neighborhoods n
+  LEFT JOIN properties p ON p.status='active' AND p.availability='available' AND (
+    p.neighborhood_id=n.id
+    OR p.barangay ILIKE '%' || n.name || '%'
+    OR p.barangay ILIKE '%' || COALESCE(n.barangay, n.name) || '%'
+    OR p.address ILIKE '%' || n.name || '%'
+    OR p.address ILIKE '%' || COALESCE(n.barangay, n.name) || '%'
+    OR regexp_replace(lower(translate(COALESCE(p.barangay, ''), 'ñÑéÉ', 'nNeE')), '[^a-z0-9]+', '', 'g') LIKE '%' || regexp_replace(lower(translate(COALESCE(n.name, ''), 'ñÑéÉ', 'nNeE')), '[^a-z0-9]+', '', 'g') || '%'
+    OR regexp_replace(lower(translate(COALESCE(p.address, ''), 'ñÑéÉ', 'nNeE')), '[^a-z0-9]+', '', 'g') LIKE '%' || regexp_replace(lower(translate(COALESCE(n.name, ''), 'ñÑéÉ', 'nNeE')), '[^a-z0-9]+', '', 'g') || '%'
+  )
+  LEFT JOIN property_types pt ON pt.id=p.property_type_id
+  GROUP BY n.id
+  ORDER BY count(p.id) DESC,n.name
+  LIMIT 8
+`,values:[]});return rows as {id:string;name:string;slug:string;avgPricePerSqm:number|null;listingCount:number}[]}
 
 export async function getAllActiveProperties(): Promise<(Property & { updatedAt: string })[]> {
   const { rows } = await db.query({

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import type { ReactNode } from "react";
 
 type InsightTab = {
   key: string;
@@ -23,6 +24,36 @@ function searchHrefForNeighborhood(name?: string, explicit?: string) {
   if (explicit?.trim()) return safeHref(explicit.trim());
   const area = String(name || "").split("/")[0]?.trim() || String(name || "").trim();
   return area ? `/search?barangay=${encodeURIComponent(area)}` : "/search";
+}
+
+function InlineMarkdown({ text = "" }: { text?: string }) {
+  const nodes: ReactNode[] = [];
+  const pattern = /(\[([^\]]+)\]\(([^)]+)\)|\*\*([^*]+)\*\*|\*([^*]+)\*)/g;
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = pattern.exec(text))) {
+    if (match.index > lastIndex) nodes.push(text.slice(lastIndex, match.index));
+    if (match[2] && match[3]) {
+      nodes.push(
+        <a key={nodes.length} href={safeHref(match[3])} className="font-semibold text-gold-700 underline underline-offset-4 hover:text-navy-900">
+          {match[2]}
+        </a>,
+      );
+    } else if (match[4]) {
+      nodes.push(
+        <strong key={nodes.length} className="font-black text-navy-950">
+          {match[4]}
+        </strong>,
+      );
+    } else if (match[5]) {
+      nodes.push(<em key={nodes.length}>{match[5]}</em>);
+    }
+    lastIndex = pattern.lastIndex;
+  }
+
+  if (lastIndex < text.length) nodes.push(text.slice(lastIndex));
+  return <>{nodes}</>;
 }
 
 export function BlogNeighborhoodInsightCard({
@@ -84,7 +115,7 @@ export function BlogNeighborhoodInsightCard({
           </div>
           <div className="mt-4 rounded-xl border border-white bg-white/85 p-4">
             <p className="text-xs font-black uppercase tracking-wide text-navy-500">{active?.label}</p>
-            <p className="mt-2 whitespace-pre-wrap text-base leading-8 text-navy-800">{active?.value}</p>
+            <p className="mt-2 whitespace-pre-wrap text-base leading-8 text-navy-800"><InlineMarkdown text={active?.value} /></p>
           </div>
         </>
       )}

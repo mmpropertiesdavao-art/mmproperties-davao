@@ -49,7 +49,16 @@ export default async function NeighborhoodsPage() {
         n.name,
         n.slug,
         n.overview,
-        n.avg_price_per_sqm::float AS "avgPricePerSqm",
+        AVG(
+          CASE
+            WHEN p.price IS NULL OR p.price <= 0 THEN NULL
+            WHEN pt.slug IN ('lot-only','house-and-lot','townhouse') AND p.lot_area_sqm > 0 THEN p.price / p.lot_area_sqm
+            WHEN pt.slug IN ('condominium','commercial') AND p.floor_area_sqm > 0 THEN p.price / p.floor_area_sqm
+            WHEN p.lot_area_sqm > 0 THEN p.price / p.lot_area_sqm
+            WHEN p.floor_area_sqm > 0 THEN p.price / p.floor_area_sqm
+            ELSE NULL
+          END
+        )::float AS "avgPricePerSqm",
         n.advantages,
         n.disadvantages,
         ${characterColumn ? 'n.character_text' : 'NULL::text'} AS "characterText",
@@ -59,7 +68,16 @@ export default async function NeighborhoodsPage() {
         ${cautionColumn ? 'n.caution_text' : 'NULL::text'} AS "cautionText",
         COUNT(p.id)::int AS "listingCount"
       FROM neighborhoods n
-      LEFT JOIN properties p ON p.neighborhood_id=n.id AND p.status='active'
+      LEFT JOIN properties p ON p.status='active' AND p.availability='available' AND (
+        p.neighborhood_id=n.id
+        OR p.barangay ILIKE '%' || n.name || '%'
+        OR p.barangay ILIKE '%' || COALESCE(n.barangay, n.name) || '%'
+        OR p.address ILIKE '%' || n.name || '%'
+        OR p.address ILIKE '%' || COALESCE(n.barangay, n.name) || '%'
+        OR regexp_replace(lower(translate(COALESCE(p.barangay, ''), 'ñÑéÉ', 'nNeE')), '[^a-z0-9]+', '', 'g') LIKE '%' || regexp_replace(lower(translate(COALESCE(n.name, ''), 'ñÑéÉ', 'nNeE')), '[^a-z0-9]+', '', 'g') || '%'
+        OR regexp_replace(lower(translate(COALESCE(p.address, ''), 'ñÑéÉ', 'nNeE')), '[^a-z0-9]+', '', 'g') LIKE '%' || regexp_replace(lower(translate(COALESCE(n.name, ''), 'ñÑéÉ', 'nNeE')), '[^a-z0-9]+', '', 'g') || '%'
+      )
+      LEFT JOIN property_types pt ON pt.id=p.property_type_id
       GROUP BY n.id
       ORDER BY COUNT(p.id) DESC, n.name
     `,

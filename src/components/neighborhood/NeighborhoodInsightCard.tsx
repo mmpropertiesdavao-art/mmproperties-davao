@@ -108,7 +108,7 @@ export function NeighborhoodInsightCard({
             {listingCount} listing{listingCount === 1 ? "" : "s"}
           </span>
           <span className="rounded-full bg-white px-3 py-1 font-semibold ring-1 ring-navy-100">
-            {avgPricePerSqm ? `Avg PHP ${Math.round(avgPricePerSqm).toLocaleString("en-PH")}/sqm` : "Price data collecting"}
+            {avgPricePerSqm ? `Avg asking PHP ${Math.round(avgPricePerSqm).toLocaleString("en-PH")}/sqm` : "Limited price/sqm data"}
           </span>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row">
