@@ -1,10 +1,79 @@
 export const dynamic = "force-dynamic";
-import Link from "next/link";
 import { db } from "@/lib/supabase/server";
+import { NeighborhoodInsightCard } from "@/components/neighborhood/NeighborhoodInsightCard";
 
-type Neighborhood = { id: string; name: string; slug: string; overview: string | null; listingCount: number };
+type Neighborhood = {
+  id: string;
+  name: string;
+  slug: string;
+  overview: string | null;
+  listingCount: number;
+  avgPricePerSqm: number | null;
+  advantages: string[] | null;
+  disadvantages: string[] | null;
+  characterText: string | null;
+  whoBuysHere: string | null;
+  marketReality: string | null;
+  bestFor: string | null;
+  cautionText: string | null;
+};
+
+async function hasColumn(columnName: string) {
+  const { rows } = await db.query<{ exists: boolean }>({
+    text: `
+      SELECT EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+        AND table_name = 'neighborhoods'
+        AND column_name = $1
+      ) AS exists
+    `,
+    values: [columnName],
+  });
+  return Boolean(rows[0]?.exists);
+}
 
 export default async function NeighborhoodsPage() {
-  const { rows } = await db.query<Neighborhood>({ text: `SELECT n.id,n.name,n.slug,n.overview,COUNT(p.id)::int AS "listingCount" FROM neighborhoods n LEFT JOIN properties p ON p.neighborhood_id=n.id AND p.status='active' GROUP BY n.id ORDER BY n.name`, values: [] });
-  return <main className="mx-auto max-w-6xl px-6 py-12"><h1 className="text-3xl font-semibold text-navy-900">Davao neighborhoods</h1><p className="mt-2 max-w-2xl text-navy-500">Explore local guides and available properties by area.</p><div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{rows.map(n=><Link key={n.id} href={`/neighborhoods/${n.slug}`} className="rounded-xl border border-navy-100 bg-white p-6 transition hover:border-gold-400 hover:shadow-md"><h2 className="text-xl font-semibold text-navy-900">{n.name}</h2><p className="mt-2 line-clamp-3 text-sm text-navy-500">{n.overview||"View properties and local information for this Davao neighborhood."}</p><p className="mt-4 text-sm font-medium text-gold-700">{n.listingCount} available listing{n.listingCount===1?"":"s"}</p></Link>)}</div></main>;
+  const [characterColumn, buyersColumn, marketColumn, bestColumn, cautionColumn] = await Promise.all([
+    hasColumn("character_text"),
+    hasColumn("who_buys_here"),
+    hasColumn("market_reality"),
+    hasColumn("best_for"),
+    hasColumn("caution_text"),
+  ]);
+  const { rows } = await db.query<Neighborhood>({
+    text: `
+      SELECT
+        n.id,
+        n.name,
+        n.slug,
+        n.overview,
+        n.avg_price_per_sqm::float AS "avgPricePerSqm",
+        n.advantages,
+        n.disadvantages,
+        ${characterColumn ? 'n.character_text' : 'NULL::text'} AS "characterText",
+        ${buyersColumn ? 'n.who_buys_here' : 'NULL::text'} AS "whoBuysHere",
+        ${marketColumn ? 'n.market_reality' : 'NULL::text'} AS "marketReality",
+        ${bestColumn ? 'n.best_for' : 'NULL::text'} AS "bestFor",
+        ${cautionColumn ? 'n.caution_text' : 'NULL::text'} AS "cautionText",
+        COUNT(p.id)::int AS "listingCount"
+      FROM neighborhoods n
+      LEFT JOIN properties p ON p.neighborhood_id=n.id AND p.status='active'
+      GROUP BY n.id
+      ORDER BY COUNT(p.id) DESC, n.name
+    `,
+    values: [],
+  });
+  return (
+    <main className="mx-auto max-w-6xl px-6 py-12">
+      <h1 className="text-3xl font-semibold text-navy-900">Davao neighborhoods</h1>
+      <p className="mt-2 max-w-2xl text-navy-500">Explore local market insight, buyer fit, cautions, and available properties by area.</p>
+      <div className="mt-8 grid gap-5 lg:grid-cols-2">
+        {rows.map((neighborhood) => (
+          <NeighborhoodInsightCard key={neighborhood.id} {...neighborhood} />
+        ))}
+      </div>
+    </main>
+  );
 }
