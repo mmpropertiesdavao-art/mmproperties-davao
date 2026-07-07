@@ -20,6 +20,31 @@ type MultiStepLeadFormProps = {
 
 const inputClass = "min-h-11 w-full rounded-xl border border-navy-200 bg-white px-3 py-2 text-sm text-navy-900 outline-none transition focus:border-gold-400 focus:ring-2 focus:ring-gold-100";
 
+function currentSourcePage() {
+  if (typeof window === "undefined") return "";
+  return `${window.location.pathname}${window.location.search}`;
+}
+
+function campaignTrafficSource() {
+  if (typeof window === "undefined") return "direct";
+  const params = new URLSearchParams(window.location.search);
+  const campaignValues = [
+    ["utm_source", params.get("utm_source")],
+    ["utm_medium", params.get("utm_medium")],
+    ["utm_campaign", params.get("utm_campaign")],
+    ["utm_content", params.get("utm_content")],
+    ["utm_term", params.get("utm_term")],
+  ].filter(([, value]) => value);
+
+  if (campaignValues.length) {
+    return campaignValues.map(([key, value]) => `${key}=${value}`).join("&").slice(0, 220);
+  }
+
+  if (params.get("fbclid")) return "facebook_click";
+  if (params.get("gclid")) return "google_ads_click";
+  return document.referrer || "direct";
+}
+
 export function MultiStepLeadForm({ kind, compact = false, sourcePage }: MultiStepLeadFormProps) {
   const router = useRouter();
   const [step, setStep] = useState(0);
@@ -81,18 +106,20 @@ export function MultiStepLeadForm({ kind, compact = false, sourcePage }: MultiSt
 
     setLoading(true);
     try {
+      const resolvedSourcePage = currentSourcePage() || sourcePage || form.sourcePage;
+      const resolvedTrafficSource = campaignTrafficSource();
       const response = await fetch("/api/leads", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...form,
-          sourcePage: form.sourcePage || window.location.pathname,
-          trafficSource: document.referrer || "direct",
+          sourcePage: resolvedSourcePage,
+          trafficSource: resolvedTrafficSource,
         }),
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.error || "Could not submit your request.");
-      trackLead({ lead_type: kind, source_page: form.sourcePage || window.location.pathname });
+      trackLead({ lead_type: kind, source_page: resolvedSourcePage, traffic_source: resolvedTrafficSource });
       router.push(`/thank-you?type=${kind}`);
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : "Could not submit your request.");
