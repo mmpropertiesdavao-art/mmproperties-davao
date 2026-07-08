@@ -40,6 +40,7 @@ export type LeadPipelineRow = {
   budget?: string | null;
   buyingTimeline?: string | null;
   preferredLocation?: string | null;
+  trafficSource?: string | null;
 };
 
 export type LeadPipelineData = {
@@ -189,7 +190,8 @@ export async function getLeadPipelineData(viewer: LeadViewer, q = ""): Promise<L
         ${selectTextColumn("i", followUpAtColumn, "followUpAt")},
         ${selectTextColumn("i", createdAtColumn, "createdAt")},
         ${selectTextColumn("i", externalCrmProviderColumn, "externalCrmProvider")},
-        ${selectTextColumn("i", syncStatusColumn, "syncStatus")}
+        ${selectTextColumn("i", syncStatusColumn, "syncStatus")},
+        NULL::text AS "trafficSource"
       FROM inquiries i
       ${propertyJoin}
       LEFT JOIN users seller ON seller.id = p.seller_id
@@ -245,7 +247,8 @@ export async function getLeadPipelineData(viewer: LeadViewer, q = ""): Promise<L
           property_type::text AS "propertyType",
           budget::text AS "budget",
           buying_timeline::text AS "buyingTimeline",
-          preferred_location::text AS "preferredLocation"
+          preferred_location::text AS "preferredLocation",
+          traffic_source::text AS "trafficSource"
         FROM leads
         WHERE ${leadWhereParts.join(" AND ")}
         ORDER BY created_at DESC NULLS LAST

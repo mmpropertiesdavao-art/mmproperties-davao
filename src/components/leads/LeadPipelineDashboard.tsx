@@ -85,6 +85,19 @@ function mmPulseUrl(lead: LeadPipelineRow) {
   return `/matcher?${params.toString()}`;
 }
 
+function shortSource(value?: string | null) {
+  if (!value) return "";
+  try {
+    const paramsText = value.includes("?") ? value.split("?")[1] : value;
+    const params = new URLSearchParams(paramsText);
+    const source = params.get("utm_source");
+    const campaign = params.get("utm_campaign");
+    const medium = params.get("utm_medium");
+    if (source || campaign) return [source, campaign, medium].filter(Boolean).join(" / ");
+  } catch {}
+  return value.length > 72 ? `${value.slice(0, 72).trim()}...` : value;
+}
+
 export function LeadPipelineDashboard({
   leads,
   title,
@@ -225,6 +238,7 @@ function LeadCard({
   const cleanPhone = normalizePhone(lead.phone);
   const pulseUrl = mmPulseUrl(lead);
   const address = addressOf(lead);
+  const hasPreferences = Boolean(lead.preferredLocation || lead.propertyType || lead.budget || lead.buyingTimeline);
   const shortAddress = address.length > 96 && !expanded ? `${address.slice(0, 96).trim()}...` : address;
   const shortMessage = lead.message && lead.message.length > 150 && !messageExpanded ? `${lead.message.slice(0, 150).trim()}...` : lead.message;
   const subject = `MM Properties inquiry${lead.propertyTitle ? `: ${lead.propertyTitle}` : ""}`;
@@ -281,6 +295,7 @@ function LeadCard({
                 {stageLabel(status)}
               </span>
               {lead.source && <span className="rounded-full bg-gold-50 px-2 py-1 text-[11px] font-semibold text-gold-800">{lead.source}</span>}
+              {lead.trafficSource && <span className="rounded-full bg-blue-50 px-2 py-1 text-[11px] font-semibold text-blue-800">{shortSource(lead.trafficSource)}</span>}
             </div>
             <h2 className="mt-2 line-clamp-1 font-bold text-navy-950">{lead.propertyTitle || "No property linked"}</h2>
             <p className="mt-1 text-sm leading-6 text-navy-600">
@@ -295,6 +310,22 @@ function LeadCard({
               <Link href={`/property/${lead.propertySlug}`} className="mt-1 inline-block text-xs font-bold text-navy-700 underline">
                 View listing
               </Link>
+            )}
+            {hasPreferences && (
+              <div className="mt-3 grid gap-2 rounded-xl border border-navy-100 bg-white p-3 text-xs text-navy-700 sm:grid-cols-2">
+                {lead.preferredLocation && (
+                  <p><span className="font-bold uppercase text-navy-500">Location:</span> {lead.preferredLocation}</p>
+                )}
+                {lead.propertyType && (
+                  <p><span className="font-bold uppercase text-navy-500">Type:</span> {lead.propertyType}</p>
+                )}
+                {lead.budget && (
+                  <p><span className="font-bold uppercase text-navy-500">Budget:</span> {lead.budget}</p>
+                )}
+                {lead.buyingTimeline && (
+                  <p><span className="font-bold uppercase text-navy-500">Timeline:</span> {lead.buyingTimeline}</p>
+                )}
+              </div>
             )}
           </div>
         </div>
