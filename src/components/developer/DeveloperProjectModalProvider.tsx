@@ -188,7 +188,9 @@ function DeveloperProjectModalContent({ payload, openInquiryAfterLoad, initialMo
   const projectImages = [project.heroImage, ...(project.gallery || [])].filter(Boolean) as string[];
   const modelImages = selectedModel ? [...(selectedModel.gallery || []), selectedModel.floorPlanImage].filter(Boolean) as string[] : [];
   const activeGallery = modelImages.length ? modelImages : projectImages;
-  const gallery = (selectedModel?.modelType === "lot_only" ? activeGallery.slice(0, 2) : activeGallery).length ? (selectedModel?.modelType === "lot_only" ? activeGallery.slice(0, 2) : activeGallery) : ["/placeholder-property.png"];
+  const shouldLimitLotModelGallery = selectedModel?.modelType === "lot_only" && modelImages.length > 0;
+  const visibleGallery = shouldLimitLotModelGallery ? activeGallery.slice(0, 2) : activeGallery;
+  const gallery = visibleGallery.length ? visibleGallery : ["/placeholder-property.png"];
   const [activeIndex, setActiveIndex] = useState(0);
   const touchStartX = useRef<number | null>(null);
   const startingPrice = models.reduce<number | null>((lowest, model) => {
