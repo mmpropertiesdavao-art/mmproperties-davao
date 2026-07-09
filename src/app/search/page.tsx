@@ -97,6 +97,12 @@ export default function SearchPage() {
       <FilterBar onChange={(next) => setFilters({ ...next, page: 1 })} />
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(440px,48vw)]">
         <div className="min-w-0 p-4">
+          <div className="mb-4">
+            <h1 className="text-2xl font-bold text-navy-950">Search Davao properties</h1>
+            <p className="mt-1 text-sm leading-6 text-navy-500">
+              Browse homes, condos, lots, commercial spaces, rentals, and new developer projects across Davao City.
+            </p>
+          </div>
           <p className="mb-3 text-sm text-gray-500">{totalCount} properties found · {developerProjects.length} new developments</p>
           {error && <p className="mb-3 rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</p>}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

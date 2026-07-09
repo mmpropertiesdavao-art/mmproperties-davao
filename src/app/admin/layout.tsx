@@ -1,5 +1,15 @@
 import Link from 'next/link'
+import type { Metadata } from 'next'
 import { requireRole } from '@/lib/auth/requireRole'
+
+export const metadata: Metadata = {
+  title: 'MM Properties Admin Dashboard',
+  description: 'Admin-only dashboard for managing MM Properties listings, leads, users, developers, places, legal pages, and content.',
+  robots: {
+    index: false,
+    follow: false,
+  },
+}
 
 const adminNav = [
   {

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { MessageCircle, Phone } from "lucide-react";
 import { db } from "@/lib/supabase/server";
 import { combinedFilterSearchQuery } from "@/lib/postgis/queries";
@@ -6,6 +7,16 @@ import type { Property } from "@/types/property";
 import { PropertyCard } from "@/components/property/PropertyCard";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Request Received",
+  description:
+    "Thank you for contacting MM Properties Davao. Your request has been received and a property consultant will contact you shortly.",
+  robots: {
+    index: false,
+    follow: false,
+  },
+};
 
 function cardProps(p: Property) {
   return { id: p.id, slug: p.slug, title: p.title, price: p.price, bedrooms: p.bedrooms, bathrooms: p.bathrooms, floorAreaSqm: p.floorAreaSqm, lotAreaSqm: p.lotAreaSqm, coverImageUrl: p.coverImageUrl, neighborhoodName: p.neighborhoodName, barangay: p.barangay, isForeclosed: p.isForeclosed, propertyType: p.propertyType, listingIntent: p.listingIntent, availability: p.availability, rentPrice: p.rentPrice, financingAvailable: p.financingAvailable, assumeBalanceAvailable: p.assumeBalanceAvailable, previousPrice: p.previousPrice, agentName: p.agentName, agencyName: p.agencyName, parkingSpaces: p.parkingSpaces, daysListed: p.daysListed, viewCount: p.viewCount, saveCount: p.saveCount };

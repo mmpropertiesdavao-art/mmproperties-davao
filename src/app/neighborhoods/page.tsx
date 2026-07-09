@@ -1,6 +1,16 @@
 export const dynamic = "force-dynamic";
+import type { Metadata } from "next";
 import { db } from "@/lib/supabase/server";
 import { NeighborhoodInsightCard } from "@/components/neighborhood/NeighborhoodInsightCard";
+
+export const metadata: Metadata = {
+  title: "Davao Neighborhood Guides",
+  description:
+    "Explore Davao neighborhood insights, local buyer fit, market reality, cautions, average asking prices, and available listings by area.",
+  alternates: {
+    canonical: "/neighborhoods",
+  },
+};
 
 type Neighborhood = {
   id: string;
