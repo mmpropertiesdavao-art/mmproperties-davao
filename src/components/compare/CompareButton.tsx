@@ -35,20 +35,19 @@ export function CompareButton({ item, className = "" }: { item: CompareItem; cla
     : "Add this listing to compare side-by-side with other saved choices.";
 
   return (
-    <div className={`group relative ${className}`}>
+    <div className={`relative ${className}`}>
       <button
         type="button"
         onPointerDown={(event) => event.stopPropagation()}
         onMouseDown={(event) => event.stopPropagation()}
         onTouchStart={(event) => event.stopPropagation()}
         onClick={toggle}
-        className={`inline-flex min-h-11 min-w-11 items-center justify-center rounded-full border bg-white/95 text-navy-800 shadow-lg transition hover:border-gold-400 hover:bg-gold-50 active:scale-95 ${active ? "border-violet-400 text-violet-700" : "border-navy-200"}`}
+        className={`peer inline-flex min-h-11 min-w-11 items-center justify-center rounded-full border bg-white/95 text-navy-800 shadow-lg transition hover:border-gold-400 hover:bg-gold-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 active:scale-95 ${active ? "border-violet-400 text-violet-700" : "border-navy-200"}`}
         aria-label={active ? "Remove from comparison" : "Add to comparison"}
-        title={tooltip}
       >
         <Scale size={20} strokeWidth={2.2} />
       </button>
-      <span className="pointer-events-none absolute right-full top-1/2 z-40 mr-2 hidden w-44 -translate-y-1/2 rounded-lg bg-navy-900 px-3 py-2 text-left text-[11px] font-medium leading-snug text-white shadow-xl group-hover:block">
+      <span className="pointer-events-none absolute right-full top-1/2 z-40 mr-2 hidden w-48 -translate-y-1/2 rounded-lg bg-blue-700 px-3 py-2 text-left text-[11px] font-semibold leading-snug text-white shadow-xl peer-hover:block peer-focus-visible:block">
         {tooltip}
       </span>
       {message && <span className="absolute right-0 top-full mt-1 whitespace-nowrap rounded bg-navy-900 px-2 py-1 text-[10px] text-white">{message}</span>}
