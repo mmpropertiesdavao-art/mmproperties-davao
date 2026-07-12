@@ -275,6 +275,7 @@ export function PropertyDetailsModal({ payload }: { payload: PropertyDetailPaylo
                 listingIntent: property.listingIntent,
               }}
               className="relative right-auto top-auto"
+              tooltipPlacement="top"
             />
             <PropertyShareButton
               slug={property.slug}

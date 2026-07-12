@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Bath, BedDouble, Building2, Home, MapPin, Ruler, Square } from "lucide-react";
 import { useDeveloperProjectModal } from "@/components/developer/DeveloperProjectModalProvider";
+import { DeveloperProjectShareButton } from "@/components/developer/DeveloperProjectShareButton";
 
 type DeveloperProjectCardProps = {
   slug: string;
@@ -78,6 +79,11 @@ export function DeveloperProjectCard({
     >
       <div className="image-zoom-frame relative aspect-[4/3] overflow-hidden bg-navy-50">
         <img src={heroImage || "/placeholder-property.png"} alt={projectName} className="zoomable-image h-full w-full object-cover" loading="lazy" />
+        <DeveloperProjectShareButton
+          slug={slug}
+          title={projectName}
+          className="absolute right-3 top-3 z-30"
+        />
         <div className="absolute left-3 top-3 flex flex-col items-start gap-1">
           <span className="rounded-md bg-violet-600 px-2 py-1 text-xs font-bold uppercase text-white">New Development</span>
           {hasLotOnly && <span className="rounded-md bg-emerald-700 px-2 py-1 text-xs font-bold uppercase text-white">Lot inventory</span>}

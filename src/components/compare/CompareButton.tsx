@@ -5,7 +5,13 @@ import { useEffect, useState } from "react";
 import { COMPARE_EVENT, MAX_COMPARE, readCompare, writeCompare, type CompareItem } from "@/lib/compare";
 import { trackEvent } from "@/lib/analytics";
 
-export function CompareButton({ item, className = "" }: { item: CompareItem; className?: string }) {
+type CompareButtonProps = {
+  item: CompareItem;
+  className?: string;
+  tooltipPlacement?: "left" | "top";
+};
+
+export function CompareButton({ item, className = "", tooltipPlacement = "left" }: CompareButtonProps) {
   const [active, setActive] = useState(false);
   const [message, setMessage] = useState("");
 
@@ -33,6 +39,10 @@ export function CompareButton({ item, className = "" }: { item: CompareItem; cla
   const tooltip = active
     ? "Remove this listing from compare."
     : "Add this listing to compare side-by-side with other saved choices.";
+  const tooltipClass =
+    tooltipPlacement === "top"
+      ? "bottom-full left-1/2 mb-2 w-52 -translate-x-1/2"
+      : "right-full top-1/2 mr-2 w-48 -translate-y-1/2";
 
   return (
     <div className={`relative ${className}`}>
@@ -47,7 +57,7 @@ export function CompareButton({ item, className = "" }: { item: CompareItem; cla
       >
         <Scale size={20} strokeWidth={2.2} />
       </button>
-      <span className="pointer-events-none absolute right-full top-1/2 z-40 mr-2 hidden w-48 -translate-y-1/2 rounded-lg bg-blue-700 px-3 py-2 text-left text-[11px] font-semibold leading-snug text-white shadow-xl peer-hover:block peer-focus-visible:block">
+      <span className={`pointer-events-none absolute z-[9200] hidden rounded-lg bg-blue-700 px-3 py-2 text-left text-[11px] font-semibold leading-snug text-white shadow-xl peer-hover:block peer-focus-visible:block ${tooltipClass}`}>
         {tooltip}
       </span>
       {message && <span className="absolute right-0 top-full mt-1 whitespace-nowrap rounded bg-navy-900 px-2 py-1 text-[10px] text-white">{message}</span>}

@@ -5,6 +5,7 @@ import { Bath, BedDouble, Building2, Car, ChevronLeft, ChevronRight, MapPin, Rul
 import { PaymentCalculator } from "@/components/property/PaymentCalculator";
 import { VideoEmbed } from "@/components/video/VideoEmbed";
 import { trackLead, trackViewContent } from "@/lib/analytics";
+import { DeveloperProjectShareButton } from "@/components/developer/DeveloperProjectShareButton";
 
 type Model = {
   id: string;
@@ -347,7 +348,15 @@ function DeveloperProjectModalContent({ payload, openInquiryAfterLoad, initialMo
         {(selectedModel || models.length === 0) && <button type="button" onClick={() => setInquiryOpen(true)} className="mt-6 w-full rounded-xl bg-gold-500 px-5 py-3 font-bold text-navy-950 shadow-lg hover:bg-gold-400">
           Inquire about {selectedModel?.name || project.projectName}
         </button>}
-        <a href={`/projects/${project.slug}`} className="mt-6 inline-flex w-full justify-center rounded-xl border border-navy-200 px-5 py-3 font-bold text-navy-900 hover:border-gold-400">Open full project page</a>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <DeveloperProjectShareButton
+            slug={project.slug}
+            title={project.projectName}
+            projectId={project.id}
+            label
+          />
+          <a href={`/projects/${project.slug}`} className="inline-flex min-h-11 flex-1 justify-center rounded-full border border-navy-200 px-5 py-3 font-bold text-navy-900 hover:border-gold-400">Open full project page</a>
+        </div>
       </aside>
       {inquiryOpen && (
         <div className="fixed inset-0 z-[9100] flex items-end justify-center overflow-y-auto bg-navy-950/75 p-0 sm:items-center sm:p-4" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && setInquiryOpen(false)}>

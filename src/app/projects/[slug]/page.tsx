@@ -4,6 +4,7 @@ import { Bath, BedDouble, Building2, Car, MapPin, Ruler, Square } from "lucide-r
 import { getDeveloperProjectBySlug } from "@/lib/developer-inventory";
 import { VideoEmbed } from "@/components/video/VideoEmbed";
 import { DeveloperProjectGalleryCarousel, DeveloperProjectPhotoButton } from "@/components/developer/DeveloperProjectPhotoActions";
+import { DeveloperProjectShareButton } from "@/components/developer/DeveloperProjectShareButton";
 
 type PageProps = { params: Promise<{ slug: string }> };
 
@@ -64,6 +65,13 @@ export default async function ProjectPage({ params }: PageProps) {
               <span className="rounded-full bg-violet-600 px-3 py-1 text-xs font-extrabold uppercase text-white shadow-lg shadow-violet-950/35">{statusLabel(project.status)}</span>
               <span className="rounded-full bg-gold-500 px-3 py-1 text-xs font-extrabold uppercase text-navy-950 shadow-lg shadow-navy-950/25">Starting from {formatPeso(startingPrice)}</span>
             </div>
+            <DeveloperProjectShareButton
+              slug={project.slug}
+              title={project.projectName}
+              projectId={project.id}
+              className="mt-5"
+              label
+            />
           </div>
           <DeveloperProjectGalleryCarousel slug={project.slug} projectName={project.projectName} images={gallery} />
         </div>
