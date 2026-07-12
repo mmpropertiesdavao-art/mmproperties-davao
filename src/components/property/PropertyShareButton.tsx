@@ -20,6 +20,7 @@ export function PropertyShareButton({
   label = false,
 }: PropertyShareButtonProps) {
   const [copied, setCopied] = useState(false);
+  const sizeClass = label ? "min-h-11 px-4" : "min-h-11 min-w-11";
 
   async function share(event: React.MouseEvent) {
     event.preventDefault();
@@ -45,11 +46,11 @@ export function PropertyShareButton({
       onMouseDown={(event) => event.stopPropagation()}
       onTouchStart={(event) => event.stopPropagation()}
       onClick={share}
-      className={`${className} inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-full border border-navy-200 bg-white/95 px-3 text-navy-900 shadow-lg transition hover:border-gold-400 hover:bg-gold-50 active:scale-95`}
+      className={`${className} inline-flex ${sizeClass} items-center justify-center gap-2 rounded-full border border-navy-200 bg-white/95 text-navy-900 shadow-lg transition hover:border-gold-400 hover:bg-gold-50 active:scale-95`}
       aria-label="Share this listing"
       title={copied ? "Listing link copied" : "Share listing"}
     >
-      <Forward className="fill-navy-900 text-navy-900" size={18} strokeWidth={2.7} />
+      <Forward className="fill-navy-900 text-navy-900" size={20} strokeWidth={2.7} />
       {label && <span className="text-sm font-semibold">{copied ? "Copied" : "Share"}</span>}
     </button>
   );
