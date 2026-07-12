@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
   const developerId = await resolveDeveloper(body.developerName, actor);
   const slug = slugify(title, Date.now().toString(36));
 
-  const { rows } = await db.query<{ id: string; slug: string }>({
+  const { rows } = await db.query<{ id: string; slug: string; publicId: string | null }>({
     text: `
       INSERT INTO properties (
         title, slug, description, property_type_id, developer_id,
@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
         now(), now()
       FROM property_types pt
       WHERE pt.slug = $24
-      RETURNING id, slug
+      RETURNING id, slug, public_id AS "publicId"
     `,
     values: [
       title,
@@ -112,7 +112,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid property type." }, { status: 400 });
   }
 
+  let finalSlug = rows[0].slug;
+  if (rows[0].publicId) {
+    finalSlug = slugify(title, rows[0].publicId);
+    await db.query({
+      text: `UPDATE properties SET slug=$1, updated_at=now() WHERE id=$2::uuid`,
+      values: [finalSlug, rows[0].id],
+    });
+  }
+
   await syncPropertyPlaces(rows[0].id, body.primaryPlace, body.nearbyPlaces, actor);
 
-  return NextResponse.json({ ok: true, id: rows[0].id, slug: rows[0].slug });
+  return NextResponse.json({ ok: true, id: rows[0].id, slug: finalSlug });
 }

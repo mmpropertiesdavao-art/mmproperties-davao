@@ -93,7 +93,7 @@ export async function POST(req: NextRequest) {
       if(duplicates.length&&!row.allowDuplicate){results.push({row:i+1,title:row.title,status:"failed",error:`Possible duplicate: ${duplicates.map(d=>String(d.title)).join(", ")}. Review or set allowDuplicate=true.`});continue}
       const developerId=await resolveDeveloper(row.developerName,actor);
 
-      const { rows: inserted } = await db.query({
+      const { rows: inserted } = await db.query<{ id: string; publicId: string | null }>({
         text: `
           INSERT INTO properties (
             title, slug, description, property_type_id, developer_id, agent_id, seller_id,
@@ -112,7 +112,7 @@ export async function POST(req: NextRequest) {
             $13, $14, ST_MakePoint($15, $16)::geography, $17,
             $21, $22, $23, $24, $25
           FROM property_types pt WHERE pt.slug = $20
-          RETURNING id
+          RETURNING id, public_id AS "publicId"
         `,
         values: [
           row.title,
@@ -149,6 +149,14 @@ export async function POST(req: NextRequest) {
         results.push({ row: i + 1, title: row.title, status: "failed", error: "Invalid propertyTypeSlug" });
         continue;
       }
+
+      if (inserted[0].publicId) {
+        await db.query({
+          text: `UPDATE properties SET slug=$1, updated_at=now() WHERE id=$2::uuid`,
+          values: [slugify(row.title, inserted[0].publicId), inserted[0].id],
+        });
+      }
+
       await syncPropertyPlaces(inserted[0].id,row.primaryPlace,row.nearbyPlaces,actor);
 
       results.push({ row: i + 1, title: row.title, status: "created" });

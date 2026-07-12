@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 
 import { FilterBar } from "@/components/search/FilterBar";
-import { PropertyCard } from "@/components/property/PropertyCard";
+import { SearchPropertyCard } from "@/components/property/SearchPropertyCard";
 import { DeveloperProjectCard } from "@/components/developer/DeveloperProjectCard";
 import type { Property, PropertySearchFilters } from "@/types/property";
 import { trackEvent } from "@/lib/analytics";
@@ -95,8 +95,41 @@ export default function SearchPage() {
   return (
     <div className="min-h-[calc(100vh-80px)]">
       <FilterBar onChange={(next) => setFilters({ ...next, page: 1 })} />
-      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(440px,48vw)]">
-        <div className="min-w-0 p-4">
+      <div className="grid grid-cols-1 lg:h-[calc(100vh-132px)] lg:grid-cols-[minmax(480px,58vw)_minmax(360px,1fr)] lg:overflow-hidden">
+        <aside className="order-2 min-w-0 border-t lg:order-1 lg:h-full lg:border-r lg:border-t-0">
+          <div className="h-[420px] overflow-hidden lg:h-full">
+            <MapView
+              properties={[
+                ...mapResults.map((property) => ({
+                id: property.id,
+                slug: property.slug,
+                title: property.title,
+                price: property.price,
+                lat: property.lat,
+                lng: property.lng,
+                neighborhoodName: property.neighborhoodName,
+                listingIntent: property.listingIntent,
+                rentPrice: property.rentPrice,
+                })),
+                ...developerProjects
+                  .filter((project) => Number.isFinite(Number(project.latitude)) && Number.isFinite(Number(project.longitude)) && project.startingPrice)
+                  .map((project) => ({
+                    id: `project-${project.id}`,
+                    slug: project.slug,
+                    title: project.projectName,
+                    price: Number(project.startingPrice),
+                    lat: Number(project.latitude),
+                    lng: Number(project.longitude),
+                    neighborhoodName: project.barangay || project.city,
+                    listingIntent: "new_development" as const,
+                    pinType: "developer_project" as const,
+                  })),
+              ]}
+            />
+          </div>
+        </aside>
+
+        <div className="order-1 min-w-0 p-4 lg:order-2 lg:h-full lg:overflow-y-auto">
           <div className="mb-4">
             <h1 className="text-2xl font-bold text-navy-950">Search Davao properties</h1>
             <p className="mt-1 text-sm leading-6 text-navy-500">
@@ -105,9 +138,9 @@ export default function SearchPage() {
           </div>
           <p className="mb-3 text-sm text-gray-500">{totalCount} properties found · {developerProjects.length} new developments</p>
           {error && <p className="mb-3 rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</p>}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
             {results.map((property) => (
-              <PropertyCard
+              <SearchPropertyCard
                 key={property.id}
                 id={property.id}
                 slug={property.slug}
@@ -164,39 +197,6 @@ export default function SearchPage() {
           </div>
           {totalCount > 24 && <div className="mt-6 flex items-center justify-center gap-3 pb-6"><button disabled={(filters.page ?? 1) <= 1} onClick={() => setFilters((current) => ({ ...current, page: Math.max(1, (current.page ?? 1) - 1) }))} className="rounded-md border px-4 py-2 text-sm disabled:opacity-40">Previous</button><span className="text-sm text-navy-500">Page {filters.page ?? 1} of {Math.ceil(totalCount / 24)}</span><button disabled={(filters.page ?? 1) >= Math.ceil(totalCount / 24)} onClick={() => setFilters((current) => ({ ...current, page: (current.page ?? 1) + 1 }))} className="rounded-md border px-4 py-2 text-sm disabled:opacity-40">Next</button></div>}
         </div>
-
-        <aside className="min-w-0 border-t lg:self-stretch lg:border-l lg:border-t-0">
-          <div className="h-[420px] overflow-hidden lg:sticky lg:top-0 lg:h-screen">
-            <MapView
-              properties={[
-                ...mapResults.map((property) => ({
-                id: property.id,
-                slug: property.slug,
-                title: property.title,
-                price: property.price,
-                lat: property.lat,
-                lng: property.lng,
-                neighborhoodName: property.neighborhoodName,
-                listingIntent: property.listingIntent,
-                rentPrice: property.rentPrice,
-                })),
-                ...developerProjects
-                  .filter((project) => Number.isFinite(Number(project.latitude)) && Number.isFinite(Number(project.longitude)) && project.startingPrice)
-                  .map((project) => ({
-                    id: `project-${project.id}`,
-                    slug: project.slug,
-                    title: project.projectName,
-                    price: Number(project.startingPrice),
-                    lat: Number(project.latitude),
-                    lng: Number(project.longitude),
-                    neighborhoodName: project.barangay || project.city,
-                    listingIntent: "new_development" as const,
-                    pinType: "developer_project" as const,
-                  })),
-              ]}
-            />
-          </div>
-        </aside>
       </div>
     </div>
   );

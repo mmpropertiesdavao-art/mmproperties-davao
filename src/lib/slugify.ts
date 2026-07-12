@@ -7,10 +7,19 @@ export function slugify(title: string, suffix?: string): string {
     .replace(/\s+/g, "-")
     .replace(/-+/g, "-")
     .replace(/^-+|-+$/g, "");
-  const fallback = suffix ? "listing" : "";
+  const safeSuffix = suffix
+    ? String(suffix)
+        .toLowerCase()
+        .replace(/[^a-z0-9\s-]/g, "")
+        .trim()
+        .replace(/\s+/g, "-")
+        .replace(/-+/g, "-")
+        .replace(/^-+|-+$/g, "")
+    : "";
+  const fallback = safeSuffix ? "listing" : "";
   const safeBase = base || fallback;
   if (!safeBase) return "";
-  return suffix ? `${safeBase}-${suffix}` : safeBase;
+  return safeSuffix ? `${safeBase}-${safeSuffix}` : safeBase;
 }
 
 export function isValidSlug(slug: unknown): slug is string {
