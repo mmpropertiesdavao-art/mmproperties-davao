@@ -109,6 +109,20 @@ export async function getAllActiveProperties(): Promise<(Property & { updatedAt:
 }
 
 export async function getPropertyBySlug(slug: string): Promise<Property | null> {
+  const { rows: aliasTableRows } = await db.query<{ exists: boolean }>({
+    text: "SELECT to_regclass('public.property_slug_aliases') IS NOT NULL AS exists",
+    values: [],
+  });
+  const hasSlugAliasTable = Boolean(aliasTableRows[0]?.exists);
+  const aliasWhere = hasSlugAliasTable
+    ? `OR p.id = (
+          SELECT psa.property_id
+          FROM property_slug_aliases psa
+          WHERE psa.slug = $1
+          LIMIT 1
+        )`
+    : "";
+
   const { rows } = await db.query({
     text: `
       SELECT p.id,p.public_id AS "publicId",p.slug,p.title,p.description,p.price::float AS price,
@@ -134,6 +148,9 @@ export async function getPropertyBySlug(slug: string): Promise<Property | null> 
       LEFT JOIN users au ON au.id=a.user_id
       LEFT JOIN users su ON su.id=p.seller_id
       WHERE p.slug = $1
+        ${aliasWhere}
+      ORDER BY CASE WHEN p.slug = $1 THEN 0 ELSE 1 END
+      LIMIT 1
     `,
     values: [slug],
   });

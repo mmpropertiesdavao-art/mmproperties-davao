@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Bath, BedDouble, CarFront, LandPlot, MapPin, Ruler } from "lucide-react";
 import { CompareButton } from "@/components/compare/CompareButton";
 import { FavoriteButton } from "@/components/property/FavoriteButton";
+import { PropertyShareButton } from "@/components/property/PropertyShareButton";
 import { usePropertyModal } from "@/components/property/PropertyModalProvider";
 
 type SearchPropertyCardProps = {
@@ -128,6 +129,7 @@ export function SearchPropertyCard({
         </div>
         <FavoriteButton propertyId={id} />
         <CompareButton item={{ id, slug, title, listingIntent }} className="absolute right-2 top-12" />
+        <PropertyShareButton slug={slug} title={title} propertyId={id} className="absolute right-2 top-[5.9rem] z-30" />
       </div>
 
       <div className="p-3">

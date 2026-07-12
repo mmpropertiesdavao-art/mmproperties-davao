@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Bath, BedDouble, CarFront, LandPlot, MapPin, Ruler } from "lucide-react";
 import { FavoriteButton } from "@/components/property/FavoriteButton";
 import { CompareButton } from "@/components/compare/CompareButton";
+import { PropertyShareButton } from "@/components/property/PropertyShareButton";
 import { usePropertyModal } from "@/components/property/PropertyModalProvider";
 
 interface PropertyCardProps {
@@ -235,6 +236,8 @@ export function PropertyCard({
           item={{ id, slug, title, listingIntent }}
           className="absolute right-3 top-14"
         />
+
+        <PropertyShareButton slug={slug} title={title} propertyId={id} />
       </div>
 
       <div className="flex flex-1 flex-col p-4">

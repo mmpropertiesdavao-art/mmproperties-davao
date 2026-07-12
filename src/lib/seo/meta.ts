@@ -1,4 +1,3 @@
-// src/lib/seo/meta.ts
 import type { Metadata } from "next";
 import type { Property, Neighborhood } from "@/types/property";
 
@@ -17,15 +16,36 @@ function absoluteUrl(path: string) {
 }
 
 export function propertyMetadata(property: Property): Metadata {
+  const imageUrl = property.coverImageUrl ? absoluteUrl(property.coverImageUrl) : absoluteUrl("/mm-social-preview.png");
+  const location = property.barangay || property.neighborhoodName || "Davao City";
+  const title = `${property.title} | ${location}, Davao City`;
+  const description = `${property.bedrooms ?? ""} bedroom ${property.propertyTypeLabel} in ${location}, Davao City. ${
+    property.floorAreaSqm ? `${property.floorAreaSqm} sqm. ` : ""
+  }View photos, pricing, and schedule a viewing with MM Properties.`;
+
   return {
-    title: `${property.title} | ${property.neighborhoodName}, Davao City — ₱${property.price.toLocaleString()}`,
-    description: `${property.bedrooms ?? ""} bedroom ${property.propertyTypeLabel} in ${property.neighborhoodName}, Davao City. ${
-      property.floorAreaSqm ? `${property.floorAreaSqm} sqm. ` : ""
-    }View photos, pricing, and schedule a viewing.`,
+    title: `${title} - PHP ${property.price.toLocaleString("en-PH")}`,
+    description,
     openGraph: {
-      title: property.title,
-      images: [property.coverImageUrl],
+      title,
+      description,
+      url: `${SITE_URL}/property/${property.slug}`,
+      siteName: "MM Properties Davao",
+      images: [
+        {
+          url: imageUrl,
+          width: 1200,
+          height: 630,
+          alt: property.title,
+        },
+      ],
       type: "website",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [imageUrl],
     },
     alternates: { canonical: `${SITE_URL}/property/${property.slug}` },
   };
@@ -34,7 +54,7 @@ export function propertyMetadata(property: Property): Metadata {
 export function neighborhoodMetadata(neighborhood: Neighborhood): Metadata {
   return {
     title: `${neighborhood.name} Real Estate & Properties | Davao City`,
-    description: `Explore homes for sale in ${neighborhood.name}, Davao City — average prices, nearby schools and hospitals, and current listings.`,
+    description: `Explore homes for sale in ${neighborhood.name}, Davao City - average prices, nearby schools and hospitals, and current listings.`,
     alternates: { canonical: `${SITE_URL}/neighborhoods/${neighborhood.slug}` },
   };
 }
@@ -46,7 +66,7 @@ export function propertyJsonLd(property: Property) {
     name: property.title,
     description: property.description,
     url: `${SITE_URL}/property/${property.slug}`,
-    image: [property.coverImageUrl],
+    image: [property.coverImageUrl ? absoluteUrl(property.coverImageUrl) : absoluteUrl("/mm-social-preview.png")],
     offers: {
       "@type": "Offer",
       price: property.price,

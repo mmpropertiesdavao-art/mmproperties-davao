@@ -14,6 +14,7 @@ import { PropertyGallery } from "@/components/property/PropertyGallery";
 import { PropertyViewTracker } from "@/components/property/PropertyViewTracker";
 import { PropertyVideos } from "@/components/property/PropertyVideos";
 import { CompareButton } from "@/components/compare/CompareButton";
+import { PropertyShareButton } from "@/components/property/PropertyShareButton";
 import { PropertyContactModal } from "@/components/property/PropertyContactModal";
 
 export async function generateMetadata({
@@ -112,6 +113,13 @@ export default async function PropertyPage({
                 listingIntent: property.listingIntent,
               }}
               className="relative ml-auto"
+            />
+            <PropertyShareButton
+              slug={property.slug}
+              title={property.title}
+              propertyId={property.id}
+              className="relative right-auto top-auto"
+              label
             />
           </div>
 
