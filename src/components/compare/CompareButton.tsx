@@ -41,7 +41,7 @@ export function CompareButton({ item, className = "", tooltipPlacement = "left" 
     : "Add this listing to compare side-by-side with other saved choices.";
   const tooltipClass =
     tooltipPlacement === "top"
-      ? "bottom-full left-1/2 mb-2 w-52 -translate-x-1/2"
+      ? "bottom-full left-0 mb-2 w-56"
       : "right-full top-1/2 mr-2 w-48 -translate-y-1/2";
 
   return (
