@@ -230,14 +230,14 @@ export function PropertyCard({
           )}
         </div>
 
-        <FavoriteButton propertyId={id} />
-
-        <CompareButton
-          item={{ id, slug, title, listingIntent }}
-          className="absolute right-3 top-14"
-        />
-
-        <PropertyShareButton slug={slug} title={title} propertyId={id} />
+        <div className="absolute right-3 top-3 z-30 flex flex-col gap-2">
+          <FavoriteButton propertyId={id} className="relative right-auto top-auto" />
+          <CompareButton
+            item={{ id, slug, title, listingIntent }}
+            className="relative right-auto top-auto"
+          />
+          <PropertyShareButton slug={slug} title={title} propertyId={id} />
+        </div>
       </div>
 
       <div className="flex flex-1 flex-col p-4">

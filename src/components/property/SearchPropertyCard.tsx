@@ -127,9 +127,11 @@ export function SearchPropertyCard({
           {isForeclosed && <span className="rounded-md bg-gold-500 px-2 py-1 text-[10px] font-black text-navy-950">FORECLOSED</span>}
           {availability !== "available" && <span className="rounded-md bg-slate-800 px-2 py-1 text-[10px] font-black uppercase text-white">{availability}</span>}
         </div>
-        <FavoriteButton propertyId={id} />
-        <CompareButton item={{ id, slug, title, listingIntent }} className="absolute right-2 top-12" />
-        <PropertyShareButton slug={slug} title={title} propertyId={id} className="absolute right-2 top-[5.9rem] z-30" />
+        <div className="absolute right-2 top-2 z-30 flex flex-col gap-2">
+          <FavoriteButton propertyId={id} className="relative right-auto top-auto" />
+          <CompareButton item={{ id, slug, title, listingIntent }} className="relative right-auto top-auto" />
+          <PropertyShareButton slug={slug} title={title} propertyId={id} />
+        </div>
       </div>
 
       <div className="p-3">

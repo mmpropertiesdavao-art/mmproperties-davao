@@ -7,7 +7,6 @@ import {
   Car,
   ChevronLeft,
   ChevronRight,
-  Copy,
   Home,
   MapPin,
   Maximize2,
@@ -20,6 +19,7 @@ import { InquiryForm } from "@/components/property/InquiryForm";
 import { FavoriteButton } from "@/components/property/FavoriteButton";
 import { CompareButton } from "@/components/compare/CompareButton";
 import { PaymentCalculator } from "@/components/property/PaymentCalculator";
+import { PropertyShareButton } from "@/components/property/PropertyShareButton";
 
 type GalleryImage = { url: string; altText: string | null };
 type Video = { id: string; url: string; thumbnailUrl?: string | null; videoType?: string };
@@ -68,7 +68,6 @@ export function PropertyDetailsModal({ payload }: { payload: PropertyDetailPaylo
   const [activeIndex, setActiveIndex] = useState(0);
   const [expanded, setExpanded] = useState(false);
   const [inquiryOpen, setInquiryOpen] = useState(false);
-  const [copied, setCopied] = useState(false);
   const touchStartX = useRef<number | null>(null);
 
   const description = property.description || "Full property description will be added soon.";
@@ -96,18 +95,6 @@ export function PropertyDetailsModal({ payload }: { payload: PropertyDetailPaylo
 
   function next() {
     setActiveIndex((current) => (current + 1) % images.length);
-  }
-
-  async function share() {
-    const url = `${window.location.origin}/property/${property.slug}`;
-    if (navigator.share) {
-      await navigator.share({ title: property.title, text: property.title, url }).catch(() => {});
-      return;
-    }
-
-    await navigator.clipboard?.writeText(url).catch(() => {});
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1600);
   }
 
   useEffect(() => {
@@ -289,14 +276,13 @@ export function PropertyDetailsModal({ payload }: { payload: PropertyDetailPaylo
               }}
               className="relative right-auto top-auto"
             />
-            <button
-              type="button"
-              onClick={share}
-              className="inline-flex items-center gap-2 rounded-full border border-navy-200 bg-white px-3 py-2 text-sm font-semibold text-navy-800 hover:border-gold-400"
-            >
-              <Copy size={16} />
-              {copied ? "Copied" : "Share"}
-            </button>
+            <PropertyShareButton
+              slug={property.slug}
+              title={property.title}
+              propertyId={property.id}
+              className="relative right-auto top-auto"
+              label
+            />
             <a
               href={`/property/${property.slug}`}
               className="inline-flex items-center gap-2 rounded-full border border-navy-200 bg-white px-3 py-2 text-sm font-semibold text-navy-800 hover:border-gold-400"
