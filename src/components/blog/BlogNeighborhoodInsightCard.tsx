@@ -22,7 +22,10 @@ function safeHref(value?: string) {
 
 function searchHrefForNeighborhood(name?: string, explicit?: string) {
   if (explicit?.trim()) return safeHref(explicit.trim());
-  const area = String(name || "").split("/")[0]?.trim() || String(name || "").trim();
+  const area =
+    String(name || "")
+      .split(/\s*(?:\/|,|\band\b|&)\s*/i)[0]
+      ?.trim() || String(name || "").trim();
   return area ? `/search?barangay=${encodeURIComponent(area)}` : "/search";
 }
 
@@ -87,6 +90,7 @@ export function BlogNeighborhoodInsightCard({
   const [activeKey, setActiveKey] = useState(tabs[0]?.key || "");
   const active = tabs.find((tab) => tab.key === activeKey) || tabs[0];
   const href = searchHrefForNeighborhood(title, ctaUrl);
+  const secondaryHref = ctaUrl?.trim() ? href : searchHrefForNeighborhood(title, "");
 
   return (
     <section className="rounded-2xl border border-navy-100 bg-navy-50/70 p-5 shadow-sm sm:p-6">
@@ -125,7 +129,7 @@ export function BlogNeighborhoodInsightCard({
           {ctaLabel || "Check our listings"} →
         </a>
         {title && (
-          <a href={searchHrefForNeighborhood(title, "")} className="text-sm font-bold text-gold-700 underline underline-offset-4 hover:text-navy-900">
+          <a href={secondaryHref} className="text-sm font-bold text-gold-700 underline underline-offset-4 hover:text-navy-900">
             Search {title}
           </a>
         )}
