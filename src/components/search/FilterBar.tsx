@@ -74,7 +74,7 @@ export function FilterBar({ onChange }: FilterBarProps) {
   }
 
   return (
-    <div className="border-b bg-white p-3 shadow-sm md:p-4">
+    <div className="relative z-[2000] border-b bg-white p-3 shadow-sm md:p-4">
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
@@ -240,7 +240,7 @@ function NeighborhoodCombobox({ options, onChange }: { options: NeighborhoodOpti
         </button>
       </div>
       {open && (
-        <div id="neighborhood-filter-options" className="absolute left-0 right-0 top-[calc(100%+6px)] z-40 overflow-hidden rounded-xl border border-navy-200 bg-white shadow-xl">
+        <div id="neighborhood-filter-options" className="absolute left-0 right-0 top-[calc(100%+6px)] z-[2100] overflow-hidden rounded-xl border border-navy-200 bg-white shadow-xl">
           <div className="max-h-72 overflow-y-auto py-1">
             {results.length > 0 ? (
               results.map((option) => (
