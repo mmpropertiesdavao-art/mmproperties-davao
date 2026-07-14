@@ -4,6 +4,7 @@ export type DeveloperProjectSearchRow = {
   id: string;
   slug: string;
   projectName: string;
+  projectType: string | null;
   developerName: string;
   status: string;
   address: string | null;
@@ -93,6 +94,7 @@ export async function getActiveDeveloperProjects(limit = 24, filters: DeveloperP
           p.id,
           p.slug,
           p.project_name AS "projectName",
+          p.project_type AS "projectType",
           d.name AS "developerName",
           p.status,
           p.address,
@@ -132,6 +134,7 @@ export async function getActiveDeveloperProjects(limit = 24, filters: DeveloperP
           AND (
             $10::text IS NULL
             OR $10::text = 'new-development'
+            OR ($10::text = 'condominium' AND p.project_type = 'condominium')
             OR ($10::text = 'lot-only' AND EXISTS (SELECT 1 FROM developer_house_models tm WHERE tm.project_id=p.id AND tm.active=true AND tm.model_type='lot_only'))
             OR ($10::text IN ('house-and-lot','townhouse') AND EXISTS (SELECT 1 FROM developer_house_models tm WHERE tm.project_id=p.id AND tm.active=true AND tm.model_type='house_model'))
           )
@@ -210,6 +213,7 @@ export async function getDeveloperProjectBySlug(slug: string) {
         p.id,
         p.slug,
         p.project_name AS "projectName",
+        p.project_type AS "projectType",
         p.address,
         p.barangay,
         p.city,

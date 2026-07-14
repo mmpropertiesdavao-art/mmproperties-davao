@@ -7,6 +7,8 @@ CREATE TABLE IF NOT EXISTS public.developer_projects (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   developer_id UUID NOT NULL REFERENCES public.developers(id) ON DELETE CASCADE,
   project_name TEXT NOT NULL,
+  project_type TEXT
+    CHECK (project_type IN ('condominium','house-and-lot','lot-only','townhouse','commercial','mixed-use')),
   slug TEXT NOT NULL UNIQUE,
   address TEXT,
   barangay TEXT,
@@ -58,6 +60,10 @@ CREATE TABLE IF NOT EXISTS public.developer_house_models (
 CREATE INDEX IF NOT EXISTS idx_developer_house_models_project ON public.developer_house_models(project_id, active);
 
 ALTER TABLE public.developer_projects ADD COLUMN IF NOT EXISTS video_url TEXT;
+ALTER TABLE public.developer_projects ADD COLUMN IF NOT EXISTS project_type TEXT;
+ALTER TABLE public.developer_projects DROP CONSTRAINT IF EXISTS developer_projects_project_type_check;
+ALTER TABLE public.developer_projects ADD CONSTRAINT developer_projects_project_type_check
+  CHECK (project_type IS NULL OR project_type IN ('condominium','house-and-lot','lot-only','townhouse','commercial','mixed-use'));
 ALTER TABLE public.developer_house_models ADD COLUMN IF NOT EXISTS video_url TEXT;
 ALTER TABLE public.developer_house_models ADD COLUMN IF NOT EXISTS model_type TEXT NOT NULL DEFAULT 'house_model';
 ALTER TABLE public.developer_house_models DROP CONSTRAINT IF EXISTS developer_house_models_model_type_check;

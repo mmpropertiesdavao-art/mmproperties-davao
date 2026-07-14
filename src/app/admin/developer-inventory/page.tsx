@@ -27,6 +27,7 @@ type Model = {
 type Project = {
   id: string;
   projectName: string;
+  projectType: string | null;
   slug: string;
   address: string | null;
   barangay: string | null;
@@ -98,7 +99,7 @@ export default function DeveloperInventoryAdminPage() {
         const developerMatches = matches(developer.name, developer.website, developer.email, developer.contactNumber, developer.description);
         const filteredProjects = developer.projects
           .map((project) => {
-            const projectMatches = matches(project.projectName, project.address, project.barangay, project.city, project.province, project.status, project.description);
+            const projectMatches = matches(project.projectName, project.projectType, project.address, project.barangay, project.city, project.province, project.status, project.description);
             const filteredModels = projectMatches
               ? project.models
               : project.models.filter((model) => matches(model.name, model.modelType, model.description, model.currentPrice, model.lotArea, model.floorArea));
@@ -254,6 +255,7 @@ export default function DeveloperInventoryAdminPage() {
           <div className="mt-4 grid gap-3 md:grid-cols-2">
             <div><span className={label}>Developer</span><select required value={selectedDeveloperId} onChange={(e) => setSelectedDeveloperId(e.target.value)} className={input}><option value="">Choose developer</option>{developers.map((developer) => <option key={developer.id} value={developer.id}>{developer.name}</option>)}</select></div>
             <Field name="projectName" label="Project name" required />
+            <ProjectTypeSelect />
             <Field name="barangay" label="Barangay" />
             <Field name="address" label="Address" />
             <Field name="city" label="City" defaultValue="Davao City" />
@@ -358,7 +360,7 @@ export default function DeveloperInventoryAdminPage() {
                     <div>
                       <p className="text-xs font-bold uppercase text-gold-700">{project.status.replace(/_/g, " ")}</p>
                       <h3 className="font-bold text-navy-900">{project.projectName}</h3>
-                      <p className="text-sm text-navy-500">{[project.barangay, project.city].filter(Boolean).join(", ")}</p>
+                      <p className="text-sm text-navy-500">{[formatProjectType(project.projectType), project.barangay, project.city].filter(Boolean).join(" · ")}</p>
                     </div>
                     <Link href={`/projects/${project.slug}`} className="rounded-lg border border-navy-200 px-3 py-2 text-sm font-semibold">Public page</Link>
                   </div>
@@ -601,6 +603,7 @@ function ProjectEditor({ project, saving, upload, onSaved, setMessage }: { proje
         type: "project",
         id: project.id,
         projectName: form.get("projectName") || project.projectName,
+        projectType: form.get("projectType") || "",
         slug: project.slug,
         status: form.get("status") || project.status,
         active: form.get("active") === "on",
@@ -648,6 +651,7 @@ function ProjectEditor({ project, saving, upload, onSaved, setMessage }: { proje
     >
       <div className="mb-4 grid gap-3 md:grid-cols-2">
         <Field name="projectName" label="Project name" defaultValue={project.projectName} required />
+        <ProjectTypeSelect defaultValue={project.projectType || ""} />
         <div>
           <span className={label}>Project status</span>
           <select name="status" className={input} defaultValue={project.status}>
@@ -717,6 +721,32 @@ function ProjectEditor({ project, saving, upload, onSaved, setMessage }: { proje
         </div>
       </div>
     </form>
+  );
+}
+
+function formatProjectType(value?: string | null) {
+  if (!value) return "";
+  if (value === "house-and-lot") return "House and Lot";
+  if (value === "lot-only") return "Lot Only";
+  if (value === "mixed-use") return "Mixed-use";
+  return value.replace(/-/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function ProjectTypeSelect({ defaultValue = "" }: { defaultValue?: string }) {
+  return (
+    <div>
+      <span className={label}>Project type</span>
+      <select name="projectType" className={input} defaultValue={defaultValue}>
+        <option value="">Choose type</option>
+        <option value="condominium">Condominium</option>
+        <option value="house-and-lot">House and Lot</option>
+        <option value="lot-only">Lot Only</option>
+        <option value="townhouse">Townhouse</option>
+        <option value="commercial">Commercial</option>
+        <option value="mixed-use">Mixed-use</option>
+      </select>
+      <p className="mt-1 text-[11px] leading-4 text-navy-400">Used by /search property type filters and guide CTAs.</p>
+    </div>
   );
 }
 

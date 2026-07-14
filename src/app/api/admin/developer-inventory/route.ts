@@ -26,6 +26,13 @@ function cleanVideoUrl(value: unknown) {
   return url;
 }
 
+const PROJECT_TYPES = new Set(["condominium", "house-and-lot", "lot-only", "townhouse", "commercial", "mixed-use"]);
+
+function cleanProjectType(value: unknown) {
+  const type = String(value || "").trim();
+  return PROJECT_TYPES.has(type) ? type : null;
+}
+
 async function uniqueProjectSlug(name: string, id?: string) {
   const base = slugify(name) || `project-${Date.now().toString(36)}`;
   let slug = base;
@@ -61,6 +68,7 @@ export async function GET() {
             DISTINCT jsonb_build_object(
               'id', p.id,
               'projectName', p.project_name,
+              'projectType', p.project_type,
               'slug', p.slug,
               'address', p.address,
               'barangay', p.barangay,
@@ -194,15 +202,16 @@ export async function POST(request: NextRequest) {
     const { rows } = await db.query({
       text: `
         INSERT INTO developer_projects(
-          developer_id, project_name, slug, address, barangay, city, province, latitude, longitude,
+          developer_id, project_name, project_type, slug, address, barangay, city, province, latitude, longitude,
           description, status, completion_date, amenities, hero_image, video_url, gallery, seo_title, seo_description, active
         )
-        VALUES($1::uuid,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
+        VALUES($1::uuid,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)
         RETURNING id, slug
       `,
       values: [
         developerId,
         projectName,
+        cleanProjectType(body.projectType),
         slug,
         String(body.address || "").trim() || null,
         String(body.barangay || "").trim() || null,
@@ -319,12 +328,12 @@ export async function PATCH(request: NextRequest) {
     await db.query({
       text: `
         UPDATE developer_projects
-        SET project_name=$1, slug=$2, address=$3, barangay=$4, city=$5, province=$6, latitude=$7, longitude=$8,
-            description=$9, status=$10, completion_date=$11, amenities=$12, hero_image=$13, video_url=$14, gallery=$15,
-            seo_title=COALESCE($16, seo_title), seo_description=COALESCE($17, seo_description), active=$18, updated_at=now()
-        WHERE id=$19::uuid
+        SET project_name=$1, slug=$2, project_type=$3, address=$4, barangay=$5, city=$6, province=$7, latitude=$8, longitude=$9,
+            description=$10, status=$11, completion_date=$12, amenities=$13, hero_image=$14, video_url=$15, gallery=$16,
+            seo_title=COALESCE($17, seo_title), seo_description=COALESCE($18, seo_description), active=$19, updated_at=now()
+        WHERE id=$20::uuid
       `,
-      values: [projectName, slug, body.address || null, body.barangay || null, body.city || "Davao City", body.province || "Davao del Sur", toNumber(body.latitude), toNumber(body.longitude), body.description || null, body.status || "pre_selling", body.completionDate || null, parseTextList(body.amenities), body.heroImage || null, cleanVideoUrl(body.videoUrl), parseTextList(body.gallery), body.seoTitle === undefined ? null : body.seoTitle || null, body.seoDescription === undefined ? null : body.seoDescription || null, toBool(body.active), id],
+      values: [projectName, slug, cleanProjectType(body.projectType), body.address || null, body.barangay || null, body.city || "Davao City", body.province || "Davao del Sur", toNumber(body.latitude), toNumber(body.longitude), body.description || null, body.status || "pre_selling", body.completionDate || null, parseTextList(body.amenities), body.heroImage || null, cleanVideoUrl(body.videoUrl), parseTextList(body.gallery), body.seoTitle === undefined ? null : body.seoTitle || null, body.seoDescription === undefined ? null : body.seoDescription || null, toBool(body.active), id],
     });
     return NextResponse.json({ ok: true, slug });
   }
