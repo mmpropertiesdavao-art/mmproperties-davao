@@ -216,7 +216,7 @@ export default function AccountLink() {
         </div>
 
         {dashboardOpen && (
-          <div className="absolute right-0 top-full z-50 w-72 pt-2">
+          <div className="absolute right-0 top-full z-[5100] w-72 pt-2">
             <div className="overflow-hidden rounded-xl border bg-white shadow-xl">
               <Link
                 href={dashboardHref}
@@ -261,7 +261,7 @@ export default function AccountLink() {
         </button>
 
         {accountOpen && (
-          <div className="absolute right-0 top-full z-50 w-64 pt-2">
+          <div className="absolute right-0 top-full z-[5100] w-64 pt-2">
             <div className="overflow-hidden rounded-xl border bg-white shadow-xl">
               <Link
                 href="/account/security"

@@ -19,7 +19,7 @@ export function SiteHeader() {
   const [open, setOpen] = useState(false);
 
   return (
-    <header className="border-b border-navy-800 bg-navy-900 text-white">
+    <header className="relative z-[5000] border-b border-navy-800 bg-navy-900 text-white">
       <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         <Link href="/" className="flex min-w-0 items-center gap-3 sm:gap-4" onClick={() => setOpen(false)}>
           <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white shadow-md sm:h-16 sm:w-16">
