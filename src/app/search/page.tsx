@@ -93,7 +93,7 @@ export default function SearchPage() {
   }, [filters]);
 
   return (
-    <div className="min-h-[calc(100vh-80px)]">
+    <div className="min-h-[calc(100vh-80px)] lg:h-[calc(100vh-80px)] lg:overflow-hidden">
       <FilterBar onChange={(next) => setFilters({ ...next, page: 1 })} />
       <div className="grid grid-cols-1 lg:h-[calc(100vh-148px)] lg:grid-cols-[minmax(480px,58vw)_minmax(360px,1fr)] lg:overflow-hidden">
         <aside className="order-2 min-w-0 border-t lg:order-1 lg:h-full lg:border-r lg:border-t-0">
