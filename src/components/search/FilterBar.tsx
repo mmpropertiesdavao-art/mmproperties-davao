@@ -74,7 +74,7 @@ export function FilterBar({ onChange }: FilterBarProps) {
   }
 
   return (
-    <div className="relative z-[2000] border-b bg-white p-3 shadow-sm md:p-4">
+    <div className="sticky top-20 z-[2000] border-b bg-white p-3 shadow-sm md:p-4">
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
