@@ -27,10 +27,16 @@ function cleanVideoUrl(value: unknown) {
 }
 
 const PROJECT_TYPES = new Set(["condominium", "house-and-lot", "lot-only", "townhouse", "commercial", "mixed-use"]);
+const MODEL_TYPES = new Set(["house_model", "lot_only", "studio", "one_bedroom", "two_bedroom", "three_bedroom", "four_bedroom", "penthouse"]);
 
 function cleanProjectType(value: unknown) {
   const type = String(value || "").trim();
   return PROJECT_TYPES.has(type) ? type : null;
+}
+
+function cleanModelType(value: unknown) {
+  const type = String(value || "").trim();
+  return MODEL_TYPES.has(type) ? type : "house_model";
 }
 
 async function uniqueProjectSlug(name: string, id?: string) {
@@ -251,7 +257,7 @@ export async function POST(request: NextRequest) {
       `,
       values: [
         projectId,
-        String(body.modelType || "house_model") === "lot_only" ? "lot_only" : "house_model",
+        cleanModelType(body.modelType),
         name,
         toNumber(body.bedrooms),
         toNumber(body.bathrooms),
@@ -343,7 +349,7 @@ export async function PATCH(request: NextRequest) {
       text: `SELECT current_price::float AS "currentPrice" FROM developer_house_models WHERE id=$1::uuid`,
       values: [id],
     });
-    if (!existing[0]) return NextResponse.json({ error: "House model not found." }, { status: 404 });
+    if (!existing[0]) return NextResponse.json({ error: "Inventory item not found." }, { status: 404 });
 
     const oldPrice = existing[0].currentPrice;
     const newPrice = toNumber(body.currentPrice);
@@ -354,7 +360,7 @@ export async function PATCH(request: NextRequest) {
             current_price=$8, description=$9, specifications=$10::jsonb, floor_plan_image=$11, video_url=$12, gallery=$13, active=$14, updated_at=now()
         WHERE id=$15::uuid
       `,
-      values: [String(body.modelType || "house_model") === "lot_only" ? "lot_only" : "house_model", body.name || "Model", toNumber(body.bedrooms), toNumber(body.bathrooms), toNumber(body.floorArea), toNumber(body.lotArea), toNumber(body.parkingSlots), newPrice, body.description || null, JSON.stringify(body.specifications || {}), body.floorPlanImage || null, cleanVideoUrl(body.videoUrl), parseTextList(body.gallery), toBool(body.active), id],
+      values: [cleanModelType(body.modelType), body.name || "Model", toNumber(body.bedrooms), toNumber(body.bathrooms), toNumber(body.floorArea), toNumber(body.lotArea), toNumber(body.parkingSlots), newPrice, body.description || null, JSON.stringify(body.specifications || {}), body.floorPlanImage || null, cleanVideoUrl(body.videoUrl), parseTextList(body.gallery), toBool(body.active), id],
     });
 
     if (newPrice !== null && oldPrice !== newPrice) {
@@ -413,7 +419,7 @@ export async function DELETE(request: NextRequest) {
       values: [id],
     });
 
-    if (!rows[0]) return NextResponse.json({ error: "House model or lot inventory not found." }, { status: 404 });
+    if (!rows[0]) return NextResponse.json({ error: "Inventory item not found." }, { status: 404 });
     if (String(body.confirmation || "") !== rows[0].name) {
       return NextResponse.json({ error: "Confirmation text does not match the model or lot name." }, { status: 400 });
     }

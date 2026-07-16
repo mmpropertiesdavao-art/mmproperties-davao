@@ -9,7 +9,7 @@ import { DeveloperProjectShareButton } from "@/components/developer/DeveloperPro
 
 type Model = {
   id: string;
-  modelType?: "house_model" | "lot_only";
+  modelType?: "house_model" | "lot_only" | "studio" | "one_bedroom" | "two_bedroom" | "three_bedroom" | "four_bedroom" | "penthouse";
   name: string;
   bedrooms: number | null;
   bathrooms: number | null;
@@ -71,6 +71,21 @@ function formatPeso(value: number | null | undefined) {
 
 function formatStatus(value: string) {
   return value.replace(/_/g, " ");
+}
+
+function inventoryTypeLabel(value?: string | null) {
+  if (value === "lot_only") return "Lot only";
+  if (value === "studio") return "Studio";
+  if (value === "one_bedroom") return "1 BR";
+  if (value === "two_bedroom") return "2 BR";
+  if (value === "three_bedroom") return "3 BR";
+  if (value === "four_bedroom") return "4 BR";
+  if (value === "penthouse") return "Penthouse";
+  return "House model";
+}
+
+function isCondoUnit(value?: string | null) {
+  return ["studio", "one_bedroom", "two_bedroom", "three_bedroom", "four_bedroom", "penthouse"].includes(String(value || ""));
 }
 
 export function DeveloperProjectModalProvider({ children }: { children: React.ReactNode }) {
@@ -263,13 +278,13 @@ function DeveloperProjectModalContent({ payload, openInquiryAfterLoad, initialMo
               {!isLotOnlyProject && <option value="">Select inventory</option>}
               {models.map((model) => (
                 <option key={model.id} value={model.id}>
-                  {model.name} - {model.modelType === "lot_only" ? "Lot only" : "House model"} - {formatPeso(model.currentPrice)}
+                  {model.name} - {inventoryTypeLabel(model.modelType)} - {formatPeso(model.currentPrice)}
                 </option>
               ))}
             </select>
           ) : (
             <p className="mt-3 rounded-lg bg-white p-3 text-sm text-navy-600">
-              No house model or lot inventory has been added yet. You can still review the project photos and send an inquiry.
+              No inventory has been added yet. You can still review the project photos and send an inquiry.
             </p>
           )}
           {!selectedModel && models.length > 0 && (
@@ -283,10 +298,10 @@ function DeveloperProjectModalContent({ payload, openInquiryAfterLoad, initialMo
           <>
             <p className="mt-4 text-2xl font-bold text-navy-950">{formatPeso(selectedModel.currentPrice)}</p>
             <p className="mt-1 text-sm font-semibold text-violet-700">
-              Selected {selectedModel.modelType === "lot_only" ? "lot" : "model"}: {selectedModel.name}
+              Selected {selectedModel.modelType === "lot_only" ? "lot" : isCondoUnit(selectedModel.modelType) ? "unit" : "model"}: {selectedModel.name}
             </p>
             <div className="mt-5 grid gap-3 sm:grid-cols-2">
-              <Info icon={<Building2 size={18} />} label={selectedModel.modelType === "lot_only" ? "Lot type" : "Model"} value={selectedModel.name} />
+              <Info icon={<Building2 size={18} />} label={selectedModel.modelType === "lot_only" ? "Lot type" : isCondoUnit(selectedModel.modelType) ? "Unit type" : "Model"} value={inventoryTypeLabel(selectedModel.modelType)} />
               {selectedModel.modelType !== "lot_only" && <Info icon={<BedDouble size={18} />} label="Bedrooms" value={selectedModel.bedrooms == null ? "Not provided" : String(selectedModel.bedrooms)} />}
               {selectedModel.modelType !== "lot_only" && <Info icon={<Bath size={18} />} label="Bathrooms" value={selectedModel.bathrooms == null ? "Not provided" : String(selectedModel.bathrooms)} />}
               {selectedModel.modelType === "lot_only" && <Info icon={<Ruler size={18} />} label="Price / sqm" value={selectedModel.lotArea && selectedModel.currentPrice ? formatPeso(selectedModel.currentPrice / selectedModel.lotArea) : "Not provided"} />}
@@ -304,7 +319,7 @@ function DeveloperProjectModalContent({ payload, openInquiryAfterLoad, initialMo
 
         {(selectedModel || models.length === 0) && descriptionText && (
           <section className="mt-5">
-            <h3 className="font-bold text-navy-900">{selectedModel?.modelType === "lot_only" ? "Lot description" : selectedModel ? "House description" : "Project description"}</h3>
+            <h3 className="font-bold text-navy-900">{selectedModel?.modelType === "lot_only" ? "Lot description" : selectedModel && isCondoUnit(selectedModel.modelType) ? "Unit description" : selectedModel ? "House description" : "Project description"}</h3>
             <p className="mt-2 whitespace-pre-line text-sm leading-7 text-navy-600">{displayedDescription}</p>
             {hasLongDescription && <button type="button" onClick={() => setExpanded((value) => !value)} className="mt-2 text-sm font-bold text-gold-700">{expanded ? "See Less" : "See More"}</button>}
           </section>
@@ -437,7 +452,7 @@ function ModelCard({ model, selected, onSelect, onInquire }: { model: Model; sel
         <div className="flex items-start justify-between gap-3">
           <div>
             <h4 className="font-bold text-navy-950">{model.name}</h4>
-            <p className="text-xs font-bold uppercase text-violet-700">{model.modelType === "lot_only" ? "Lot only" : "House model"}</p>
+            <p className="text-xs font-bold uppercase text-violet-700">{inventoryTypeLabel(model.modelType)}</p>
             <p className="text-lg font-bold text-navy-900">{formatPeso(model.currentPrice)}</p>
           </div>
           <span className="rounded-full bg-green-50 px-2 py-1 text-xs font-bold text-green-800">{model.availableUnits} available</span>

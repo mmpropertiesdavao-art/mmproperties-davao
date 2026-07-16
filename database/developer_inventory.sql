@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS public.developer_house_models (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   project_id UUID NOT NULL REFERENCES public.developer_projects(id) ON DELETE CASCADE,
   model_type TEXT NOT NULL DEFAULT 'house_model'
-    CHECK (model_type IN ('house_model','lot_only')),
+    CHECK (model_type IN ('house_model','lot_only','studio','one_bedroom','two_bedroom','three_bedroom','four_bedroom','penthouse')),
   name TEXT NOT NULL,
   bedrooms INTEGER,
   bathrooms NUMERIC,
@@ -68,7 +68,7 @@ ALTER TABLE public.developer_house_models ADD COLUMN IF NOT EXISTS video_url TEX
 ALTER TABLE public.developer_house_models ADD COLUMN IF NOT EXISTS model_type TEXT NOT NULL DEFAULT 'house_model';
 ALTER TABLE public.developer_house_models DROP CONSTRAINT IF EXISTS developer_house_models_model_type_check;
 ALTER TABLE public.developer_house_models ADD CONSTRAINT developer_house_models_model_type_check
-  CHECK (model_type IN ('house_model','lot_only'));
+  CHECK (model_type IN ('house_model','lot_only','studio','one_bedroom','two_bedroom','three_bedroom','four_bedroom','penthouse'));
 
 CREATE TABLE IF NOT EXISTS public.developer_model_price_history (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

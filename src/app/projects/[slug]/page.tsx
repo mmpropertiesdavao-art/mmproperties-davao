@@ -17,6 +17,21 @@ function statusLabel(value: string) {
   return value.replace(/_/g, " ");
 }
 
+function inventoryTypeLabel(value?: string | null) {
+  if (value === "lot_only") return "Lot only";
+  if (value === "studio") return "Studio";
+  if (value === "one_bedroom") return "1 BR";
+  if (value === "two_bedroom") return "2 BR";
+  if (value === "three_bedroom") return "3 BR";
+  if (value === "four_bedroom") return "4 BR";
+  if (value === "penthouse") return "Penthouse";
+  return "House model";
+}
+
+function isCondoUnit(value?: string | null) {
+  return ["studio", "one_bedroom", "two_bedroom", "three_bedroom", "four_bedroom", "penthouse"].includes(String(value || ""));
+}
+
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
   const payload = await getDeveloperProjectBySlug(slug);
@@ -24,11 +39,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const project = payload.project as any;
   return {
     title: project.seoTitle || `${project.projectName} by ${project.developerName}`,
-    description: project.seoDescription || project.description || `Browse house models and inventory for ${project.projectName}.`,
+    description: project.seoDescription || project.description || `Browse available inventory for ${project.projectName}.`,
     alternates: { canonical: `/projects/${project.slug}` },
     openGraph: {
       title: project.seoTitle || `${project.projectName} by ${project.developerName}`,
-      description: project.seoDescription || project.description || "Browse available house models, lots, and inventory.",
+      description: project.seoDescription || project.description || "Browse available condo units, house models, lots, and inventory.",
       images: project.heroImage ? [project.heroImage] : undefined,
     },
   };
@@ -42,7 +57,8 @@ export default async function ProjectPage({ params }: PageProps) {
   const project = payload.project as any;
   const models = payload.models as any[];
   const isLotOnlyProject = models.length > 0 && models.every((model) => model.modelType === "lot_only");
-  const inventoryLabel = isLotOnlyProject ? "Available lots" : "Available house models";
+  const isCondoProject = models.length > 0 && models.every((model) => isCondoUnit(model.modelType));
+  const inventoryLabel = isLotOnlyProject ? "Available lots" : isCondoProject ? "Available condo units" : "Available inventory";
   const startingPrice = models.reduce<number | null>((lowest, model) => {
     if (!model.currentPrice) return lowest;
     return lowest === null ? model.currentPrice : Math.min(lowest, model.currentPrice);
@@ -122,7 +138,7 @@ export default async function ProjectPage({ params }: PageProps) {
                 </div>
               ) : (
                 <p className="mt-3 rounded-xl bg-gold-50 p-4 text-sm font-semibold text-navy-700">
-                  No public model or lot inventory has been added yet. Add an active house model or lot-only inventory item in the developer inventory admin page.
+                  No public inventory has been added yet. Add an active unit, house model, or lot-only inventory item in the developer inventory admin page.
                 </p>
               )}
             </article>
@@ -168,7 +184,7 @@ function ModelCard({ model, projectSlug }: { model: any; projectSlug: string }) 
       <div className="p-4">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-xs font-extrabold uppercase tracking-wide text-violet-700">{isLotOnly ? "Lot only" : "House model"}</p>
+            <p className="text-xs font-extrabold uppercase tracking-wide text-violet-700">{inventoryTypeLabel(model.modelType)}</p>
             <h3 className="font-bold text-navy-950">{model.name}</h3>
             <p className="text-lg font-bold text-navy-900">{formatPeso(model.currentPrice)}</p>
             {pricePerSqm && <p className="text-xs font-semibold text-gold-700">{formatPeso(pricePerSqm)} / sqm</p>}

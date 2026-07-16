@@ -6,7 +6,7 @@ import { LocationPicker } from "@/components/map/LocationPicker";
 
 type Model = {
   id: string;
-  modelType?: "house_model" | "lot_only";
+  modelType?: InventoryModelType;
   name: string;
   bedrooms: number | null;
   bathrooms: number | null;
@@ -62,6 +62,30 @@ type Developer = {
 const input = "w-full rounded-lg border border-navy-200 px-3 py-2 text-sm focus:border-gold-500 focus:outline-none";
 const label = "mb-1 block text-xs font-semibold uppercase tracking-wide text-navy-500";
 
+type InventoryModelType = "house_model" | "lot_only" | "studio" | "one_bedroom" | "two_bedroom" | "three_bedroom" | "four_bedroom" | "penthouse";
+
+const STANDARD_INVENTORY_TYPES: Array<{ value: InventoryModelType; label: string }> = [
+  { value: "house_model", label: "House model" },
+  { value: "lot_only", label: "Lot only" },
+];
+
+const CONDO_INVENTORY_TYPES: Array<{ value: InventoryModelType; label: string }> = [
+  { value: "studio", label: "Studio" },
+  { value: "one_bedroom", label: "1 BR" },
+  { value: "two_bedroom", label: "2 BR" },
+  { value: "three_bedroom", label: "3 BR" },
+  { value: "four_bedroom", label: "4 BR" },
+  { value: "penthouse", label: "Penthouse" },
+];
+
+function inventoryOptions(projectType?: string | null) {
+  return projectType === "condominium" ? CONDO_INVENTORY_TYPES : STANDARD_INVENTORY_TYPES;
+}
+
+function inventoryTypeLabel(value?: string | null) {
+  return [...STANDARD_INVENTORY_TYPES, ...CONDO_INVENTORY_TYPES].find((option) => option.value === value)?.label || "Inventory";
+}
+
 function formatPeso(value: number | null | undefined) {
   if (!value) return "Price not set";
   return `PHP ${Math.round(value).toLocaleString("en-PH")}`;
@@ -85,6 +109,7 @@ export default function DeveloperInventoryAdminPage() {
     () => developers.flatMap((developer) => developer.projects.map((project) => ({ ...project, developerName: developer.name }))),
     [developers],
   );
+  const selectedProject = projects.find((project) => project.id === selectedProjectId);
 
   const normalizedSearch = inventorySearch.trim().toLowerCase();
   const visibleDevelopers = useMemo(() => {
@@ -184,7 +209,7 @@ export default function DeveloperInventoryAdminPage() {
           <p className="text-sm font-bold uppercase tracking-wide text-gold-700">New Developments</p>
           <h1 className="text-3xl font-bold text-navy-950">Developer inventory</h1>
           <p className="mt-1 max-w-3xl text-sm text-navy-500">
-            Manage developers, multiple project locations, house models, price history, and inventory counts without creating duplicate brokerage listings.
+            Manage developers, multiple project locations, condo units, house models, lots, price history, and inventory counts without creating duplicate brokerage listings.
           </p>
         </div>
         <Link href="/search" className="rounded-lg border border-navy-200 px-4 py-2 text-sm font-semibold text-navy-800">
@@ -295,7 +320,7 @@ export default function DeveloperInventoryAdminPage() {
       </section>
 
       <section className="mt-6 rounded-2xl border bg-white p-5 shadow-sm">
-        <h2 className="font-bold text-navy-900">Add house model</h2>
+        <h2 className="font-bold text-navy-900">Add inventory</h2>
         <form
           onSubmit={(event) => {
             event.preventDefault();
@@ -304,8 +329,12 @@ export default function DeveloperInventoryAdminPage() {
           className="mt-4 grid gap-3 md:grid-cols-4"
         >
           <div className="md:col-span-2"><span className={label}>Project</span><select required value={selectedProjectId} onChange={(e) => setSelectedProjectId(e.target.value)} className={input}><option value="">Choose project</option>{projects.map((project) => <option key={project.id} value={project.id}>{project.developerName} — {project.projectName}</option>)}</select></div>
-          <div><span className={label}>Inventory type</span><select name="modelType" className={input} defaultValue="house_model"><option value="house_model">House model</option><option value="lot_only">Lot only</option></select></div>
-          <Field name="name" label="Model / lot name" required />
+          <div>
+            <span className={label}>Inventory type</span>
+            <InventoryTypeSelect projectType={selectedProject?.projectType} />
+            {selectedProject?.projectType === "condominium" && <p className="mt-1 text-xs text-navy-500">Condo project: choose Studio, 1 BR, 2 BR, 3 BR, 4 BR, or Penthouse.</p>}
+          </div>
+          <Field name="name" label="Unit / model / lot name" required />
           <Field name="currentPrice" label="Current price" type="number" />
           <Field name="bedrooms" label="Bedrooms" type="number" />
           <Field name="bathrooms" label="Bathrooms" type="number" step="0.5" />
@@ -383,7 +412,7 @@ export default function DeveloperInventoryAdminPage() {
                         </div>
                         <div className="mt-3 grid gap-2 sm:grid-cols-3">
                           <input name="name" defaultValue={model.name} className={input} aria-label="Model name" />
-                          <select name="modelType" defaultValue={model.modelType || "house_model"} className={input} aria-label="Inventory type"><option value="house_model">House model</option><option value="lot_only">Lot only</option></select>
+                          <InventoryTypeSelect projectType={project.projectType} value={model.modelType || "house_model"} ariaLabel="Inventory type" />
                           <input name="currentPrice" type="number" defaultValue={model.currentPrice ?? ""} className={input} aria-label="Current price" />
                           <input name="videoUrl" defaultValue={model.videoUrl ?? ""} className={`${input} sm:col-span-2`} aria-label="Model video URL" placeholder="YouTube video URL" />
                           <input name="bedrooms" type="number" defaultValue={model.bedrooms ?? ""} className={input} aria-label="Bedrooms" />
@@ -442,7 +471,7 @@ export default function DeveloperInventoryAdminPage() {
                             type="button"
                             disabled={saving}
                             onClick={async () => {
-                              const confirmation = window.prompt(`Type "${model.name}" to permanently delete this model / lot inventory.`);
+                              const confirmation = window.prompt(`Type "${model.name}" to permanently delete this inventory item.`);
                               if (confirmation === null) return;
                               if (confirmation !== model.name) {
                                 setMessage("Delete cancelled. The confirmation text did not match the model / lot name.");
@@ -467,7 +496,7 @@ export default function DeveloperInventoryAdminPage() {
                         </div>
                       </form>
                     ))}
-                    {project.models.length === 0 && <p className="text-sm text-navy-500">No house model or lot inventory yet.</p>}
+                    {project.models.length === 0 && <p className="text-sm text-navy-500">No inventory yet.</p>}
                   </div>
                 </div>
               ))}
@@ -488,6 +517,18 @@ function Field(props: React.InputHTMLAttributes<HTMLInputElement> & { label: str
 function TextArea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement> & { label: string }) {
   const { label: text, className, ...rest } = props;
   return <label className={className}><span className={label}>{text}</span><textarea {...rest} className={input} rows={3} /></label>;
+}
+
+function InventoryTypeSelect({ projectType, value, ariaLabel }: { projectType?: string | null; value?: string; ariaLabel?: string }) {
+  const baseOptions = inventoryOptions(projectType);
+  const options = value && !baseOptions.some((option) => option.value === value)
+    ? [{ value: value as InventoryModelType, label: `${inventoryTypeLabel(value)} (current)` }, ...baseOptions]
+    : baseOptions;
+  return (
+    <select name="modelType" className={input} defaultValue={value || options[0]?.value || "house_model"} aria-label={ariaLabel}>
+      {options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+    </select>
+  );
 }
 
 function UploadInput({ label: text, onUpload, ...rest }: React.InputHTMLAttributes<HTMLInputElement> & { label: string; onUpload: (files: FileList | null, target: HTMLInputElement) => void }) {
@@ -712,7 +753,7 @@ function ProjectEditor({ project, saving, upload, onSaved, setMessage }: { proje
         </button>
       </div>
       <div className="mt-4 rounded-lg border border-red-100 bg-red-50 p-3">
-        <p className="text-xs font-semibold text-red-700">Permanent delete removes this project and its house models. Type “{project.projectName}” to confirm.</p>
+        <p className="text-xs font-semibold text-red-700">Permanent delete removes this project and its inventory. Type “{project.projectName}” to confirm.</p>
         <div className="mt-2 flex flex-col gap-2 sm:flex-row">
           <input value={deleteText} onChange={(event) => setDeleteText(event.target.value)} className={input} placeholder={project.projectName} />
           <button type="button" disabled={saving || deleteText !== project.projectName} onClick={() => void deleteProject()} className="min-h-11 rounded-lg bg-red-700 px-4 py-2 text-sm font-bold text-white disabled:opacity-50">
