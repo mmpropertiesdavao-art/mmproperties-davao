@@ -318,3 +318,86 @@ export async function getDeveloperProjectBySlug(slug: string) {
 
   return { project, models: models.rows, priceHistory: priceHistory.rows };
 }
+
+export async function getDeveloperProfileBySlug(slug: string) {
+  const { rows } = await db.query<{
+    id: string;
+    name: string;
+    slug: string;
+    logoUrl: string | null;
+    description: string | null;
+    website: string | null;
+    contactNumber: string | null;
+    email: string | null;
+  }>({
+    text: `
+      SELECT
+        id,
+        name,
+        slug,
+        logo_url AS "logoUrl",
+        description,
+        website,
+        contact_number AS "contactNumber",
+        email
+      FROM developers
+      WHERE slug = $1
+        AND is_active = true
+        AND approval_status = 'approved'
+        AND merged_into_id IS NULL
+      LIMIT 1
+    `,
+    values: [slug],
+  });
+
+  const developer = rows[0];
+  if (!developer) return null;
+
+  const { rows: projects } = await db.query<DeveloperProjectSearchRow>({
+    text: `
+      WITH project_rollup AS (
+        SELECT
+          p.id,
+          p.slug,
+          p.project_name AS "projectName",
+          p.project_type AS "projectType",
+          d.name AS "developerName",
+          p.status,
+          p.address,
+          p.barangay,
+          p.city,
+          p.province,
+          p.latitude,
+          p.longitude,
+          p.hero_image AS "heroImage",
+          MIN(m.current_price)::float AS "startingPrice",
+          COUNT(DISTINCT m.id)::int AS "modelCount",
+          BOOL_OR(m.model_type = 'lot_only') AS "hasLotOnly",
+          COALESCE(SUM(inv.available_units), 0)::int AS "availableUnits",
+          MIN(m.bedrooms)::int AS "bedroomsMin",
+          MAX(m.bedrooms)::int AS "bedroomsMax",
+          MIN(m.bathrooms)::float AS "bathroomsMin",
+          MAX(m.bathrooms)::float AS "bathroomsMax",
+          MIN(m.floor_area)::float AS "floorAreaMin",
+          MAX(m.floor_area)::float AS "floorAreaMax",
+          MIN(m.lot_area)::float AS "lotAreaMin",
+          MAX(m.lot_area)::float AS "lotAreaMax",
+          p.updated_at
+        FROM developer_projects p
+        JOIN developers d ON d.id = p.developer_id
+        LEFT JOIN developer_house_models m ON m.project_id = p.id AND m.active = true
+        LEFT JOIN developer_model_inventory inv ON inv.model_id = m.id
+        WHERE p.developer_id = $1::uuid
+          AND p.active = true
+          AND p.status <> 'inactive'
+        GROUP BY p.id, d.name
+      )
+      SELECT *
+      FROM project_rollup
+      ORDER BY updated_at DESC, "projectName"
+    `,
+    values: [developer.id],
+  });
+
+  return { developer, projects };
+}
