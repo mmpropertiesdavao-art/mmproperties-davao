@@ -1,0 +1,58 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { ComparisonTable } from "@/components/compare/ComparisonTable";
+import { readCompare, writeCompare } from "@/lib/compare";
+import type { Property } from "@/types/property";
+
+export function CompareClient() {
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const urlSlugs = (params.get("slugs") || "").split(",").filter(Boolean).slice(0, 4);
+    const stored = readCompare();
+    const slugs = urlSlugs.length ? urlSlugs : stored.map((item) => item.slug);
+    if (!slugs.length) {
+      setLoading(false);
+      return;
+    }
+    fetch(`/api/properties/compare?slugs=${encodeURIComponent(slugs.join(","))}`)
+      .then((response) => response.json())
+      .then((data) => setProperties(data.results || []))
+      .finally(() => setLoading(false));
+  }, []);
+
+  function remove(property: Property) {
+    const next = properties.filter((item) => item.id !== property.id);
+    setProperties(next);
+    const current = readCompare().filter((item) => item.id !== property.id);
+    writeCompare(current);
+    const url = new URL(window.location.href);
+    url.searchParams.set("slugs", next.map((item) => item.slug).join(","));
+    window.history.replaceState(null, "", url);
+  }
+
+  const mixed = new Set(properties.map((property) => property.listingIntent)).size > 1;
+
+  return (
+    <div className="mx-auto max-w-7xl px-6 py-10">
+      <h1 className="text-3xl font-semibold text-navy-900">Compare properties</h1>
+      <p className="mt-2 text-sm text-navy-500">Compare up to four properties. Your selection stays on this device and the URL can be shared.</p>
+      {mixed && <p className="mt-5 rounded-md bg-amber-50 p-3 text-sm text-amber-800">This comparison includes different offer types. Sale prices and monthly rents are not directly equivalent.</p>}
+      {loading ? (
+        <p className="mt-8 text-navy-400">Loading comparison…</p>
+      ) : properties.length ? (
+        <div className="mt-7">
+          <p className="mb-3 rounded-xl border border-gold-200 bg-gold-50 px-4 py-3 text-sm font-bold text-navy-900 md:hidden">
+            Swipe left to compare properties →
+          </p>
+          <ComparisonTable properties={properties} onRemove={remove} />
+        </div>
+      ) : (
+        <p className="mt-8 rounded-xl border border-dashed border-navy-200 p-10 text-center text-navy-500">Use the scale button on a property card or detail page to add up to four properties.</p>
+      )}
+    </div>
+  );
+}
